@@ -48,7 +48,7 @@
       <div class="main-left-top flex1">
         <a class="logo">
           <img src="/images/logo.svg" />
-          <div class="sub-title">逝去的荣耀与光辉</div>
+          <div class="sub-title">废物Twe1ve的垃圾展示台</div>
         </a>
         <nav class="nav">
 
@@ -72,7 +72,7 @@
       </a>
 
     
-      <a title="关于我"  alt="关于我"  v-for="(menu,index) in menus" href="/about">
+      <a title="关于我"  alt="关于我"  v-for="(menu,index) in menus" href="/about/index.html">
         <div class="icon"><i class="iconfont icon-about"></i></div>
         <div class="name">
           <div class="cnname">关于我</div>
@@ -95,31 +95,17 @@
       </div>
 
       <view class="website-msg">
-        <div class="beian"><a target="_blank" href="http://www.miitbeian.gov.cn/">粤ICP备15053557号</a></div>
+        <div class="beian"><a target="_blank" href="http://www.miitbeian.gov.cn/"></a></div>
         <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
         <div class="beian"><span id="busuanzi_container_site_pv">本站总访问量<span id="busuanzi_value_site_pv"></span>次</span></div>
+        <!--
         <div class="theme-drsc">PowerBy:<a href="https://hexo.io" target="_blank">Hexo</a> ThemeBy:<a href="" target="_blank">Soul</a></div>
-        <div class="copyright">Copyright &#169 <a href="mailto:d.guangying@foxmail.com">2019 CallMeSoul</a> </div>
+        -->
+        <div class="copyright">Copyright &#169 <a href="mailto:yorojogame@gmail.com">2020 Twe1ve&#39;s Blog</a> </div>
       </view>
 
       <div class="social flex flex-align-center ">
         
-          
-            
-              <a class="flex1 text-center" href="https://weibo.com/tellmesoul/home?wvr=5" target="_blank" title="weibo" alt="weibo">
-                <div class="icon relative">
-                  <i class="iconfont icon-weibo"></i>
-                </div>
-              </a>
-            
-          
-            
-              <a class="flex1 text-center" href="https://github.com/callmesoul" target="_blank" title="GitHub" alt="GitHub">
-                <div class="icon relative">
-                  <i class="iconfont icon-github"></i>
-                </div>
-              </a>
-            
           
             
           
@@ -132,14 +118,110 @@
 <!--  <div class="project-card">
   
   <div class="ctnWrap">
-    <a href="/2015/10/21/demo/" class="title">辨析 Sass 中的 Map 和 List</a>
+    <a href="/2020/02/21/PDO&&InjectionBypass/" class="title">PDO&amp;&amp;InjectionBypass</a>
     <section class="desc">
-  <p>如果你使用过 Sass 3.3 之前的版本，那么你一定对那段时光颇有感触，那时候没有现如今这么好的条件，那时候的 Map 还只能用多重列表（lists of list）来模拟。多重列表可以实现复杂数据的嵌套定义，但却不是以键值对的形式实现的，所有当我们需要获取其中特定的某一项时就会比较麻烦。Map 这种数据类型天生就是基于键值对的形式，非常便于组织数据。</p>
-<p>自从可以使用 Map 之后，开发者们开始毫无顾忌地定义 Map 存储数据，比如断点宽度、颜色值、栅格布局等等响应式排版的细节，都被一股脑的塞进了 Map 中。</p>
-<p>那么，有了 Map 之后，我们还有必要使用 List 吗？可能某些人会觉得为了保持向后兼容应该继续使用多重列表模拟 Map，因为可能有些开发者仍然在使用老版本的 Sass 编译器，但实际上，这是多此一举了，Sass 的版本通常由 <code>package.json</code> 或者其他同类型的项目配置文件所控制，往往只需一条命令（<code>gem update sass</code>）即可更新 Sass 的版本，因此基本上无需考虑对老版本的兼容问题。</p>
+  PHP PDO &amp; Injection BypassPDO：PHP 数据对象  PHP访问数据库定义了一个轻量级的一致接口。  PDO 提供了一个数据访问抽象层，这意味着，不管使用哪种数据库，都可以用相同的函数（方法）来查询和获取数据。  使用预处理和存储过程
+PDO连接MySql数据库：
+&lt;?php
+$dbms=&apos;mysql&apos;; //数据库类型
+$host=&apos;127.0.0.1&apos;; //数据库主机名
+$port=&apos;3306&apos;;  //数据库端口
+$dbName=&apos;test&apos;;//使用的数据库
+$user=&apos;root&apos;;  //数据库连接用户名
+$pass=&apos;root&apos;;  //对应的密码
+$dsn=&quot;$dbms:host=$host;port=$port;dbname=$dbName&quot;;   
+try { 
+$dbh = new PDO($dsn, $user, $pass); //初始化一个PDO对象 
+echo &quot;连接成功&lt;br/&gt;&quot;;
+/*你还可以进行一次搜索操作
+foreach ($dbh-&gt;query(&apos;SELECT * from FOO&apos;) as $row) {
+print_r($row); //你可以用 echo($GLOBAL); 来看到这些值
+}
+*/
+$dbh = null;
+} catch (PDOException $e) {
+die (&quot;Error!: &quot; . $e-&gt;getMessage() . &quot;&lt;br/&gt;&quot;);
+}
+//默认这个不是长连接，如果需要数据库长连接，需要最后加一个参数：array(PDO::ATTR_PERSISTENT =&gt; true) 变成这样：
+$db = new PDO($dsn, $user, $pass, array(PDO::ATTR_PERSISTENT =&gt; true));
+?&gt;PDO多语句安全问题：使用PDO中query()函数同数据库交互：
+&lt;?php$dbms=&apos;mysql&apos;;
+$host=&apos;127.0.0.1&apos;;
+$dbName=&apos;test&apos;;
+$user=&apos;root&apos;;
+$pass=&apos;root&apos;;
+$dsn=&quot;$dbms:host=$host;dbname=$dbName&quot;;
+try {
+ $pdo = new PDO($dsn, $user, $pass);
+} catch (PDOException $e) {
+ echo $e;
+}
+$sql = &quot;select * from user where id=1;&quot;;
+$sql .= &quot;create table test2 like user&quot;;
+$stmt = $pdo-&gt;query($sql);while($row=$stmt-&gt;fetch(PDO::FETCH_ASSOC))
+{
+var_dump($row);
+echo &quot;&quot;;
+}PDO默认支持多语句查询，如果php版本小于5.5.21或者创建PDO实例时未设置PDO::MYSQL_ATTR_MULTI_STATEMENTS为false时可能会造成堆叠注入
+&lt;?php
+$dbms=&apos;mysql&apos;;
+$host=&apos;127.0.0.1&apos;;
+$dbName=&apos;test&apos;;
+$user=&apos;root&apos;;
+$pass=&apos;root&apos;;
+$dsn=&quot;$dbms:host=$host;dbname=$dbName&quot;;
+try {
+ $pdo = new PDO($dsn, $user, $pass);
+} 
+catch (PDOException $e) {
+ echo $e;
+}
+$id = $_GET[&apos;id&apos;];
+$sql = &quot;SELECT * from user where id =&quot;.$id;
+$stmt = $pdo-&gt;query($sql);
+while($row=$stmt-&gt;fetch(PDO::FETCH_ASSOC)){
+var_dump($row);
+echo &quot;&quot;;
+}
+?&gt;$id变量可控，以形成堆叠注入
+
+禁止多语句执行：
+new PDO($dsn, $user, $pass, array( PDO::MYSQL_ATTR_MULTI_STATEMENTS =&gt; false))PDO预处理安全问题    PDO分为模拟预处理和非模拟预处理。    模拟预处理是防止某些数据库不支持预处理而设置的，在初始化PDO驱动时，可以设置一项参数,PDO::ATTR_EMULATE_PREPARES，作用是打开模拟预处理(true)或者关闭(false),默认为true。PDO内部会模拟参数绑定的过程，SQL语句是在最后execute()的时候才发送给数据库执行。    非模拟预处理则是通过数据库服务器来进行预处理动作，主要分为两步：第一步是prepare阶段，发送SQL语句模板到数据库服务器；第二步通过execute()函数发送占位符参数给数据库服务器进行执行。
+[1]模拟预处理动态拼接形成多语句执行（PHP&lt;5.3.6）
+&lt;?php
+$dbms=&apos;mysql&apos;;
+$host=&apos;127.0.0.1&apos;;
+$dbName=&apos;test&apos;;
+$user=&apos;root&apos;;
+$pass=&apos;root&apos;;
+$dsn=&quot;$dbms:host=$host;dbname=$dbName&quot;;
+try {
+$pdo = new PDO($dsn, $user, $pass);
+} catch (PDOException $e) {
+echo $e;
+}
+//$pdo-&gt;setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
+$username = $_GET[&apos;username&apos;];
+$sql = &quot;select id,&quot;.$_GET[&apos;field&apos;].&quot; from user where username = ?&quot;;
+$stmt = $pdo-&gt;prepare($sql);
+$stmt-&gt;bindParam(1,$username);
+$stmt-&gt;execute();
+while($row=$stmt-&gt;fetch(PDO::FETCH_ASSOC))
+{
+var_dump($row);
+echo &quot;
+&quot;;
+}
+?&gt;   可以看到sql语句field字段可控，这样我们构造field，达到多语句执行的效果。
+
+数据库中语句为：
+select id,username from user;create table sss like user;select id from user where username=Z[2]模拟预处理报错注入(PHP&lt;5.3.6)   上述代码，设置$pdo-&gt;setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION); //打印报错信息   同样可以达到报错注入效果
+在数据库中语句为：
+select id,updatexml(1,concat(user(),0x7e,version()),1) from user;select id from user where username=Z[3]非模拟预处理报错注入   设置pdo-&gt;setAttribute(PDO::ATTR_EMULATE_PREPARES, false); //表示是否使用PHP本地模拟prepare   ：php对sql语句发送采用了prepare–execute方式，php对sql语句发送采用了prepare–execute方式   此时转义处理交由mysql server来执行，变量和SQL模板是分两次发送的   因此虽然field字段依旧可控，但是多语句不可执行   当设置$pdo-&gt;setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);时，仍然可以进行报错注入在数据库中语句为：    select id,updatexml(1,concat(user(),0x7e),1) from user where username=Y;这里可进行报错注入是因为MySQL服务端prepare时报错，然后通过设置PDO::ATTR_ERRMODE将MySQL错误信息打印在MySQL中执行prepare语句    prepare statm from “select id,updatexml(0x7e,concat(0x7e,user(),0x7e),0x7e) from user where username=?”;
+
 
 </section>
-    <p class="sub">Oct 21, 2015</p>
+    <p class="sub">Feb 21, 2020</p>
   </div>
 </div>-->
 <!---->
@@ -153,35 +235,127 @@
         <div class="swiper-container">
             <div class="swiper-wrapper">
                 
-                    <a title="辨析 Sass 中的 Map 和 List" alt="辨析 Sass 中的 Map 和 List" href="/2015/10/21/demo/"
+                    <a title="PDO&amp;&amp;InjectionBypass" alt="PDO&amp;&amp;InjectionBypass" href="/2020/02/21/PDO&&InjectionBypass/"
                        class="post-item swiper-slide flex flex-v">
                         <div class="image">
                             
-                                <img title="辨析 Sass 中的 Map 和 List" alt="辨析 Sass 中的 Map 和 List"
+                                <img title="PDO&amp;&amp;InjectionBypass" alt="PDO&amp;&amp;InjectionBypass"
                                      src="/images/default.jpg"></img>
                             
                         </div>
                         <div class="content-warp flex1 flex flex-v">
-                            <div class="title">&lt; 辨析 Sass 中的 Map 和 List &gt;</div>
+                            <div class="title">&lt; PDO&amp;&amp;InjectionBypass &gt;</div>
                             <div class="content flex1">
                                 
-  <p>如果你使用过 Sass 3.3 之前的版本，那么你一定对那段时光颇有感触，那时候没有现如今这么好的条件，那时候的 Map 还只能用多重列表（lists of list）来模拟。多重列表可以实现复杂数据的嵌套定义，但却不是以键值对的形式实现的，所有当我们需要获取其中特定的某一项时就会比较麻烦。Map 这种数据类型天生就是基于键值对的形式，非常便于组织数据。</p>
-<p>自从可以使用 Map 之后，开发者们开始毫无顾忌地定义 Map 存储数据，比如断点宽度、颜色值、栅格布局等等响应式排版的细节，都被一股脑的塞进了 Map 中。</p>
-<p>那么，有了 Map 之后，我们还有必要使用 List 吗？可能某些人会觉得为了保持向后兼容应该继续使用多重列表模拟 Map，因为可能有些开发者仍然在使用老版本的 Sass 编译器，但实际上，这是多此一举了，Sass 的版本通常由 <code>package.json</code> 或者其他同类型的项目配置文件所控制，往往只需一条命令（<code>gem update sass</code>）即可更新 Sass 的版本，因此基本上无需考虑对老版本的兼容问题。</p>
+  PHP PDO &amp; Injection BypassPDO：PHP 数据对象  PHP访问数据库定义了一个轻量级的一致接口。  PDO 提供了一个数据访问抽象层，这意味着，不管使用哪种数据库，都可以用相同的函数（方法）来查询和获取数据。  使用预处理和存储过程
+PDO连接MySql数据库：
+&lt;?php
+$dbms=&apos;mysql&apos;; //数据库类型
+$host=&apos;127.0.0.1&apos;; //数据库主机名
+$port=&apos;3306&apos;;  //数据库端口
+$dbName=&apos;test&apos;;//使用的数据库
+$user=&apos;root&apos;;  //数据库连接用户名
+$pass=&apos;root&apos;;  //对应的密码
+$dsn=&quot;$dbms:host=$host;port=$port;dbname=$dbName&quot;;   
+try { 
+$dbh = new PDO($dsn, $user, $pass); //初始化一个PDO对象 
+echo &quot;连接成功&lt;br/&gt;&quot;;
+/*你还可以进行一次搜索操作
+foreach ($dbh-&gt;query(&apos;SELECT * from FOO&apos;) as $row) {
+print_r($row); //你可以用 echo($GLOBAL); 来看到这些值
+}
+*/
+$dbh = null;
+} catch (PDOException $e) {
+die (&quot;Error!: &quot; . $e-&gt;getMessage() . &quot;&lt;br/&gt;&quot;);
+}
+//默认这个不是长连接，如果需要数据库长连接，需要最后加一个参数：array(PDO::ATTR_PERSISTENT =&gt; true) 变成这样：
+$db = new PDO($dsn, $user, $pass, array(PDO::ATTR_PERSISTENT =&gt; true));
+?&gt;PDO多语句安全问题：使用PDO中query()函数同数据库交互：
+&lt;?php$dbms=&apos;mysql&apos;;
+$host=&apos;127.0.0.1&apos;;
+$dbName=&apos;test&apos;;
+$user=&apos;root&apos;;
+$pass=&apos;root&apos;;
+$dsn=&quot;$dbms:host=$host;dbname=$dbName&quot;;
+try {
+ $pdo = new PDO($dsn, $user, $pass);
+} catch (PDOException $e) {
+ echo $e;
+}
+$sql = &quot;select * from user where id=1;&quot;;
+$sql .= &quot;create table test2 like user&quot;;
+$stmt = $pdo-&gt;query($sql);while($row=$stmt-&gt;fetch(PDO::FETCH_ASSOC))
+{
+var_dump($row);
+echo &quot;&quot;;
+}PDO默认支持多语句查询，如果php版本小于5.5.21或者创建PDO实例时未设置PDO::MYSQL_ATTR_MULTI_STATEMENTS为false时可能会造成堆叠注入
+&lt;?php
+$dbms=&apos;mysql&apos;;
+$host=&apos;127.0.0.1&apos;;
+$dbName=&apos;test&apos;;
+$user=&apos;root&apos;;
+$pass=&apos;root&apos;;
+$dsn=&quot;$dbms:host=$host;dbname=$dbName&quot;;
+try {
+ $pdo = new PDO($dsn, $user, $pass);
+} 
+catch (PDOException $e) {
+ echo $e;
+}
+$id = $_GET[&apos;id&apos;];
+$sql = &quot;SELECT * from user where id =&quot;.$id;
+$stmt = $pdo-&gt;query($sql);
+while($row=$stmt-&gt;fetch(PDO::FETCH_ASSOC)){
+var_dump($row);
+echo &quot;&quot;;
+}
+?&gt;$id变量可控，以形成堆叠注入
+
+禁止多语句执行：
+new PDO($dsn, $user, $pass, array( PDO::MYSQL_ATTR_MULTI_STATEMENTS =&gt; false))PDO预处理安全问题    PDO分为模拟预处理和非模拟预处理。    模拟预处理是防止某些数据库不支持预处理而设置的，在初始化PDO驱动时，可以设置一项参数,PDO::ATTR_EMULATE_PREPARES，作用是打开模拟预处理(true)或者关闭(false),默认为true。PDO内部会模拟参数绑定的过程，SQL语句是在最后execute()的时候才发送给数据库执行。    非模拟预处理则是通过数据库服务器来进行预处理动作，主要分为两步：第一步是prepare阶段，发送SQL语句模板到数据库服务器；第二步通过execute()函数发送占位符参数给数据库服务器进行执行。
+[1]模拟预处理动态拼接形成多语句执行（PHP&lt;5.3.6）
+&lt;?php
+$dbms=&apos;mysql&apos;;
+$host=&apos;127.0.0.1&apos;;
+$dbName=&apos;test&apos;;
+$user=&apos;root&apos;;
+$pass=&apos;root&apos;;
+$dsn=&quot;$dbms:host=$host;dbname=$dbName&quot;;
+try {
+$pdo = new PDO($dsn, $user, $pass);
+} catch (PDOException $e) {
+echo $e;
+}
+//$pdo-&gt;setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
+$username = $_GET[&apos;username&apos;];
+$sql = &quot;select id,&quot;.$_GET[&apos;field&apos;].&quot; from user where username = ?&quot;;
+$stmt = $pdo-&gt;prepare($sql);
+$stmt-&gt;bindParam(1,$username);
+$stmt-&gt;execute();
+while($row=$stmt-&gt;fetch(PDO::FETCH_ASSOC))
+{
+var_dump($row);
+echo &quot;
+&quot;;
+}
+?&gt;   可以看到sql语句field字段可控，这样我们构造field，达到多语句执行的效果。
+
+数据库中语句为：
+select id,username from user;create table sss like user;select id from user where username=Z[2]模拟预处理报错注入(PHP&lt;5.3.6)   上述代码，设置$pdo-&gt;setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION); //打印报错信息   同样可以达到报错注入效果
+在数据库中语句为：
+select id,updatexml(1,concat(user(),0x7e,version()),1) from user;select id from user where username=Z[3]非模拟预处理报错注入   设置pdo-&gt;setAttribute(PDO::ATTR_EMULATE_PREPARES, false); //表示是否使用PHP本地模拟prepare   ：php对sql语句发送采用了prepare–execute方式，php对sql语句发送采用了prepare–execute方式   此时转义处理交由mysql server来执行，变量和SQL模板是分两次发送的   因此虽然field字段依旧可控，但是多语句不可执行   当设置$pdo-&gt;setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);时，仍然可以进行报错注入在数据库中语句为：    select id,updatexml(1,concat(user(),0x7e),1) from user where username=Y;这里可进行报错注入是因为MySQL服务端prepare时报错，然后通过设置PDO::ATTR_ERRMODE将MySQL错误信息打印在MySQL中执行prepare语句    prepare statm from “select id,updatexml(0x7e,concat(0x7e,user(),0x7e),0x7e) from user where username=?”;
+
 
 
                             </div>
                             <div class="post-tags">
                                 
-                                    <span href="" class="">
-                      # css
-                    </span>
-                                
                             </div>
                             <div class="other">
                                 <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
                                 <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
-                                <span><i class="iconfont icon-shijian"></i>Oct 21, 2015</span>
+                                <span><i class="iconfont icon-shijian"></i>Feb 21, 2020</span>
                             </div>
                         </div>
                     </a>
@@ -241,6 +415,7 @@
 </script>
 
   </div>
+  <!--
   <div class="main-bottom">
     <div class="music flex flex-pack-justify flex-align-center">
       <div class="control">
@@ -369,7 +544,7 @@
     }
     changePlayIndex(index)
   }
-
+-->
   function toggleMenu() {
     var mainLeft = $('.main-left')
     if(mainLeft.hasClass('active')){

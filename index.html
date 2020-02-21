@@ -228,11 +228,8 @@ echo &quot;
 
 数据库中语句为：
 select id,username from user;create table sss like user;select id from user where username=Z[2]模拟预处理报错注入(PHP&lt;5.3.6)   上述代码，设置$pdo-&gt;setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION); //打印报错信息   同样可以达到报错注入效果
-
 在数据库中语句为：
-select id,updatexml(1,concat(user(),0x7e,version()),1) from user;select id from user where username=Z[3]非模拟预处理报错注入   设置pdo-&gt;setAttribute(PDO::ATTR_EMULATE_PREPARES, false); //表示是否使用PHP本地模拟prepare   ：php对sql语句发送采用了prepare–execute方式，php对sql语句发送采用了prepare–execute方式   此时转义处理交由mysql server来执行，变量和SQL模板是分两次发送的   因此虽然field字段依旧可控，但是多语句不可执行   当设置$pdo-&gt;setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);时，仍然可以进行报错注入
-
-在数据库中语句为：    select id,updatexml(1,concat(user(),0x7e),1) from user where username=Y;这里可进行报错注入是因为MySQL服务端prepare时报错，然后通过设置PDO::ATTR_ERRMODE将MySQL错误信息打印在MySQL中执行prepare语句    prepare statm from “select id,updatexml(0x7e,concat(0x7e,user(),0x7e),0x7e) from user where username=?”;
+select id,updatexml(1,concat(user(),0x7e,version()),1) from user;select id from user where username=Z[3]非模拟预处理报错注入   设置pdo-&gt;setAttribute(PDO::ATTR_EMULATE_PREPARES, false); //表示是否使用PHP本地模拟prepare   ：php对sql语句发送采用了prepare–execute方式，php对sql语句发送采用了prepare–execute方式   此时转义处理交由mysql server来执行，变量和SQL模板是分两次发送的   因此虽然field字段依旧可控，但是多语句不可执行   当设置$pdo-&gt;setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);时，仍然可以进行报错注入在数据库中语句为：    select id,updatexml(1,concat(user(),0x7e),1) from user where username=Y;这里可进行报错注入是因为MySQL服务端prepare时报错，然后通过设置PDO::ATTR_ERRMODE将MySQL错误信息打印在MySQL中执行prepare语句    prepare statm from “select id,updatexml(0x7e,concat(0x7e,user(),0x7e),0x7e) from user where username=?”;
 
 
 </section>
@@ -385,11 +382,8 @@ echo &quot;
 
 数据库中语句为：
 select id,username from user;create table sss like user;select id from user where username=Z[2]模拟预处理报错注入(PHP&lt;5.3.6)   上述代码，设置$pdo-&gt;setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION); //打印报错信息   同样可以达到报错注入效果
-
 在数据库中语句为：
-select id,updatexml(1,concat(user(),0x7e,version()),1) from user;select id from user where username=Z[3]非模拟预处理报错注入   设置pdo-&gt;setAttribute(PDO::ATTR_EMULATE_PREPARES, false); //表示是否使用PHP本地模拟prepare   ：php对sql语句发送采用了prepare–execute方式，php对sql语句发送采用了prepare–execute方式   此时转义处理交由mysql server来执行，变量和SQL模板是分两次发送的   因此虽然field字段依旧可控，但是多语句不可执行   当设置$pdo-&gt;setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);时，仍然可以进行报错注入
-
-在数据库中语句为：    select id,updatexml(1,concat(user(),0x7e),1) from user where username=Y;这里可进行报错注入是因为MySQL服务端prepare时报错，然后通过设置PDO::ATTR_ERRMODE将MySQL错误信息打印在MySQL中执行prepare语句    prepare statm from “select id,updatexml(0x7e,concat(0x7e,user(),0x7e),0x7e) from user where username=?”;
+select id,updatexml(1,concat(user(),0x7e,version()),1) from user;select id from user where username=Z[3]非模拟预处理报错注入   设置pdo-&gt;setAttribute(PDO::ATTR_EMULATE_PREPARES, false); //表示是否使用PHP本地模拟prepare   ：php对sql语句发送采用了prepare–execute方式，php对sql语句发送采用了prepare–execute方式   此时转义处理交由mysql server来执行，变量和SQL模板是分两次发送的   因此虽然field字段依旧可控，但是多语句不可执行   当设置$pdo-&gt;setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);时，仍然可以进行报错注入在数据库中语句为：    select id,updatexml(1,concat(user(),0x7e),1) from user where username=Y;这里可进行报错注入是因为MySQL服务端prepare时报错，然后通过设置PDO::ATTR_ERRMODE将MySQL错误信息打印在MySQL中执行prepare语句    prepare statm from “select id,updatexml(0x7e,concat(0x7e,user(),0x7e),0x7e) from user where username=?”;
 
 
 

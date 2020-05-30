@@ -3,14 +3,18 @@
 <head>
   <meta charset="utf-8">
   
-  <title>Twe1ve&#39;s Blog</title>
+  <title>邮件伪造 | Twe1ve&#39;s Blog</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <script src="https://cdn.bootcss.com/jquery/3.4.1/jquery.min.js"></script>
-  <meta property="og:type" content="website">
-<meta property="og:title" content="Twe1ve&#39;s Blog">
-<meta property="og:url" content="https://github.com/categories/index.html">
+  <meta name="description" content="SPF：Sender Policy FrameworkSPF 原理：创建至少一个DNS TXT记录来启用SPF SPF验证过程：  接收端获取发件端IP 接收端查询发件域名的TXT记录 根据发件端的SPF记录的规则进行匹配，按照声明的策略进行处理  邮件服务器收到来自xx@example.com的一封邮件，发件主机IP为45.77.87.90。这时邮件服务器回去查询example.com的SPF记">
+<meta property="og:type" content="article">
+<meta property="og:title" content="邮件伪造">
+<meta property="og:url" content="https://github.com/2020/05/30/%E9%82%AE%E4%BB%B6%E4%BC%AA%E9%80%A0/index.html">
 <meta property="og:site_name" content="Twe1ve&#39;s Blog">
+<meta property="og:description" content="SPF：Sender Policy FrameworkSPF 原理：创建至少一个DNS TXT记录来启用SPF SPF验证过程：  接收端获取发件端IP 接收端查询发件域名的TXT记录 根据发件端的SPF记录的规则进行匹配，按照声明的策略进行处理  邮件服务器收到来自xx@example.com的一封邮件，发件主机IP为45.77.87.90。这时邮件服务器回去查询example.com的SPF记">
 <meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2020-05-30T01:50:48.000Z">
+<meta property="article:modified_time" content="2020-05-30T02:04:15.616Z">
 <meta property="article:author" content="John Doe">
 <meta name="twitter:card" content="summary">
   
@@ -113,75 +117,107 @@
       </div>
     </div>
     <!--主页上右部分-->
-    
-  
-  <section class="archive">
-    
-      <section class="archive-category">
-        <h1 class="title">Others</h1>
-        <ul class="menu">
-          
-            <li>
-              <a href="/2020/05/24/PHP%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%AD%A6%E4%B9%A0/">PHP反序列化漏洞学习</a>
-              <span class="date">May 24, 2020</span>
-            </li>
-          
-            <li>
-              <a href="/2020/05/21/HSTS-bypassing/">HSTS bypassing</a>
-              <span class="date">May 21, 2020</span>
-            </li>
-          
-            <li>
-              <a href="/2020/04/26/SSTI-%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%A8%A1%E6%9D%BF%E6%B3%A8%E5%85%A5/">SSTI[服务器模板注入]</a>
-              <span class="date">Apr 26, 2020</span>
-            </li>
-          
-            <li>
-              <a href="/2020/04/26/MSSQL-NTLM-stealer/">MSSQL NTLM stealer</a>
-              <span class="date">Apr 26, 2020</span>
-            </li>
-          
-            <li>
-              <a href="/2020/04/26/CSharp%E5%BA%95%E5%B1%82%E8%B0%83%E7%94%A8powershell%E8%BF%87%E6%9D%80%E8%BD%AF/">C#底层调用powershell过杀软</a>
-              <span class="date">Apr 26, 2020</span>
-            </li>
-          
-            <li>
-              <a href="/2020/04/26/C%E5%86%85%E5%AD%98%E5%8A%A0%E8%BD%BD%E8%BF%87%E6%9D%80%E8%BD%AF/">C内存加载过杀软</a>
-              <span class="date">Apr 26, 2020</span>
-            </li>
-          
-            <li>
-              <a href="/2020/04/25/Kerberos%E8%AE%A4%E8%AF%81%E5%AD%A6%E4%B9%A0/">Kerberos认证学习</a>
-              <span class="date">Apr 25, 2020</span>
-            </li>
-          
-            <li>
-              <a href="/2020/04/22/JuicyPotato%E6%8F%90%E6%9D%83/">JuicyPotato提权</a>
-              <span class="date">Apr 22, 2020</span>
-            </li>
-          
-            <li>
-              <a href="/2020/04/19/Rerverse-shell-Interactive-shell/">Rerverse_shell&amp;Interactive_shell</a>
-              <span class="date">Apr 19, 2020</span>
-            </li>
-          
-            <li>
-              <a href="/2020/02/21/PDO&&InjectionBypass/">PDO&amp;&amp;InjectionBypass</a>
-              <span class="date">Feb 21, 2020</span>
-            </li>
-          
-        </ul>
-      </section>
-    
-  </section>
+    <div class="main-right flex1 flex flex-v">
+    <div class="article-content flex1">
+        <div class="article-content-container">
+            <div class="article-title row">
+                <div class="title">邮件伪造</div>
+                <div class=" other">
+                    <!--<i class="iconfont icon-iconfontordinaryliulan"></i> 56--> <i
+                        class="iconfont icon-shijian"></i>· May 30, 2020 ·</div>
+            </div>
+            <div class="article-message markdown-body">
+                <article class="text" v-highlight>
+                    <p><strong>SPF：Sender Policy FrameworkSPF</strong></p>
+<p>原理：创建至少一个DNS TXT记录来启用SPF</p>
+<p>SPF验证过程：</p>
+<ol>
+<li>接收端获取发件端IP</li>
+<li>接收端查询发件域名的TXT记录</li>
+<li>根据发件端的SPF记录的规则进行匹配，按照声明的策略进行处理</li>
+</ol>
+<p>邮件服务器收到来自<a href="mailto:xx@example.com">xx@example.com</a>的一封邮件，发件主机IP为45.77.87.90。这时邮件服务器回去查询example.com的SPF记录，假若SPF记录中允许45.77.87.90,则该邮件为正常邮件</p>
+<p>SPF DNS TXT记录示例</p>
+<pre><code>com. IN TXT “v=spf1 a ip4:192.168.1.1 ~all”</code></pre><p><strong>DKIM：Domain Keys Identified Mail</strong><br>区别于SPF，DKIM使用非对称加密的方式对发件人进行身份验证。收件人可以使用发件人的公钥来验证经过数字签名的电子邮件</p>
+<p>DKIM DNS TXT记录示例（p是Base64格式的电子邮件服务器的公钥）：</p>
+<pre><code>selector._domainkey.example.com IN TXT “v=DKIM1;p=RAG…123”</code></pre><p><strong>DMARC：Domain-Based Message Authentication, Reporting and Conformance</strong></p>
+<p>DMARC只是一项聚合服务，用于确定发件人是否使用SPF和DKIM，以及发件人如何建议收件人应处理声称来自发件人域的失败/欺骗性电子邮件</p>
+<p>DMARC DNS TXT记录示例</p>
+<pre><code>TXT IN &quot;v=DMARC1;p=quarantine;pct=100;rua=mailto:dmarccheck@example.com;&quot;</code></pre><p>总结起来就是：</p>
+<ol>
+<li>SPF检查电子邮件来源的IP地址是否已授权</li>
+<li>DKIM使用密钥检查消息以进行签名验证</li>
+<li>DMARC一次性包含了两种方法</li>
+</ol>
+<p><strong><a href="http://ancorathemes.com/2018/10/30/how-to-find-anyones-email-address-infographic/" target="_blank" rel="noopener">搜集邮箱</a></strong>（作为伪造目标，增加可信度）：</p>
+<p>1、在线邮箱地址查找:</p>
+<p><a href="https://hunter.io/" target="_blank" rel="noopener">https://hunter.io/</a></p>
+<p><a href="http://www.veryvp.com" target="_blank" rel="noopener">http://www.veryvp.com</a></p>
+<p><a href="https://anymailfinder.com/" target="_blank" rel="noopener">https://anymailfinder.com/</a></p>
+<p><a href="https://www.findemails.com/" target="_blank" rel="noopener">https://www.findemails.com/</a></p>
+<p>2、whois邮箱</p>
+<p>3、bing必应搜索”@hzu.edu.cn”</p>
+<p>4、目标站点中的联系我们处获取邮箱</p>
+<p>5、根据人名猜测/爆破，验证邮箱是否存在</p>
+<p><a href="https://tools.verifyemailaddress.io/" target="_blank" rel="noopener">https://tools.verifyemailaddress.io/</a></p>
+<p>6、根据人名创建可能的邮箱地址</p>
+<p><a href="http://metricsparrow.com/toolkit/email-permutator/" target="_blank" rel="noopener">http://metricsparrow.com/toolkit/email-permutator/</a></p>
+<p>7、邮箱抓取脚本<br><a href="https://github.com/laramies/theHarvester">https://github.com/laramies/theHarvester</a></p>
+<pre><code>theharvester -d  hzu.edu.cn -l 1000 -b all</code></pre><p><strong>验证是否开启SPF/DKIM：</strong></p>
+<pre><code>nslookup -type=txt xxx.com</code></pre><p>检测SPF记录是否正确：<br><a href="https://www.kitterman.com/spf/validate.html" target="_blank" rel="noopener">https://www.kitterman.com/spf/validate.html</a></p>
+<h2 id="邮件伪造："><a href="#邮件伪造：" class="headerlink" title="邮件伪造："></a>邮件伪造：</h2><p><strong>没有SPF：</strong><br>1、直接在线发送伪造邮件：<a href="https://emkei.cz/http://tool.chacuo.net/mailanonymous" target="_blank" rel="noopener">https://emkei.cz/http://tool.chacuo.net/mailanonymous</a></p>
+<p>2、 swaks</p>
+<pre><code>swaks --to  webmaster@hzu.edu.cn --from tw@hzu.edu.cn --ehlo hzu.edu.cn --body hello --header &quot;Subject: test&quot;</code></pre><p><strong>有SPF：</strong>awake+smtp2go(需要绑定域名、根据提示添加CNAME记录、cloudfare的话需要取消代理)<br><code>swaks --to  xxxxxx@qq.com --from jwc@hzu.edu.cn -ehlo hzu.edu.cn --body &quot;test&quot; --server mail.smtp2go.com -p 2525 -au &lt;USER&gt;-ap &lt;PASS&gt;</code></p>
+<p><strong>swaks参数说明：</strong></p>
+<p>–from <a href="mailto:test@qq.com">test@qq.com</a> //发件人邮箱；</p>
+<p>–ehlo qq.com //伪造邮件ehlo头，即是发件人邮箱的域名。提供身份认证</p>
+<p>–body “<a href="http://www.baidu.com&quot;" target="_blank" rel="noopener">http://www.baidu.com&quot;</a> //引号中的内容即为邮件正文；</p>
+<p>–header “Subject:hello” //邮件头信息，subject为邮件标题</p>
+<p>–data ./Desktop/email.txt //将正常源邮件的内容保存成TXT文件，再作为正常邮件发送</p>
+<p>–attach   xxxxx.docx   //附加附件</p>
+<p><a href="https://www.cnblogs.com/xiaozi/p/12906040.html" target="_blank" rel="noopener">https://www.cnblogs.com/xiaozi/p/12906040.html</a> 邮件伪造之SPF绕过的5种思路</p>
+<p><a href="https://www.cnblogs.com/backlion/p/10842676.html" target="_blank" rel="noopener">https://www.cnblogs.com/backlion/p/10842676.html</a></p>
+<p><a href="https://payloads.online/archivers/2019-05-09/1#0x04-%E7%BB%95%E8%BF%87spf" target="_blank" rel="noopener">https://payloads.online/archivers/2019-05-09/1#0x04-%E7%BB%95%E8%BF%87spf</a></p>
 
+                </article>
+            </div>
+            <div id="gitalk-container"></div>
+<link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+<style>
+    .hljs {
+        display: block !important;
+        overflow-x: auto !important;
+        background: #2b2b2b !important;
+        color: #f8f8f2 !important;
+        padding: .5em !important;
+    }
+</style>
+<script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '85810192d72d7f763a9a',
+        clientSecret: 'e9867192041e53ad9f4581db6e50bbe7373a090d',
+        repo: 'myblog',
+        owner: 'callmesoul',
+        admin: ['callmesoul'],
+        id: '', // Ensure uniqueness and length less than 50
+        distractionFreeMode: false // Facebook-like distraction free mode
+    })
+    gitalk.render('gitalk-container')
+</script>
+        </div>
+    </div>
+</div>
 
-  <nav class="pagination">
-    <span class="page-number current">1</span><a class="page-number" href="/categories/page/2/">2</a><a class="page-number" href="/categories/page/3/">3</a><a class="page-number" href="/categories/page/4/">4</a><a class="extend next" rel="next" href="/categories/page/2/">&lt;span class&#x3D;&quot;iconfont icon-arrow-right&quot;&gt;&lt;&#x2F;span&gt;</a>
-  </nav>
-
-
+<link href="https://cdn.bootcss.com/highlight.js/9.15.7/styles/a11y-dark.min.css" rel="stylesheet">
+<script src="https://cdn.bootcss.com/highlight.js/9.15.9/highlight.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', (event) => {
+        document.querySelectorAll('pre code').forEach((block) => {
+            hljs.highlightBlock(block);
+        });
+    });
+</script>
   </div>
   <!--
   <div class="main-bottom">

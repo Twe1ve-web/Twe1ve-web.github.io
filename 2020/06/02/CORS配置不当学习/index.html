@@ -3,16 +3,23 @@
 <head>
   <meta charset="utf-8">
   
-  <title>Twe1ve&#39;s Blog</title>
+  <title>CORS配置不当学习 | Twe1ve&#39;s Blog</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <script src="https://cdn.bootcss.com/jquery/3.4.1/jquery.min.js"></script>
-  <meta property="og:type" content="website">
-<meta property="og:title" content="Twe1ve&#39;s Blog">
-<meta property="og:url" content="https://github.com/categories/index.html">
+  <meta name="description" content="CORS漏洞的成因很明显，就是服务端配置的规则不当所导致的。 SOP（Same-origin policy：##SOP同源策略,非同源的脚本不能访问或者操作其他域的页面对象 同源三要素：  同域名  同协议  同端口  CORS（Cross-origin Resourse SharingCORS跨域资源共享,使web应用程序能够无视同源策略，请求其他域的资源 CORS实现：（简单请求&#x2F;非简单请求）">
+<meta property="og:type" content="article">
+<meta property="og:title" content="CORS配置不当学习">
+<meta property="og:url" content="https://github.com/2020/06/02/CORS%E9%85%8D%E7%BD%AE%E4%B8%8D%E5%BD%93%E5%AD%A6%E4%B9%A0/index.html">
 <meta property="og:site_name" content="Twe1ve&#39;s Blog">
+<meta property="og:description" content="CORS漏洞的成因很明显，就是服务端配置的规则不当所导致的。 SOP（Same-origin policy：##SOP同源策略,非同源的脚本不能访问或者操作其他域的页面对象 同源三要素：  同域名  同协议  同端口  CORS（Cross-origin Resourse SharingCORS跨域资源共享,使web应用程序能够无视同源策略，请求其他域的资源 CORS实现：（简单请求&#x2F;非简单请求）">
 <meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://github.com/2020/06/02/CORS%E9%85%8D%E7%BD%AE%E4%B8%8D%E5%BD%93%E5%AD%A6%E4%B9%A0/1.png">
+<meta property="og:image" content="https://github.com/2020/06/02/CORS%E9%85%8D%E7%BD%AE%E4%B8%8D%E5%BD%93%E5%AD%A6%E4%B9%A0/2.png">
+<meta property="article:published_time" content="2020-06-02T02:51:29.000Z">
+<meta property="article:modified_time" content="2020-06-02T02:58:21.300Z">
 <meta property="article:author" content="John Doe">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://github.com/2020/06/02/CORS%E9%85%8D%E7%BD%AE%E4%B8%8D%E5%BD%93%E5%AD%A6%E4%B9%A0/1.png">
   
     <link rel="icon" href="/images/icon.png">
   
@@ -113,75 +120,92 @@
       </div>
     </div>
     <!--主页上右部分-->
-    
-  
-  <section class="archive">
-    
-      <section class="archive-category">
-        <h1 class="title">Others</h1>
-        <ul class="menu">
-          
-            <li>
-              <a href="/2020/06/02/CORS%E9%85%8D%E7%BD%AE%E4%B8%8D%E5%BD%93%E5%AD%A6%E4%B9%A0/">CORS配置不当学习</a>
-              <span class="date">Jun 2, 2020</span>
-            </li>
-          
-            <li>
-              <a href="/2020/05/24/PHP%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E5%AD%A6%E4%B9%A0/">PHP反序列化漏洞学习</a>
-              <span class="date">May 24, 2020</span>
-            </li>
-          
-            <li>
-              <a href="/2020/05/21/HSTS-bypassing/">HSTS bypassing</a>
-              <span class="date">May 21, 2020</span>
-            </li>
-          
-            <li>
-              <a href="/2020/05/19/SSRF-Redis/">SSRF+Redis</a>
-              <span class="date">May 19, 2020</span>
-            </li>
-          
-            <li>
-              <a href="/2020/04/26/MSSQL-NTLM-stealer/">MSSQL NTLM stealer</a>
-              <span class="date">Apr 26, 2020</span>
-            </li>
-          
-            <li>
-              <a href="/2020/04/26/CSharp%E5%BA%95%E5%B1%82%E8%B0%83%E7%94%A8powershell%E8%BF%87%E6%9D%80%E8%BD%AF/">C#底层调用powershell过杀软</a>
-              <span class="date">Apr 26, 2020</span>
-            </li>
-          
-            <li>
-              <a href="/2020/04/26/C%E5%86%85%E5%AD%98%E5%8A%A0%E8%BD%BD%E8%BF%87%E6%9D%80%E8%BD%AF/">C内存加载过杀软</a>
-              <span class="date">Apr 26, 2020</span>
-            </li>
-          
-            <li>
-              <a href="/2020/04/25/Kerberos%E8%AE%A4%E8%AF%81%E5%AD%A6%E4%B9%A0/">Kerberos认证学习</a>
-              <span class="date">Apr 25, 2020</span>
-            </li>
-          
-            <li>
-              <a href="/2020/04/22/JuicyPotato%E6%8F%90%E6%9D%83/">JuicyPotato提权</a>
-              <span class="date">Apr 22, 2020</span>
-            </li>
-          
-            <li>
-              <a href="/2020/04/19/Rerverse-shell-Interactive-shell/">Rerverse_shell&amp;Interactive_shell</a>
-              <span class="date">Apr 19, 2020</span>
-            </li>
-          
-        </ul>
-      </section>
-    
-  </section>
+    <div class="main-right flex1 flex flex-v">
+    <div class="article-content flex1">
+        <div class="article-content-container">
+            <div class="article-title row">
+                <div class="title">CORS配置不当学习</div>
+                <div class=" other">
+                    <!--<i class="iconfont icon-iconfontordinaryliulan"></i> 56--> <i
+                        class="iconfont icon-shijian"></i>· Jun 2, 2020 ·</div>
+            </div>
+            <div class="article-message markdown-body">
+                <article class="text" v-highlight>
+                    <p>CORS漏洞的成因很明显，就是服务端配置的规则不当所导致的。</p>
+<h2 id="SOP（Same-origin-policy："><a href="#SOP（Same-origin-policy：" class="headerlink" title="SOP（Same-origin policy：##"></a>SOP（Same-origin policy：##</h2><p>SOP同源策略,非同源的脚本不能访问或者操作其他域的页面对象</p>
+<p>同源三要素：</p>
+<ul>
+<li>同域名 </li>
+<li>同协议 </li>
+<li>同端口</li>
+</ul>
+<h2 id="CORS（Cross-origin-Resourse-Sharing"><a href="#CORS（Cross-origin-Resourse-Sharing" class="headerlink" title="CORS（Cross-origin Resourse Sharing"></a>CORS（Cross-origin Resourse Sharing</h2><p>CORS跨域资源共享,使web应用程序能够无视同源策略，请求其他域的资源</p>
+<p>CORS实现：（<a href="https://cloud.tencent.com/developer/article/1467364" target="_blank" rel="noopener">简单请求/非简单请求</a>）</p>
+<p>请求头：</p>
+<pre><code>1、origin,用于说明本次请求来自哪个源（域名+协议+端口）
+2、Access-Control-Request-Method,用来列出浏览器的CORS请求会用到哪些HTTP方法
+3、Access-Control-Request-Headers,指定浏览器CORS请求会额外发送的头信息字段</code></pre><p>响应头：</p>
+<pre><code>1、Access-Control-Allow-Origin(ACAO) 
+用于指定允许访问资源的外域URI，对于携带身份凭证的请求不可使用通配符*
+2、Access-Control-Allow-Credentials
+表明是否允许浏览器读取response的内容，当用在preflight预检请求的响应中时，指定实际的请求是否可使用credentials</code></pre><h2 id="漏洞挖掘："><a href="#漏洞挖掘：" class="headerlink" title="漏洞挖掘："></a>漏洞挖掘：</h2><p>CORS的漏洞主要看当请求中带有Origin头部字段时，服务器的返回包是否带有CORS的相关字段（Access-Control-Allow*）并且允许Origin的域访问，因此origin字段的值需要多尝试不同的域或者为null。</p>
+<p>使用burpsuit进行快速验证：</p>
+<p><img src="1.png" alt=""></p>
+<p>访问需要检测的网站，访问多个不同的页面，访问足够多后在BurpSuite的Proxy模块下的HTTP history来筛选带有CORS头部的值:</p>
+<p><img src="2.png" alt=""></p>
+<p>也可以测试下带有Access-Control-Allow-Origin: * 字段的网站是否有CORS漏洞，但是如果是如下组合，则没有漏洞，因为<strong>浏览器已经会阻止如下的配置</strong>。</p>
+<pre><code>Access-Control-Allow-Origin: *
+Access-Control-Allow-Credentials: true</code></pre><h2 id="绕过："><a href="#绕过：" class="headerlink" title="绕过："></a><a href="https://xz.aliyun.com/t/2745#toc-17" target="_blank" rel="noopener">绕过</a>：</h2><ul>
+<li>NULL源</li>
+<li>使用目标域名作为子域名</li>
+<li>…</li>
+</ul>
+<p><strong>CORS与JSONP的比较</strong></p>
+<p>CORS与JSONP的使用目的相同，但是比JSONP更强大。</p>
+<p>JSONP只支持GET请求，CORS支持所有类型的HTTP请求。JSONP的优势在于支持老式浏览器，以及可以向不支持CORS的网站请求数据。</p>
+<p>更多学习链接：</p>
+<p>CORS三种攻击场景： <a href="https://xz.aliyun.com/t/4663" target="_blank" rel="noopener">https://xz.aliyun.com/t/4663</a></p>
+<p>CORS安全完全指南： <a href="https://xz.aliyun.com/t/2745" target="_blank" rel="noopener">https://xz.aliyun.com/t/2745</a></p>
 
+                </article>
+            </div>
+            <div id="gitalk-container"></div>
+<link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+<style>
+    .hljs {
+        display: block !important;
+        overflow-x: auto !important;
+        background: #2b2b2b !important;
+        color: #f8f8f2 !important;
+        padding: .5em !important;
+    }
+</style>
+<script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '85810192d72d7f763a9a',
+        clientSecret: 'e9867192041e53ad9f4581db6e50bbe7373a090d',
+        repo: 'myblog',
+        owner: 'callmesoul',
+        admin: ['callmesoul'],
+        id: '', // Ensure uniqueness and length less than 50
+        distractionFreeMode: false // Facebook-like distraction free mode
+    })
+    gitalk.render('gitalk-container')
+</script>
+        </div>
+    </div>
+</div>
 
-  <nav class="pagination">
-    <span class="page-number current">1</span><a class="page-number" href="/categories/page/2/">2</a><a class="page-number" href="/categories/page/3/">3</a><a class="page-number" href="/categories/page/4/">4</a><a class="extend next" rel="next" href="/categories/page/2/">&lt;span class&#x3D;&quot;iconfont icon-arrow-right&quot;&gt;&lt;&#x2F;span&gt;</a>
-  </nav>
-
-
+<link href="https://cdn.bootcss.com/highlight.js/9.15.7/styles/a11y-dark.min.css" rel="stylesheet">
+<script src="https://cdn.bootcss.com/highlight.js/9.15.9/highlight.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', (event) => {
+        document.querySelectorAll('pre code').forEach((block) => {
+            hljs.highlightBlock(block);
+        });
+    });
+</script>
   </div>
   <!--
   <div class="main-bottom">

